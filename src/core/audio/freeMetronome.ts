@@ -122,7 +122,12 @@ export class FreeMetronome {
     const now = this.ctx.currentTime;
     const horizon = now - this.startTime + LOOK_AHEAD_SEC;
     const beatSec = 60 / this.bpm;
-    const startBeatIndex = Math.max(0, Math.floor(this.scheduledUpTo / beatSec));
+    // ceil — start at the first beat STRICTLY past what we already
+    // scheduled. With floor, scheduledUpTo=0.1 and beatSec=0.5 yielded
+    // index 0 again on the next pass; combined with the past-tolerance
+    // window it caused the same beat to be queued twice within a few
+    // dozen ms, which sounded like a smeared / hollow click.
+    const startBeatIndex = Math.max(0, Math.ceil(this.scheduledUpTo / beatSec));
     const endBeatIndex = Math.ceil(horizon / beatSec);
 
     for (let i = startBeatIndex; i < endBeatIndex; i++) {

@@ -9,12 +9,14 @@
 
 import { PPQ, type TimeSignatureEvent } from '../model/types';
 
-export const METRONOME_DOWNBEAT_FREQUENCY_HZ = 1000;
-export const METRONOME_OFFBEAT_FREQUENCY_HZ = 800;
+export const METRONOME_DOWNBEAT_FREQUENCY_HZ = 1600;
+export const METRONOME_OFFBEAT_FREQUENCY_HZ = 1200;
 
 const DOWNBEAT_BASE_GAIN = 1.0;
 const OFFBEAT_BASE_GAIN = 0.6;
 const CLICK_DURATION_SEC = 0.05;
+/** Short fade-in so the oscillator doesn't pop when it switches on. */
+const CLICK_ATTACK_SEC = 0.002;
 /** exponentialRamp cannot reach 0; -60dB is effectively inaudible. */
 const NEAR_ZERO_GAIN = 0.001;
 
@@ -36,12 +38,26 @@ export function scheduleClick(
   osc.connect(gain);
   gain.connect(ctx.destination);
 
+  // Triangle wave for a crisper, more "click"-shaped attack than sine.
+  // Pure sine at 1 kHz is soft and a little muddy on small speakers;
+  // triangle has odd harmonics that fall off ~9 dB/octave, giving it
+  // body without the harshness of a square wave.
+  osc.type = 'triangle';
   osc.frequency.value = isDownbeat
     ? METRONOME_DOWNBEAT_FREQUENCY_HZ
     : METRONOME_OFFBEAT_FREQUENCY_HZ;
   const baseGain = isDownbeat ? DOWNBEAT_BASE_GAIN : OFFBEAT_BASE_GAIN;
-  gain.gain.setValueAtTime(baseGain * volume, audioTime);
-  gain.gain.exponentialRampToValueAtTime(NEAR_ZERO_GAIN, audioTime + CLICK_DURATION_SEC);
+  const peakGain = baseGain * volume;
+  // 0 → peak over 2 ms (linear) → near-zero over the remainder
+  // (exponential). Without the attack ramp the gain jumps from 0 to peak
+  // in one sample, which makes the audible "pop" that listeners hear on
+  // top of the tone, especially on Bluetooth / phone speakers.
+  gain.gain.setValueAtTime(0, audioTime);
+  gain.gain.linearRampToValueAtTime(peakGain, audioTime + CLICK_ATTACK_SEC);
+  gain.gain.exponentialRampToValueAtTime(
+    NEAR_ZERO_GAIN,
+    audioTime + CLICK_DURATION_SEC,
+  );
 
   osc.start(audioTime);
   osc.stop(audioTime + CLICK_DURATION_SEC);
