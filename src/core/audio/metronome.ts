@@ -30,7 +30,7 @@ export function scheduleClick(
   audioTime: number,
   isDownbeat: boolean,
   volume: number = DEFAULT_METRONOME_VOLUME,
-): void {
+): OscillatorNode {
   const osc = ctx.createOscillator();
   const gain = ctx.createGain();
   osc.connect(gain);
@@ -45,6 +45,7 @@ export function scheduleClick(
 
   osc.start(audioTime);
   osc.stop(audioTime + CLICK_DURATION_SEC);
+  return osc;
 }
 
 function ticksPerBeat(ts: TimeSignatureEvent): number {
