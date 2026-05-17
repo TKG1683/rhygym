@@ -241,24 +241,16 @@ export const SIXTEENTH_NOTE_TICKS = PPQ / 4; // 120
 
 #### 設計方針
 
-- **2 段構え**：「全小節を VexFlow で描く（命令的 IR 変換）」+ 「判定ラインを別 SVG/Canvas で重ねる」
+- **譜面は完全に静的描画**（VexFlow で一度描いたら触らない）
 - **譜表の選択（確定）**：**1線譜（パーカッション譜）** を採用
   - リズム譜にはピッチ情報が無いため、楽典的に最も正しい表記
-  - VexFlow では `Stave.setNumLines(1)` で1本線にする
+  - 実装: 5線譜のまま `setConfigForLines` で中央線のみ可視化（VexFlow の位置計算・barline高さが自然に効く）
   - ノートの `keys` は `['b/4']` で中央線上に配置
   - 「リズムに集中」感が強く、Rhygym のコンセプトに合致
-- **流し方の選択肢**：
-
-  | 方式 A: 譜面が左に流れる | 方式 B: 判定線が譜面上を進む |
-  |------------------------|--------------------------|
-  | Guitar Hero/Taiko 風 | 洗足オンラインスクール風 |
-  | 譜面を transform で平行移動 | 判定線（縦棒）を tick→x で移動 |
-  | スマホで譜面の先読みが見やすい | 譜面全体が一望できる |
-
-  → **初版は方式 B を採用**。理由：
-    - 譜面の全体像が見えるため読譜練習に向く（overview.md の目的に合致）
-    - 描画は静的なので VexFlow の再レンダリングが不要、判定線だけ RAF で動かせば良い
-    - 折り返しレイアウトは VexFlow が小節単位で行うため、長い譜面でも自然
+- **動くプレイヘッド（判定線）は採用しない**（読譜特訓のため、視覚補助なし）
+  - 練習者は「メトロノーム音」と「譜面」だけを頼りにタップする
+  - これにより読譜力が本当に鍛えられる（プレイヘッドありだと「線を見て叩く」になる）
+  - 将来拡張: 難易度設定で「BEGINNER モード = プレイヘッドあり」を選べるようにする（Phase 12 参照）
 
 #### 実装
 
@@ -267,7 +259,7 @@ export const SIXTEENTH_NOTE_TICKS = PPQ / 4; // 120
   - `decomposeTicks()`（tick を音価へ分解）は流用
 - `ScoreRenderer.ts`: `Stave`, `StaveNote`, `Voice`, `Formatter`, `Beam` を使って SVG 描画
   - 小節幅は固定、折り返しは横幅から計算
-  - 描画完了後に「各ノートの SVG 上の x 座標」をマップで返す（判定線・ヒットエフェクト配置用）
+  - 描画完了後に「各ノートの SVG 上の x 座標」をマップで返す（将来のプレイヘッドモード追加時に再利用）
 
 ### 3.5 検証
 
@@ -308,10 +300,20 @@ class GameScheduler {
 - downbeat 1000Hz / offbeat 800Hz
 - 拍子に応じて 1 拍目を強調
 
-### 4.3 カウントイン（`core/audio/countIn.ts`）
+### 4.3 メトロノーム継続再生 + Tap to Start方式（カウントイン代わり）
 
-- 演奏開始前に N 拍ぶんメトロノームを鳴らす（4/4 なら 4 拍）
-- 完了後に `play()` を呼ぶ仕組み
+洗足オンラインスクール式のゲーム開始フローを採用：
+
+1. GameScreen 入った瞬間からメトロノームを**ずっと鳴らす**（譜面のBPMで）
+2. 譜面は最初から見える、プレイヤーは自由な時間を取ってリズムを掴める
+3. 「♪ Tap to start」ボタンが表示される
+4. プレイヤーが「準備OK」と思った瞬間にタップ
+5. そのタップ瞬間を**1拍目として演奏開始**
+6. 以降のメトロノームはそのまま継続（テンポ同じなので段差なし）
+7. 表示が「♪ Playing...」に変わり、以降のタップは判定対象
+
+`countIn.ts` は使わず、`scheduler.play(fromTick=0)` をプレイヤータップ時に呼ぶシンプル構成にする。
+（`countIn.ts` 自体は将来の難易度設定 BEGINNER モード等で再利用可能性あり）
 
 ### 4.4 テスト
 
@@ -323,17 +325,23 @@ class GameScheduler {
 
 ## Phase 5: ゲームループ + タップ判定
 
-### 5.1 判定ライン描画
+### 5.1 ゲーム状態
 
-- VexFlow で描いた SVG の上に、別 SVG レイヤを重ねる
-- `currentTick` → 該当 x 座標 を毎フレーム求めて縦棒を描く
-- 段（小節折り返し）が変わるとき、判定線も次の段の先頭へジャンプ
+3つのフェーズで動作：
+
+| state | 表示 | メトロノーム | タップの扱い |
+|-------|------|------------|------------|
+| `waiting` | 譜面 + 「♪ Tap to start」 | ずっと鳴る | 1回目で `playing` 遷移 |
+| `playing` | 譜面 + 「♪ Playing...」 | 鳴り続ける | `judgeTap()` 対象 |
+| `done` | （自動で Result 画面へ遷移） | 停止 | – |
 
 ### 5.2 タップ受け
 
 - ゲーム画面全体を巨大なタップターゲットに（スマホ：画面下半分など）
 - `pointerdown` イベントで `AudioContext.currentTime` を即記録
 - React の合成イベントだとレイテンシが乗るため、ref + `addEventListener` で生の DOM に張る
+- `waiting` 状態の最初のタップ → `scheduler.play(0)` 呼出 + 状態を `playing` に遷移
+- `playing` 状態のタップ → `judgeTap(tapSec, candidates)` に投入
 
 ### 5.3 判定アルゴリズム（`core/judgement/timing.ts`）
 
@@ -363,16 +371,17 @@ function loop() {
   const audioTick = scheduler.audioCurrentTick;
   // 未判定で過去になったノートを MISS に
   expireUnjudgedNotes(audioTick);
-  // 視覚: 判定線の位置更新
-  updatePlayhead(scheduler.currentTick);
   requestAnimationFrame(loop);
 }
 ```
 
+プレイヘッドが無いので、ループの責務は「未タップノートの自動MISS化」だけ。
+
 ### 5.5 判定エフェクト
 
-- 当該ノートの x,y に「PERFECT」テキストを 300ms 程度 fade-out で表示
-- 色: PERFECT=金、GOOD=青、MISS=赤
+- **画面中央に固定表示**で「PERFECT」「GOOD」「MISS」テキストを 300ms 程度 fade-out
+- 色: PERFECT=金 (#FFD24A 系)、GOOD=青、MISS=赤
+- 譜面上には何も描画しない（読譜特訓の純度を保つ）
 
 ---
 
@@ -579,6 +588,12 @@ jobs:
 - 「タン・タタ」音節表記併記
 - 左右レーン制
 - 楽曲音源との同期演奏
+
+### 追加（設計判断由来）
+
+- **難易度設定（BEGINNER / NORMAL）**: BEGINNER モードで「動くプレイヘッド」を譜面上に重ねて表示する。初心者向けの視覚補助。NORMAL は本来の特訓モード（プレイヘッドなし）。
+  - `ScoreRenderer` が返す `noteCoords` map をそのまま使えるので実装コストは低い
+  - 級ごとに「推奨難易度」を設定可能
 
 ---
 
