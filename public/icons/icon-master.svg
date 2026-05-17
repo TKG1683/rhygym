@@ -1,0 +1,31 @@
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <clipPath id="round"><rect x="0" y="0" width="1024" height="1024" rx="230"/></clipPath>
+  </defs>
+  <g clip-path="url(#round)">
+    <rect x="0" y="0" width="1024" height="1024" fill="#FFD24A"/>
+    <rect x="0" y="0" width="1024" height="538" fill="#FFE08A"/>
+    <circle cx="179" cy="166" r="307" fill="#FFDC6E" opacity="0.65"/>
+    <circle cx="922" cy="896" r="384" fill="#FFC42E" opacity="0.55"/>
+
+    <!-- 音符＋ダンベルのグループ全体を中央配置 -->
+    <g transform="translate(512 524) scale(2.34) translate(-322 -242)">
+      <!-- 八分音符 -->
+      <g transform="translate(2 6)">
+        <rect x="286" y="118" width="18" height="150" fill="#2A1B06"/>
+        <path d="M304 118 c44 17 67 50 53 103 c-4 15 -13 27 -27 36 c13 -32 8 -65 -26 -82 Z" fill="#2A1B06"/>
+        <ellipse cx="262" cy="270" rx="48" ry="36" transform="rotate(-22 262 270)" fill="#2A1B06"/>
+      </g>
+      <!-- ダンベル -->
+      <g transform="translate(372 350)">
+        <rect x="-8" y="-14" width="98" height="28" rx="8" fill="#2A1B06"/>
+        <rect x="-26" y="-40" width="20" height="80" rx="9" fill="#2A1B06"/>
+        <rect x="-50" y="-30" width="20" height="60" rx="9" fill="#E8612E"/>
+        <rect x="-50" y="-30" width="20" height="60" rx="9" fill="none" stroke="#2A1B06" stroke-width="6"/>
+        <rect x="90" y="-40" width="20" height="80" rx="9" fill="#2A1B06"/>
+        <rect x="114" y="-30" width="20" height="60" rx="9" fill="#E8612E"/>
+        <rect x="114" y="-30" width="20" height="60" rx="9" fill="none" stroke="#2A1B06" stroke-width="6"/>
+      </g>
+    </g>
+  </g>
+</svg>
