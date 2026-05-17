@@ -34,9 +34,18 @@ export interface RenderOptions {
   container: HTMLDivElement;
   viewportWidth: number;
   measureWidth?: number;
+  /**
+   * Force a specific measures-per-line target. When set, the renderer
+   * derives `measureWidth` from `viewportWidth / measuresPerLine` and
+   * ignores any `measureWidth` value. Useful for pinning a layout
+   * (e.g. "always 2 measures per row on mobile") instead of letting
+   * row count drift with viewport size.
+   */
+  measuresPerLine?: number;
 }
 
 const DEFAULT_MEASURE_WIDTH = 220;
+const MIN_MEASURE_WIDTH = 100;
 const LINE_HEIGHT = 90;
 const STAVE_TOP_OFFSET = 30;
 const BOTTOM_PADDING = 30;
@@ -45,8 +54,14 @@ const FIRST_MEASURE_LEFT_PAD = 5;
 export function renderScore(score: Score, opts: RenderOptions): RenderResult {
   opts.container.innerHTML = '';
   const vex = scoreToVex(score);
-  const measureWidth = opts.measureWidth ?? DEFAULT_MEASURE_WIDTH;
-  const measuresPerLine = Math.max(1, Math.floor(opts.viewportWidth / measureWidth));
+  // Caller-pinned measures-per-line wins: divide the viewport evenly
+  // (clamped to MIN_MEASURE_WIDTH to keep notes readable on tiny screens).
+  // Otherwise fall back to whatever fits at the requested measureWidth.
+  const measureWidth = opts.measuresPerLine
+    ? Math.max(MIN_MEASURE_WIDTH, Math.floor(opts.viewportWidth / opts.measuresPerLine))
+    : (opts.measureWidth ?? DEFAULT_MEASURE_WIDTH);
+  const measuresPerLine = opts.measuresPerLine
+    ?? Math.max(1, Math.floor(opts.viewportWidth / measureWidth));
   const lineCount = Math.max(1, Math.ceil(vex.measures.length / measuresPerLine));
   const height = lineCount * LINE_HEIGHT + BOTTOM_PADDING;
 

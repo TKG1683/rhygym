@@ -30,11 +30,13 @@ export class MockAudioContext {
         },
       },
       connect: () => {},
+      disconnect: () => {},
       start: (time: number) => {
         self.oscStarts.push(time);
         self.oscFreqs.push(freq);
       },
       stop: () => {},
+      onended: null,
     };
     return osc as unknown as OscillatorNode;
   }
@@ -44,9 +46,11 @@ export class MockAudioContext {
       gain: {
         value: 0,
         setValueAtTime: () => {},
+        linearRampToValueAtTime: () => {},
         exponentialRampToValueAtTime: () => {},
       },
       connect: () => {},
+      disconnect: () => {},
     };
     return gain as unknown as GainNode;
   }

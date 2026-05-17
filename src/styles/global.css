@@ -20,6 +20,9 @@ body {
     'Yu Gothic UI', sans-serif;
   -webkit-font-smoothing: antialiased;
   touch-action: manipulation;
+  /* Prevent the iOS / Android rubber-band scroll from yanking the tap
+   * zone around when the user mistimes a tap near the screen edge. */
+  overscroll-behavior: none;
 }
 
 #root {
@@ -99,11 +102,29 @@ button:active {
   justify-content: center;
 }
 
-/* GameScreen wants the staff to dominate; keep the screen wider here. */
-.screen-game {
-  justify-content: flex-start;
-  padding-top: 24px;
-  gap: 16px;
+.score-view-wrapper {
+  position: relative;
+  width: 100%;
+}
+
+.playhead-svg {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  /* The score-view container has 12px padding; align the overlay
+   * with the actual SVG content area. */
+  width: calc(100% - 24px);
+  height: calc(100% - 24px);
+  pointer-events: none;
+}
+
+.debug-toggle {
+  font-size: 12px;
+  opacity: 0.7;
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  cursor: pointer;
 }
 
 .score-view {
@@ -118,3 +139,136 @@ button:active {
   display: block;
   max-width: 100%;
 }
+
+.status-text {
+  font-size: 18px;
+  font-weight: 600;
+  margin-top: 8px;
+  opacity: 0.9;
+}
+
+/* GameScreen lays out top→bottom: header, staff, controls, status.
+ * The entire screen is a TapArea — anywhere not marked .no-tap counts
+ * as a rhythm tap. overflow:hidden keeps swipe gestures from scrolling
+ * the page mid-play. */
+.screen-game {
+  justify-content: flex-start;
+  padding-top: 16px;
+  gap: 12px;
+  overflow: hidden;
+  cursor: pointer;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: none;
+}
+
+/* Interactive controls inside the TapArea opt out of rhythm-tap
+ * interception so buttons, sliders and toggles work normally. */
+.screen-game .no-tap {
+  cursor: auto;
+  touch-action: auto;
+}
+
+.game-header {
+  width: 100%;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.game-title {
+  font-size: 22px;
+  margin: 0;
+}
+
+.bpm-control {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 6px;
+}
+
+.bpm-label {
+  font-size: 14px;
+  font-weight: 600;
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.bpm-value {
+  font-size: 18px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+}
+
+.bpm-multiplier {
+  opacity: 0.6;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+input[type='range'] {
+  width: 100%;
+  accent-color: #E8612E;
+  cursor: pointer;
+}
+
+input[type='range']:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+@keyframes judgement-fade {
+  0%   { opacity: 0; transform: translate(-50%, -50%) scale(0.7); }
+  20%  { opacity: 1; transform: translate(-50%, -50%) scale(1.15); }
+  60%  { opacity: 1; transform: translate(-50%, -50%) scale(1.0); }
+  100% { opacity: 0; transform: translate(-50%, -50%) scale(1.0); }
+}
+
+.judgement-effect {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 56px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  pointer-events: none;
+  text-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+  animation: judgement-fade 320ms ease-out forwards;
+  z-index: 50;
+}
+
+/* Result screen */
+.result-rank {
+  font-size: 96px;
+  margin: 0;
+  line-height: 1;
+}
+.result-score {
+  font-size: 32px;
+  font-weight: 700;
+  margin: 4px 0 0;
+}
+.result-accuracy {
+  font-size: 16px;
+  opacity: 0.8;
+  margin: 0 0 16px;
+}
+.result-breakdown {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  justify-content: center;
+  margin-bottom: 16px;
+  font-weight: 600;
+}
+.r-perfect { color: #cba000; }
+.r-good    { color: #3a8dde; }
+.r-miss    { color: #E8612E; }

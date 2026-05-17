@@ -108,7 +108,18 @@ export class GameScheduler {
     if (volume !== undefined) this.metronomeVolume = clampVolume(volume);
   }
 
-  async play(fromTick = 0): Promise<void> {
+  /**
+   * Start playback.
+   *
+   * @param fromTick     song tick to start from (default 0).
+   * @param opts.atAudioTime  optional AudioContext.currentTime at which
+   *   beat 1 of the song should align. Use this to dovetail with an
+   *   external clock (e.g. a free-running metronome): the scheduler
+   *   queues clicks/notes for that exact audio time instead of "now",
+   *   so the song's first beat lands on the next external downbeat
+   *   without jittering the surrounding pulse.
+   */
+  async play(fromTick = 0, opts: { atAudioTime?: number } = {}): Promise<void> {
     if (this._playing) this.stop();
 
     if (!this.ctx) {
@@ -121,7 +132,7 @@ export class GameScheduler {
 
     this._currentTick = Math.max(0, fromTick);
     this.startSec = this.converter.tickToSec(this._currentTick);
-    this.startAudioTime = this.ctx.currentTime;
+    this.startAudioTime = opts.atAudioTime ?? this.ctx.currentTime;
     this.scheduledUpTo = this.startSec;
     this._playing = true;
 
