@@ -91,3 +91,30 @@ button:hover {
 button:active {
   transform: translateY(1px);
 }
+
+.row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+/* GameScreen wants the staff to dominate; keep the screen wider here. */
+.screen-game {
+  justify-content: flex-start;
+  padding-top: 24px;
+  gap: 16px;
+}
+
+.score-view {
+  width: 100%;
+  background: #fffaef;
+  border-radius: 12px;
+  padding: 12px;
+  overflow-x: auto;
+}
+
+.score-view svg {
+  display: block;
+  max-width: 100%;
+}
