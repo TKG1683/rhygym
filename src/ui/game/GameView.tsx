@@ -49,17 +49,18 @@ export function GameView({ stage }: Props) {
   const audioContext = useAppStore((s) => s.audioContext);
   const setLastResult = useAppStore((s) => s.setLastResult);
   const goto = useAppStore((s) => s.goto);
+  /**
+   * BPM scaling factor the player can dial in while waiting. 1.0 = play
+   * at the stage's authored BPM; 0.5 = half speed; 1.5 = 1.5× speed.
+   * Stored in appStore so the value survives Game→Result→Retry — local
+   * useState would reset to 1.0 every time the player came back.
+   */
+  const bpmMultiplier = useAppStore((s) => s.bpmMultiplier);
+  const setBpmMultiplier = useAppStore((s) => s.setBpmMultiplier);
 
   const [phase, setPhase] = useState<Phase>('waiting');
   const [verdict, setVerdict] = useState<Judgement | null>(null);
   const [triggerId, setTriggerId] = useState(0);
-  /**
-   * BPM scaling factor the player can dial in while waiting. 1.0 = play
-   * at the stage's authored BPM; 0.5 = half speed; 1.5 = 1.5× speed.
-   * Applied to every TempoEvent in the score so the scheduler / converter
-   * / metronome all stay in sync.
-   */
-  const [bpmMultiplier, setBpmMultiplier] = useState(1);
   const effectiveBpm = Math.round(stage.bpm * bpmMultiplier);
   /** Debug: draw a moving playhead over the staff so we can eyeball timing. */
   const [showPlayhead, setShowPlayhead] = useState(false);
@@ -160,6 +161,32 @@ export function GameView({ stage }: Props) {
     }
   };
 
+  /**
+   * Drop everything back to the `waiting` state without re-mounting.
+   * Used by the "リトライ" button in the header so the player can bail
+   * on a bad run mid-song and restart instantly. Doesn't touch the BPM
+   * multiplier — the whole point of restarting is to try the same
+   * settings again. The recorded verdicts so far are dropped, so the
+   * abandoned run never reaches the result screen and won't pollute
+   * any best-score tracking added in #10.
+   */
+  const resetGame = () => {
+    const ctx = audioContext;
+    if (!ctx) return;
+    judgedIdsRef.current = new Set();
+    verdictsRef.current = [];
+    setVerdict(null);
+    schedulerRef.current?.stop();
+    const fm = freeMetronomeRef.current;
+    if (fm) {
+      fm.stop();
+      // Same 100 ms warm-up lead the initial start uses so the very
+      // first click after a restart isn't quieter than the rest.
+      fm.start(ctx.currentTime + 0.1);
+    }
+    setPhase('waiting');
+  };
+
   const handleTap = (tapAudioTime: number) => {
     if (phase === 'waiting') {
       // First tap *is* beat 1. Start the scheduler aligned to this tap
@@ -233,16 +260,21 @@ export function GameView({ stage }: Props) {
           <h1 className="game-title">{stage.name}</h1>
           <p className="muted">BPM {effectiveBpm}</p>
         </div>
-        <button
-          className="secondary"
-          onClick={() => {
-            schedulerRef.current?.stop();
-            freeMetronomeRef.current?.stop();
-            goto('select');
-          }}
-        >
-          中断
-        </button>
+        <div className="row">
+          <button className="secondary" onClick={resetGame}>
+            リトライ
+          </button>
+          <button
+            className="secondary"
+            onClick={() => {
+              schedulerRef.current?.stop();
+              freeMetronomeRef.current?.stop();
+              goto('select');
+            }}
+          >
+            中断
+          </button>
+        </div>
       </div>
       <div className="score-view-wrapper">
         <ScoreView

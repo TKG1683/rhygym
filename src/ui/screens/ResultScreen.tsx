@@ -28,7 +28,7 @@ export function ResultScreen() {
       </div>
       <div className="row">
         <button className="primary" onClick={() => goto('game')}>
-          もう一度
+          リトライ
         </button>
         <button className="secondary" onClick={() => goto('select')}>
           級選択へ
