@@ -253,19 +253,40 @@ h1 {
   font-size: var(--fs-sm);
 }
 
+/* Unified button system.
+ * - 12px radius (matches --radius-md, the panel/card rhythm).
+ * - 12-14px vertical padding + min-height 44px so we always clear the
+ *   iOS Human-Interface 44pt touch-target floor, even when a variant
+ *   shrinks the font.
+ * - Focus ring uses the brand accent (orange) so it's clearly visible
+ *   on both the cream and brown surfaces. outline-offset: 2px sits the
+ *   ring just outside the rounded corner — flush 0 looks pinched on a
+ *   12px-radius corner because the outline doesn't follow border-radius.
+ * - :active translates the button down 1px AND drops the shadow so the
+ *   press feels physical, not just a color tween.
+ */
 button {
   font: inherit;
+  font-family: var(--font-body);
+  font-weight: 600;
   border: none;
-  border-radius: 10px;
+  border-radius: var(--radius-md);
   padding: 12px 24px;
+  min-height: 44px;
   cursor: pointer;
-  transition: opacity 0.15s;
+  transition: opacity 0.15s, transform 0.08s, box-shadow 0.12s;
+}
+
+button:focus-visible {
+  outline: 2px solid var(--brand-accent);
+  outline-offset: 2px;
 }
 
 button.primary {
   background: var(--brand-primary);
   color: var(--brand-secondary);
-  font-weight: 600;
+  font-weight: 700;
+  box-shadow: 0 2px 0 rgba(0, 0, 0, 0.18);
 }
 
 button.secondary {
@@ -275,10 +296,15 @@ button.secondary {
 }
 
 button:hover {
-  opacity: 0.85;
+  opacity: 0.9;
 }
 
-button:active {
+button.primary:active {
+  transform: translateY(1px);
+  box-shadow: 0 0 0 rgba(0, 0, 0, 0.18);
+}
+
+button.secondary:active {
   transform: translateY(1px);
 }
 
@@ -879,9 +905,14 @@ input[type='range']:disabled {
   right: 8px;
   background: transparent;
   border: none;
-  font-size: 18px;
+  font-size: var(--fs-lg);
   line-height: 1;
+  /* Override global button defaults so the X stays a tight close icon
+   * rather than a full 44px-tall button. Accessibility note: visually
+   * smaller but still focusable + has an aria-label in the markup. */
   padding: 4px 8px;
+  min-height: auto;
+  border-radius: var(--radius-sm);
   color: var(--text-strong);
   opacity: 0.6;
   cursor: pointer;
