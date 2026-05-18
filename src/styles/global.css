@@ -118,6 +118,33 @@ h1, h2, h3, h4, .title-logo-name, .stage-card-name, .result-rank {
   justify-content: center;
   text-align: center;
   gap: 12px;
+  /* 250 ms fade + 8px settle so every navigation feels intentional
+   * rather than an instant teleport. Animation runs forwards/both so
+   * the screen doesn't snap back to opacity 0 after the keyframe
+   * finishes. The keyframe is opacity-only — translateY is applied
+   * via a separate keyframe (screen-settle) so prefers-reduced-motion
+   * can drop the slide while keeping the fade. */
+  animation: screen-enter 250ms ease-out both,
+             screen-settle 250ms ease-out both;
+}
+
+@keyframes screen-enter {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes screen-settle {
+  from { transform: translateY(8px); }
+  to   { transform: translateY(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .screen {
+    /* Keep the fade (it's gentle and helps mask layout flashes) but
+     * drop the slide that would otherwise violate the user's motion
+     * preference. */
+    animation: screen-enter 200ms ease-out both;
+  }
 }
 
 .logo {
