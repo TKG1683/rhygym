@@ -651,6 +651,32 @@ input[type='range']:disabled {
   padding: 8px 16px;
 }
 
+/* Title-screen first-run variant: same banner shell, but tighter and
+ * carrying a dismiss × so a returning player can silence it once and
+ * never see it again. */
+.title-calib-suggest {
+  position: relative;
+  margin-top: 16px;
+}
+
+.calib-suggest-close {
+  position: absolute;
+  top: 4px;
+  right: 8px;
+  background: transparent;
+  border: none;
+  font-size: 18px;
+  line-height: 1;
+  padding: 4px 8px;
+  color: #2A1B06;
+  opacity: 0.6;
+  cursor: pointer;
+}
+
+.calib-suggest-close:hover {
+  opacity: 1;
+}
+
 .new-best-badge {
   display: inline-block;
   background: #E8612E;
