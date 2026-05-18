@@ -965,25 +965,6 @@ input[type='range']:disabled {
     0 -1px 1px rgba(255, 255, 255, 0.35);
 }
 
-/* Legacy circular rank chip kept for ResultScreen breakdown. */
-.stage-card-rank {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 26px;
-  height: 26px;
-  border-radius: 50%;
-  font-weight: 800;
-  font-size: 14px;
-  color: var(--text-on-dark);
-}
-
-.rank-S { background: var(--rank-s-strong); }
-.rank-A { background: var(--rank-a); }
-.rank-B { background: var(--rank-b); }
-.rank-C { background: var(--rank-c); }
-.rank-D { background: var(--rank-d); }
-
 /* Result-screen calibration-suggestion banner. Sits between the
  * primary retry row and the stats — clearly an actionable suggestion
  * but visually distinct from the rank/score chrome. */
