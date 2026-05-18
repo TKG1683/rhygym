@@ -62,7 +62,18 @@ export function TitleScreen() {
 
   return (
     <main className="screen">
-      <h1 className="logo">Rhygym</h1>
+      <div className="title-logo" aria-label="Rhygym">
+        <span className="title-logo-icon title-logo-icon-left" aria-hidden="true">
+          ♪♬
+        </span>
+        <span className="title-logo-center">
+          <span className="title-logo-name">Rhygym</span>
+          <span className="title-logo-sub">リジム</span>
+        </span>
+        <span className="title-logo-icon title-logo-icon-right" aria-hidden="true">
+          🏋
+        </span>
+      </div>
       <p className="tagline">楽譜を読み、タップでリズムを叩け。</p>
       <button className="primary" onClick={handleStart}>
         Start
