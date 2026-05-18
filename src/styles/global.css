@@ -388,6 +388,180 @@ input[type='range']:disabled {
   margin-top: auto;
 }
 
+/* StageSelect — list of class cards. */
+.screen-select {
+  justify-content: flex-start;
+  padding-top: 24px;
+  gap: 12px;
+}
+
+.select-title {
+  margin: 0;
+}
+
+.select-hint {
+  font-size: 12px;
+  margin: 0 0 8px;
+  text-align: center;
+}
+
+.stage-list {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+  max-width: 480px;
+}
+
+.stage-card {
+  position: relative;
+  width: 100%;
+  text-align: left;
+  background: #fffaef;
+  color: #2A1B06;
+  border: 2px solid rgba(42, 27, 6, 0.15);
+  border-radius: 14px;
+  padding: 14px 16px 14px 22px;
+  display: flex;
+  gap: 4px;
+  cursor: pointer;
+  overflow: hidden;
+  box-shadow: 0 2px 0 rgba(42, 27, 6, 0.08);
+  transition: transform 0.12s ease, box-shadow 0.12s ease, background 0.15s;
+}
+
+.stage-card:hover {
+  background: #fff5d6;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 12px rgba(42, 27, 6, 0.18);
+}
+
+.stage-card:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 0 rgba(42, 27, 6, 0.08);
+}
+
+/* Vertical color stripe down the left edge — the only place each
+ * tier's theme color speaks for itself. Keeps the card body neutral
+ * so the type stays readable. */
+.stage-card-stripe {
+  position: absolute;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  width: 8px;
+}
+
+/* Decorative music glyph in the top-right corner. Big, low opacity,
+ * pointer-events:none so taps on it still register on the card. */
+.stage-card-glyph {
+  position: absolute;
+  top: 4px;
+  right: 14px;
+  font-size: 52px;
+  line-height: 1;
+  opacity: 0.12;
+  pointer-events: none;
+  user-select: none;
+  font-family: serif;
+}
+
+.stage-card-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  z-index: 1;
+}
+
+.stage-card-head {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+
+.stage-card-name {
+  font-size: 24px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+}
+
+.stage-card-desc {
+  font-size: 13px;
+  opacity: 0.8;
+}
+
+.stage-card-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 2px;
+}
+
+.stage-card-bpm {
+  font-size: 13px;
+  opacity: 0.75;
+}
+
+.stage-card-best {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.stage-card-score {
+  font-weight: 700;
+  font-size: 14px;
+  opacity: 0.85;
+}
+
+/* Medal-style rank chips. Radial highlight + soft shadow for the
+ * "physical badge" feel. */
+.rank-medal {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  font-weight: 800;
+  font-size: 15px;
+  color: #fffaef;
+  background-image: radial-gradient(circle at 30% 28%, rgba(255, 255, 255, 0.55), rgba(255, 255, 255, 0) 60%);
+  background-color: #888;
+  box-shadow: inset 0 -2px 3px rgba(0, 0, 0, 0.25), 0 1px 2px rgba(0, 0, 0, 0.2);
+  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.25);
+}
+
+.rank-medal.rank-S { background-color: #d4a017; }
+.rank-medal.rank-A { background-color: #3a8dde; }
+.rank-medal.rank-B { background-color: #6aa84f; }
+.rank-medal.rank-C { background-color: #b58c50; }
+.rank-medal.rank-D { background-color: #8a6b4a; }
+
+/* Legacy circular rank chip kept for ResultScreen breakdown. */
+.stage-card-rank {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  font-weight: 800;
+  font-size: 14px;
+  color: #fffaef;
+}
+
+.rank-S { background: #cba000; }
+.rank-A { background: #3a8dde; }
+.rank-B { background: #6aa84f; }
+.rank-C { background: #b58c50; }
+.rank-D { background: #8a6b4a; }
+
 .new-best-badge {
   display: inline-block;
   background: #E8612E;
