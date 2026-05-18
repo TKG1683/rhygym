@@ -59,6 +59,16 @@ export class FreeMetronome {
   }
 
   /**
+   * AudioContext time at which the click grid started — i.e. the time
+   * of what FreeMetronome considers beat 0. Callers (GameView) need
+   * this to align a "next beat to begin the song on" calculation to
+   * the same grid the click is rendering on.
+   */
+  get startTimeAt(): number {
+    return this.startTime;
+  }
+
+  /**
    * Start the metronome.
    *
    * @param startTime AudioContext.currentTime at which the pulse's beat 1
