@@ -59,6 +59,10 @@ body {
   max-width: 480px;
   margin: 0 auto;
   padding: 0 4px;
+  /* Gentle floating loop kicks in after the entrance sequence settles
+   * (1.2s entrance + tiny breath). Slow + small so it reads as a music
+   * sway, not a UI alarm. */
+  animation: title-logo-float 3s ease-in-out 1.4s infinite;
 }
 
 .title-logo-icon {
@@ -68,6 +72,18 @@ body {
   /* Emoji + music-glyph render slightly off-baseline — nudge the
    * decorative side icons down a hair so they sit with the wordmark. */
   transform: translateY(2px);
+  animation-duration: 0.5s;
+  animation-timing-function: cubic-bezier(0.2, 0.8, 0.2, 1);
+  animation-delay: 0.4s;
+  animation-fill-mode: both;
+}
+
+.title-logo-icon-left {
+  animation-name: title-logo-slide-in-left;
+}
+
+.title-logo-icon-right {
+  animation-name: title-logo-slide-in-right;
 }
 
 .title-logo-center {
@@ -76,6 +92,8 @@ body {
   align-items: center;
   gap: 2px;
   min-width: 0;
+  /* Wordmark fades up from below as the side icons land. */
+  animation: title-logo-fade-up 0.6s ease-out 0.8s both;
 }
 
 .title-logo-name {
@@ -107,6 +125,36 @@ body {
   }
   .title-logo-sub {
     font-size: 14px;
+  }
+}
+
+@keyframes title-logo-slide-in-left {
+  0%   { transform: translate(-120vw, 2px); opacity: 0; }
+  100% { transform: translate(0, 2px);      opacity: 1; }
+}
+
+@keyframes title-logo-slide-in-right {
+  0%   { transform: translate(120vw, 2px); opacity: 0; }
+  100% { transform: translate(0, 2px);     opacity: 1; }
+}
+
+@keyframes title-logo-fade-up {
+  0%   { opacity: 0; transform: translateY(12px) scale(0.92); }
+  100% { opacity: 1; transform: translateY(0)    scale(1); }
+}
+
+@keyframes title-logo-float {
+  0%, 100% { transform: translateY(-4px); }
+  50%      { transform: translateY(4px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .title-logo,
+  .title-logo-icon,
+  .title-logo-icon-left,
+  .title-logo-icon-right,
+  .title-logo-center {
+    animation: none;
   }
 }
 
