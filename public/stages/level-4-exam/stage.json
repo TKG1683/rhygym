@@ -1,0 +1,10 @@
+{
+  "id": "level-4-exam",
+  "level": 4,
+  "indexInLevel": 6,
+  "isExam": true,
+  "name": "Level 4 — Exam",
+  "description": "次レベルへ向け、十六分音符の予告",
+  "bpm": 100,
+  "themeColor": "#5ba8d9"
+}
