@@ -491,12 +491,60 @@ input[type='range']:disabled {
 /* Result screen */
 .result-rank {
   /* Manually bumped above the 40px --fs-2xl ceiling — the rank is the
-   * single biggest moment of the screen, and the tier gradient (added
-   * in a later commit) needs the surface area to read clearly. */
+   * single biggest moment of the screen, and the tier gradient needs
+   * the surface area to read clearly. */
   font-size: 88px;
   margin: 0;
   line-height: 1;
 }
+
+/* Rank "chip" — square-ish badge behind the letter, tier-coloured so
+ * S/A/B/C/D each carry a distinct visual identity. Re-uses the
+ * StageSelect medal-disc shimmer pattern (two stacked gradients +
+ * inset highlight/shadow + drop shadow) so the whole game shares one
+ * trophy-badge vocabulary. The letter sits on top via the surrounding
+ * .result-rank span, which means we don't change the markup beyond
+ * adding a wrapper class. */
+.result-rank-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 132px;
+  height: 132px;
+  margin: var(--space-2) auto;
+  border-radius: 28px;
+  position: relative;
+  background-color: var(--rank-chip-base, var(--rank-d));
+  background-image:
+    linear-gradient(
+      160deg,
+      rgba(255, 255, 255, 0.6) 0%,
+      rgba(255, 255, 255, 0.1) 28%,
+      rgba(0, 0, 0, 0.18) 55%,
+      rgba(255, 255, 255, 0.22) 78%,
+      rgba(0, 0, 0, 0.3) 100%
+    );
+  box-shadow:
+    inset 0 2px 1px rgba(255, 255, 255, 0.85),
+    inset 0 -2px 2px rgba(0, 0, 0, 0.4),
+    inset 0 0 0 2px rgba(0, 0, 0, 0.18),
+    0 4px 10px rgba(0, 0, 0, 0.18);
+  color: var(--text-on-dark);
+}
+
+.result-rank-chip .result-rank {
+  color: inherit;
+  text-shadow:
+    0 2px 2px rgba(0, 0, 0, 0.45),
+    0 -1px 1px rgba(255, 255, 255, 0.35);
+  font-weight: 800;
+}
+
+.result-rank-chip.rank-S { --rank-chip-base: var(--rank-s); }
+.result-rank-chip.rank-A { --rank-chip-base: var(--rank-a); }
+.result-rank-chip.rank-B { --rank-chip-base: var(--rank-b); }
+.result-rank-chip.rank-C { --rank-chip-base: var(--rank-c); }
+.result-rank-chip.rank-D { --rank-chip-base: var(--rank-d); }
 .result-score {
   font-size: var(--fs-2xl);
   font-weight: 700;
@@ -967,9 +1015,25 @@ input[type='range']:disabled {
   font-weight: 800;
   font-size: var(--fs-sm);
   letter-spacing: 0.1em;
-  padding: 4px 12px;
+  padding: 6px 14px;
   border-radius: 999px;
   margin: var(--space-1) 0 0;
-  animation: judgement-fade 600ms ease-out;
-  animation-iteration-count: 1;
+  box-shadow: 0 2px 6px rgba(232, 97, 46, 0.4);
+  /* Pop in with a small overshoot bounce so it actually catches the
+   * player's eye on a successful new best. cubic-bezier with
+   * out-of-range overshoot is the cheapest way to get that "spring"
+   * feel without a JS animation library. */
+  animation: new-best-pop 480ms cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+@keyframes new-best-pop {
+  0%   { opacity: 0; transform: scale(0.5); }
+  60%  { opacity: 1; transform: scale(1.15); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .new-best-badge {
+    animation: screen-enter 250ms ease-out both;
+  }
 }
