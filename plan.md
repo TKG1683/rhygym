@@ -418,37 +418,59 @@ interface AppState {
 
 ## Phase 7: 譜面コンテンツ作成（級別ステージ）
 
-### 7.1 級の構成（案）
+### 7.1 カリキュラム構成
 
-| 級 | リズム要素 | 拍子 | 小節数 | BPM |
-|----|-----------|------|--------|-----|
-| 10級 | 四分・二分音符のみ | 4/4 | 8 | 80 |
-| 9級 | + 全音符 | 4/4 | 8 | 90 |
-| 8級 | + 四分休符 | 4/4 | 12 | 90 |
-| 7級 | + 八分音符 | 4/4 | 12 | 100 |
-| 6級 | + 八分休符 | 4/4 | 12 | 100 |
-| 5級 | + 付点四分音符 | 4/4 | 16 | 110 |
-| 4級 | + 十六分音符 | 4/4 | 16 | 110 |
-| 3級 | + 三連符 | 4/4 | 16 | 120 |
-| 2級 | + 3/4・6/8 拍子 | 混合 | 16 | 120 |
-| 1級 | 全要素ミックス | 混合 | 20 | 130 |
+10段階構成 (Level 1=易 → Level 10=難)。最新の確定版は `src/core/score/stages.ts` を参照。
+ざっくり：
 
-### 7.2 譜面の持ち方
+- Level 1–4: 基礎（四分・二分・全音符、休符、八分、付点、6/8拍子入門）
+- Level 5–7: 中級（十六分、シンコペーション、タイで小節跨ぎ、三連符、9/8）
+- Level 8–10: 上級（五連符・七連符、5/4・7/8 などの変則拍子、ヘミオラ、混合拍子・拍子切替・テンポチェンジ）
 
-- TS で `Stage[]` をハードコード（初版は JSON 化しない）
-- 譜面組み立てヘルパ（`scoreBuilder.ts`）でリーダブルに：
+Level 10 はソルフェージュ系の上級ディクテーション相当の負荷感を目安にする。
+
+### 7.2 譜面の持ち方（MIDI + JSON 方式）
+
+**配置:**
+```
+public/stages/
+├── manifest.json                # ["level-1", "level-2", ...]
+├── level-1/
+│   ├── stage.json               # { id, name, description, bpm, level, themeColor }
+│   └── score.mid                # 譜面MIDI
+...
+```
+
+- 譜面は **MIDI** で持つ — 業界標準フォーマット、将来 MuseScore 等で手書きしたものも投入可
+- メタデータは **JSON** — 級番号・説明・BPM・テーマカラー等
+- マニフェストで全 stage を列挙、アプリは fetch + 非同期ロード
+
+**生成（初版）:** TS スクリプトで MIDI 出力する方針。
+- `scripts/generate-stages.ts` で 各 stage の譜面パターンを TS DSL で記述
+- `@tonejs/midi` で `.mid` バイナリを書き出し
+- `npm run gen:stages` でまとめて `public/stages/` 配下に生成
+- TS DSL ↔ MIDI なので、変更履歴は git で追える + バージョン管理しやすい
+
+**読込:** アプリ起動時に manifest fetch → 各 stage.json + score.mid をロード → `Score` 型へ変換。
 
 ```ts
-const score = build({ bpm: 100, ts: [4, 4] }, [
-  quarter(), quarter(), half(),
-  eighth(), eighth(), eighth(), eighth(), half(),
-  // ...
-]);
+// 想定 API（実装は別Issue）
+const stages = await loadAllStages();
+// stages: StageWithMeta[]
 ```
+
+将来 MuseScore で手書きした `.mid` を `public/stages/<id>/` に置けば、TS DSL なしで譜面追加できる。
 
 ### 7.3 検証
 
-- 全級を一度はプレイして「クリア可能か / 適切な難度か」を確認
+- 全 Level を一度はプレイして「クリア可能か / 適切な難度か」を確認
+- BPM スライダーを 0.5x で試して、各 Level の読譜難度感が出ているか確認
+
+### 7.4 関連 Issue
+
+- 譜面ロード基盤（MIDIパーサ + stage loader）と譜面ジェネレータは独立 Issue で着手
+- 初版の 10 Level 譜面コンテンツが #9 のスコープ
+- 譜面生成 subagent (#34) は譜面追加が頻繁になるフェーズで後着手
 
 ---
 
