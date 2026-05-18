@@ -1,3 +1,9 @@
+import { useState } from 'react';
+import {
+  getAllBests,
+  isCalibSuggestDismissed,
+  setCalibSuggestDismissed,
+} from '../../core/storage/localStore';
 import { useAppStore } from '../store/appStore';
 
 export function TitleScreen() {
@@ -6,6 +12,18 @@ export function TitleScreen() {
   const setAudioContext = useAppStore((s) => s.setAudioContext);
   const calibrationOffsetSec = useAppStore((s) => s.calibrationOffsetSec);
   const calibrated = calibrationOffsetSec !== 0;
+
+  // First-run nudge: only for players who haven't calibrated AND
+  // haven't played anything yet AND haven't explicitly dismissed it.
+  // Snapshotted at mount so dismissing/calibrating doesn't make the
+  // banner flicker mid-screen.
+  const [suggestVisible, setSuggestVisible] = useState(
+    () => !calibrated && !isCalibSuggestDismissed() && Object.keys(getAllBests()).length === 0,
+  );
+  const dismissSuggest = () => {
+    setCalibSuggestDismissed(true);
+    setSuggestVisible(false);
+  };
 
   const handleStart = async () => {
     // Create (or reuse) the AudioContext while we are still inside the
@@ -58,6 +76,22 @@ export function TitleScreen() {
           </span>
         )}
       </button>
+      {suggestVisible && (
+        <div className="calib-suggest-banner title-calib-suggest">
+          <button
+            type="button"
+            className="calib-suggest-close"
+            aria-label="閉じる"
+            onClick={dismissSuggest}
+          >
+            ×
+          </button>
+          <p className="calib-suggest-text">プレー開始前のキャリブレーションをおすすめします</p>
+          <button className="primary calib-suggest-cta" onClick={goCalibrate}>
+            キャリブレーションする
+          </button>
+        </div>
+      )}
     </main>
   );
 }

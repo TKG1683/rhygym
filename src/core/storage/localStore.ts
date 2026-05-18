@@ -11,6 +11,7 @@ import type { Rank } from '../judgement/score';
 
 const STORAGE_KEY = 'rhygym:best:v1';
 const CALIB_KEY = 'rhygym:calibration:v1';
+const CALIB_SUGGEST_DISMISSED_KEY = 'rhygym:calibSuggestDismissed:v1';
 
 export interface BestRecord {
   stageId: string;
@@ -124,5 +125,36 @@ export function clearCalibration(): void {
     localStorage.removeItem(CALIB_KEY);
   } catch {
     // ignore
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/*  First-run calibration suggestion: dismissal flag                  */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Whether the player has explicitly closed the Title-screen "try
+ * calibration first" banner. JSON-encoded boolean to stay consistent
+ * with the rest of this module's storage schema (and so a future
+ * format bump can lift the value into a richer object without a
+ * compatibility break).
+ */
+export function isCalibSuggestDismissed(): boolean {
+  try {
+    if (typeof localStorage === 'undefined') return false;
+    const raw = localStorage.getItem(CALIB_SUGGEST_DISMISSED_KEY);
+    if (!raw) return false;
+    return JSON.parse(raw) === true;
+  } catch {
+    return false;
+  }
+}
+
+export function setCalibSuggestDismissed(dismissed: boolean): void {
+  try {
+    if (typeof localStorage === 'undefined') return;
+    localStorage.setItem(CALIB_SUGGEST_DISMISSED_KEY, JSON.stringify(dismissed));
+  } catch {
+    // storage unavailable — banner will just reappear next visit
   }
 }

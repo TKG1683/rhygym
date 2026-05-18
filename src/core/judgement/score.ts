@@ -31,6 +31,22 @@ const RANK_THRESHOLDS: ReadonlyArray<{ rank: Rank; min: number }> = [
   { rank: 'D', min: 0 },
 ];
 
+/**
+ * Rank at which a stage is considered "passed" — the UI promotes the
+ * "next stage" CTA above retry once the player clears this bar. Kept
+ * separate from `CLEAR_RANKS` in StageSelect (which is also S/A) so
+ * the two can diverge later without one silently breaking the other.
+ */
+export const PASS_RANK_THRESHOLD: Rank = 'A';
+
+/**
+ * Mean-signed-error magnitude (ms) above which we suggest the player
+ * (re-)calibrate. Tuned around the calibration screen's own MAX_TAP_
+ * DEVIATION_SEC: well within the bounds of "real drift, not noise",
+ * but small enough to catch a Bluetooth-headset switch.
+ */
+export const CALIBRATION_SUGGEST_THRESHOLD_MS = 30;
+
 const PERFECT_WEIGHT = 1.0;
 const GOOD_WEIGHT = 0.5;
 const MAX_SCORE = 10000;
