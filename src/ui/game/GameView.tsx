@@ -249,6 +249,15 @@ export function GameView({ stage }: Props) {
     if (phase !== 'playing') return;
     const ctx = audioContext;
     if (!ctx) return;
+    // Stop half a beat before totalTicks so the FreeMetronome's
+    // next-measure click — the one queued by the 100 ms look-ahead —
+    // is still tagged "future" at stop() time and gets disconnect()ed
+    // before it fires. Half a beat scales with tempo: a fixed 20 ms
+    // slack is fine at 100 BPM but eats into the audible part of the
+    // final click at 240 BPM. Half-a-beat always lands cleanly
+    // between the last real click and the first phantom one.
+    const beatSec = 60 / effectiveBpm;
+    const endSec = converter.tickToSec(adjustedScore.totalTicks) - beatSec / 2;
     return startGameLoop({
       getAudioSec: () => ctx.currentTime - startAudioTimeRef.current,
       onFrame: (audioSec) => {
@@ -265,21 +274,33 @@ export function GameView({ stage }: Props) {
           });
           showVerdict('MISS');
         }
-        if (judgedIdsRef.current.size >= candidates.length) {
+        // End when the song's last bar has actually played out, not the
+        // moment the final note got a verdict. Stopping on the last
+        // verdict made stages whose final beat isn't a note (e.g. ends
+        // on a rest) cut off mid-measure — both the trailing click and
+        // the ending feel got lopped off.
+        if (audioSec >= endSec) {
+          // Both can stop immediately: FreeMetronome.stop() now only
+          // disconnects future-queued clicks and leaves currently-firing
+          // ones alone, so the final click rings out naturally while
+          // the lookahead's next-measure beat is killed before it ever
+          // sounds.
           schedulerRef.current?.stop();
           freeMetronomeRef.current?.stop();
+
           const finalRecords = [...verdictsRef.current];
           setLastResult(computeResult(finalRecords));
           setLastStage(stage);
           setLastRecords(finalRecords);
           setPhase('done');
-          // Hold for a beat so the last judgement effect and final
-          // metronome click can register before we cut to Result.
-          setTimeout(() => goto('result'), 1000);
+          // 1.5 s breathing room so the last judgement effect, the
+          // tail of the final click, and a moment of silence all
+          // register before we cut to Result.
+          setTimeout(() => goto('result'), 1500);
         }
       },
     });
-  }, [phase, candidates, audioContext, setLastResult, goto]);
+  }, [phase, candidates, audioContext, setLastResult, setLastStage, setLastRecords, goto, stage, adjustedScore, converter]);
 
   if (!audioContext) {
     return (

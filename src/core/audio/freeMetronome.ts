@@ -38,14 +38,16 @@ export class FreeMetronome {
   private intervalId: ReturnType<typeof setInterval> | null = null;
   private _running = false;
   /**
-   * Oscillators we've queued into the AudioContext but haven't actually
-   * fired yet. Tracking them lets stop() cancel pending clicks instead
-   * of leaving zombies that keep firing after the FreeMetronome instance
-   * has been disposed. This matters under React StrictMode where the
-   * setup effect runs twice and the first instance's queued clicks
-   * would otherwise double-up with the second instance's.
+   * Clicks we've queued into the AudioContext. Each entry remembers the
+   * AudioContext time it was scheduled to start at, so stop() can
+   * distinguish "still in the future, silence it" from "already
+   * firing, let it ring out". This matters at end-of-song: without it
+   * the 100 ms look-ahead silently swallowed every still-firing
+   * click (sounded clipped), or — with a setTimeout work-around — let
+   * the look-ahead's queued next-measure beat play through and the
+   * song ran one click too long.
    */
-  private scheduledOscs: OscillatorNode[] = [];
+  private scheduledOscs: Array<{ osc: OscillatorNode; startAt: number }> = [];
 
   constructor(ctx: AudioContext, opts: FreeMetronomeOptions) {
     this.ctx = ctx;
@@ -93,13 +95,17 @@ export class FreeMetronome {
       clearInterval(this.intervalId);
       this.intervalId = null;
     }
-    // Silence any pending clicks. Using disconnect() rather than osc.stop()
-    // is the bulletproof option: scheduleClick already calls osc.stop()
-    // once (at audioTime + duration), and per spec a second osc.stop()
-    // call throws InvalidStateError, so the silence ramp wouldn't actually
-    // take effect. disconnect() severs the node from the audio graph,
-    // guaranteeing no further output regardless of scheduled callbacks.
-    for (const osc of this.scheduledOscs) {
+    // Silence only the clicks that haven't started yet. Currently-firing
+    // ones (startAt <= now) are allowed to ring out — disconnect()ing
+    // them would clip the tail mid-decay. Using disconnect() on the
+    // future ones is the bulletproof option: scheduleClick already
+    // called osc.stop() at audioTime+duration, and per spec a second
+    // osc.stop() throws InvalidStateError, so re-stopping wouldn't
+    // actually silence them. disconnect() severs the node from the
+    // graph unconditionally.
+    const now = this.ctx.currentTime;
+    for (const { osc, startAt } of this.scheduledOscs) {
+      if (startAt <= now) continue;
       try {
         osc.disconnect();
       } catch {
@@ -155,9 +161,10 @@ export class FreeMetronome {
       // beat as their starting "1" when they tap to begin — the click
       // grid carries no opinion about phrasing.
       const osc = scheduleClick(this.ctx, beatTime, false, this.volume);
-      this.scheduledOscs.push(osc);
+      const entry = { osc, startAt: beatTime };
+      this.scheduledOscs.push(entry);
       osc.onended = () => {
-        const idx = this.scheduledOscs.indexOf(osc);
+        const idx = this.scheduledOscs.indexOf(entry);
         if (idx >= 0) this.scheduledOscs.splice(idx, 1);
       };
     }
