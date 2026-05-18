@@ -19,3 +19,15 @@ export const QUARTER_TRIPLET_NOTE_TICKS = HALF_NOTE_TICKS / 3;          // 320
 export const EIGHTH_TRIPLET_NOTE_TICKS = QUARTER_NOTE_TICKS / 3;        // 160
 export const SIXTEENTH_TRIPLET_NOTE_TICKS = EIGHTH_NOTE_TICKS / 3;      // 80
 export const THIRTYSECOND_TRIPLET_NOTE_TICKS = SIXTEENTH_NOTE_TICKS / 3; // 40
+
+// Quintuplets / sextuplets fit 5 / 6 notes in the time of a quarter.
+// 480 is divisible by both 5 and 6 so values are exact integers.
+export const QUINTUPLET_NOTE_TICKS = QUARTER_NOTE_TICKS / 5;  // 96
+export const SEXTUPLET_NOTE_TICKS = QUARTER_NOTE_TICKS / 6;   // 80
+
+// Septuplets — 7 in the time of a quarter doesn't divide cleanly
+// (480/7 ≈ 68.57). The constant is provided for callers that just need
+// a representative subdivision tick value; use the `septuplet()` helper
+// in scripts/dsl/notes.ts to emit a 7-item run that sums exactly to a
+// quarter (the last item absorbs the rounding remainder).
+export const SEPTUPLET_NOTE_TICKS_APPROX = Math.round(QUARTER_NOTE_TICKS / 7); // 69

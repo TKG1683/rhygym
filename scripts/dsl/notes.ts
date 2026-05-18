@@ -11,6 +11,19 @@
  *   qd / eighthDotted   = dotted variants
  *   qr / eighthRest...  = rest variants of the same value
  *   tripletEighth / ... = triplet subdivisions
+ *   quintuplet / sextuplet / septuplet = N-in-the-time-of-a-quarter
+ *
+ * Cross-bar / cross-beat ties:
+ *   tie(...items) → one DslItem whose duration is the sum. Rhygym's
+ *   internal model doesn't represent a tie as a separate object — a
+ *   tied note IS a single note whose duration spans the tied span — so
+ *   the helper is just sugar for the sum.
+ *
+ * Meta events (time-sig / tempo change mid-piece):
+ *   tsChange(n, d) → emit a TimeSigChange marker into the item stream
+ *   tempoChange(bpm) → emit a TempoChange marker into the item stream
+ *   buildScore translates these into Score.timeSigs / Score.tempos
+ *   entries at the current playhead tick. They consume zero ticks.
  */
 
 import {
@@ -23,19 +36,36 @@ import {
   HALF_NOTE_TICKS,
   QUARTER_NOTE_TICKS,
   QUARTER_TRIPLET_NOTE_TICKS,
+  QUINTUPLET_NOTE_TICKS,
+  SEPTUPLET_NOTE_TICKS_APPROX,
+  SEXTUPLET_NOTE_TICKS,
   SIXTEENTH_NOTE_TICKS,
   SIXTEENTH_TRIPLET_NOTE_TICKS,
   THIRTYSECOND_NOTE_TICKS,
   WHOLE_NOTE_TICKS,
 } from '../../src/core/model';
 
-export interface DslItem {
+export interface NoteItem {
+  kind: 'note';
   durationTicks: number;
   isRest: boolean;
 }
 
-const note = (durationTicks: number): DslItem => ({ durationTicks, isRest: false });
-const rest = (durationTicks: number): DslItem => ({ durationTicks, isRest: true });
+export interface TimeSigChangeItem {
+  kind: 'timeSigChange';
+  numerator: number;
+  denominator: number;
+}
+
+export interface TempoChangeItem {
+  kind: 'tempoChange';
+  bpm: number;
+}
+
+export type DslItem = NoteItem | TimeSigChangeItem | TempoChangeItem;
+
+const note = (durationTicks: number): NoteItem => ({ kind: 'note', durationTicks, isRest: false });
+const rest = (durationTicks: number): NoteItem => ({ kind: 'note', durationTicks, isRest: true });
 
 // Notes
 export const w = () => note(WHOLE_NOTE_TICKS);
@@ -56,9 +86,53 @@ export const quarterTriplet = () => note(QUARTER_TRIPLET_NOTE_TICKS);
 export const eighthTriplet = () => note(EIGHTH_TRIPLET_NOTE_TICKS);
 export const sixteenthTriplet = () => note(SIXTEENTH_TRIPLET_NOTE_TICKS);
 
+// Quintuplet / sextuplet — one note's worth (N fit in a quarter).
+// Authors write the full N-note run by repeating the helper N times.
+export const fiveTuplet = () => note(QUINTUPLET_NOTE_TICKS);
+export const sixTuplet = () => note(SEXTUPLET_NOTE_TICKS);
+
 // Rests
 export const wr = () => rest(WHOLE_NOTE_TICKS);
 export const hr = () => rest(HALF_NOTE_TICKS);
 export const qr = () => rest(QUARTER_NOTE_TICKS);
 export const eighthRest = () => rest(EIGHTH_NOTE_TICKS);
 export const sixteenthRest = () => rest(SIXTEENTH_NOTE_TICKS);
+
+/**
+ * Tie helper. Returns ONE NoteItem whose duration is the sum of its
+ * inputs, with rest-ness taken from the first item. Use this when a
+ * note's value isn't expressible as a single note (e.g. quarter + half
+ * tied across a barline, or a dotted-quarter span starting off-beat).
+ *
+ * `tie(q(), h())` = quarter tied to half = single 720-tick note.
+ */
+export function tie(...items: NoteItem[]): NoteItem {
+  if (items.length === 0) throw new Error('tie() requires at least one item');
+  const first = items[0]!;
+  const total = items.reduce((sum, it) => sum + it.durationTicks, 0);
+  return { kind: 'note', durationTicks: total, isRest: first.isRest };
+}
+
+/**
+ * Septuplet — 7 notes in the time of a quarter. 480 doesn't divide
+ * cleanly by 7, so the run is built as six items of 69 ticks + one
+ * item of 66 ticks so the total is exactly 480. Returns an ARRAY;
+ * spread it into the buildScore item list: `...septuplet()`.
+ */
+export function septuplet(): NoteItem[] {
+  const base = SEPTUPLET_NOTE_TICKS_APPROX; // 69
+  const remainder = QUARTER_NOTE_TICKS - base * 7; // -3
+  const lastTicks = base + remainder; // 66
+  return [
+    note(base), note(base), note(base), note(base), note(base), note(base),
+    note(lastTicks),
+  ];
+}
+
+// Mid-piece meta events. Consume zero ticks.
+export const tsChange = (numerator: number, denominator: number): TimeSigChangeItem => ({
+  kind: 'timeSigChange',
+  numerator,
+  denominator,
+});
+export const tempoChange = (bpm: number): TempoChangeItem => ({ kind: 'tempoChange', bpm });
