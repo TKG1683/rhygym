@@ -10,6 +10,7 @@
 import type { Rank } from '../judgement/score';
 
 const STORAGE_KEY = 'rhygym:best:v1';
+const CALIB_KEY = 'rhygym:calibration:v1';
 
 export interface BestRecord {
   stageId: string;
@@ -72,4 +73,56 @@ function readStorage(): string | null {
 function writeStorage(value: string): void {
   if (typeof localStorage === 'undefined') return;
   localStorage.setItem(STORAGE_KEY, value);
+}
+
+/* ------------------------------------------------------------------ */
+/*  Calibration: per-device tap latency offset                        */
+/* ------------------------------------------------------------------ */
+
+export interface CalibrationRecord {
+  /** Average (tap − beat) in seconds. Positive = the player taps late. */
+  offsetSec: number;
+  /** Number of samples that produced the offset (UI shows this for trust). */
+  sampleCount: number;
+  /** ISO timestamp the calibration was captured. */
+  measuredAt: string;
+}
+
+export function getCalibration(): CalibrationRecord | null {
+  try {
+    if (typeof localStorage === 'undefined') return null;
+    const raw = localStorage.getItem(CALIB_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (
+      parsed &&
+      typeof parsed === 'object' &&
+      typeof parsed.offsetSec === 'number' &&
+      typeof parsed.sampleCount === 'number' &&
+      typeof parsed.measuredAt === 'string'
+    ) {
+      return parsed as CalibrationRecord;
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+export function setCalibration(record: CalibrationRecord): void {
+  try {
+    if (typeof localStorage === 'undefined') return;
+    localStorage.setItem(CALIB_KEY, JSON.stringify(record));
+  } catch {
+    // storage unavailable — silently accept
+  }
+}
+
+export function clearCalibration(): void {
+  try {
+    if (typeof localStorage === 'undefined') return;
+    localStorage.removeItem(CALIB_KEY);
+  } catch {
+    // ignore
+  }
 }

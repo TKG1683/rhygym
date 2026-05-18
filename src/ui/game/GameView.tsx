@@ -51,6 +51,7 @@ export function GameView({ stage }: Props) {
   const setLastResult = useAppStore((s) => s.setLastResult);
   const setLastStage = useAppStore((s) => s.setLastStage);
   const setLastRecords = useAppStore((s) => s.setLastRecords);
+  const calibrationOffsetSec = useAppStore((s) => s.calibrationOffsetSec);
   const goto = useAppStore((s) => s.goto);
   /**
    * BPM scaling factor the player can dial in while waiting. 1.0 = play
@@ -210,22 +211,36 @@ export function GameView({ stage }: Props) {
 
   const handleTap = (tapAudioTime: number) => {
     if (phase === 'waiting') {
-      // First tap *is* beat 1. Start the scheduler aligned to this tap
-      // time, but DO NOT touch the FreeMetronome — its click stream has
-      // been running at a fixed tempo since GameScreen mounted, and the
-      // player is supposed to be syncing their tap to that pulse. If we
-      // restarted the metronome on every tap, the click would shift
-      // each time and double up with the previously-queued clicks.
-      startAudioTimeRef.current = tapAudioTime;
-      void schedulerRef.current?.play(0, { atAudioTime: tapAudioTime });
+      // Anchor the song to the metronome click the player was AIMING
+      // for — the *nearest* beat to their tap, whichever side they
+      // landed on. This is the fix for #28: the song's beat 1 is the
+      // metronome's beat (so the click grid stays the truth), and the
+      // first tap is still judged against that beat 1 so a note at
+      // tick=0 can actually be hit by this tap.
+      const fm = freeMetronomeRef.current;
+      if (!fm) return;
+      const beatSec = 60 / effectiveBpm;
+      const fmStart = fm.startTimeAt;
+      const sinceFmStart = tapAudioTime - fmStart;
+      const nearestBeatIndex = Math.max(0, Math.round(sinceFmStart / beatSec));
+      const nearestBeatTime = fmStart + nearestBeatIndex * beatSec;
+      startAudioTimeRef.current = nearestBeatTime;
+      void schedulerRef.current?.play(0, { atAudioTime: nearestBeatTime });
       setPhase('playing');
-      // The first tap also counts as a tap on beat 1 — judge whatever
-      // sits at tick=0 (typically a quarter note → PERFECT).
-      judgeAndApply(0);
+      // First tap counts as a tap on whatever lives at tick=0.
+      // Its diff is (tap − nearestBeat) with the personal offset
+      // subtracted, exactly like every later tap.
+      const tapSec = tapAudioTime - nearestBeatTime - calibrationOffsetSec;
+      judgeAndApply(tapSec);
       return;
     }
     if (phase === 'playing') {
-      judgeAndApply(tapAudioTime - startAudioTimeRef.current);
+      // Subtract the per-device calibration offset so PERFECT means
+      // "on the beat as the player perceives it" rather than "on the
+      // beat assuming zero touch latency".
+      const tapSec =
+        tapAudioTime - startAudioTimeRef.current - calibrationOffsetSec;
+      judgeAndApply(tapSec);
     }
   };
 
