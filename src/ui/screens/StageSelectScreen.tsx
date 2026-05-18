@@ -6,6 +6,15 @@ import { useAppStore } from '../store/appStore';
 export function StageSelectScreen() {
   const goto = useAppStore((s) => s.goto);
   const selectStage = useAppStore((s) => s.selectStage);
+  const loadedStages = useAppStore((s) => s.loadedStages);
+  const stagesLoadState = useAppStore((s) => s.stagesLoadState);
+
+  // Prefer the network-loaded roster once it's ready, otherwise fall
+  // back to the bundled placeholder STAGES so a missing public/stages/
+  // (e.g. local dev before #36 generates content) doesn't blank the
+  // screen.
+  const stages: readonly StageWithMeta[] = loadedStages ?? STAGES;
+  const usingFallback = stagesLoadState === 'error';
 
   // Snapshot all bests on mount. Result writes back via setBest, but
   // this screen only re-reads on navigation back, which is fine — the
@@ -19,12 +28,17 @@ export function StageSelectScreen() {
 
   return (
     <main className="screen screen-select">
-      <h1 className="select-title">級を選ぶ</h1>
-      <p className="muted select-hint">
-        ※ 譜面の中身は #9 で実装予定。今はどの級を選んでも同じデモ譜面が流れます。
-      </p>
+      <h1 className="select-title">Level を選ぶ</h1>
+      {stagesLoadState === 'loading' && (
+        <p className="muted select-hint">譜面を読み込み中…</p>
+      )}
+      {usingFallback && (
+        <p className="muted select-hint">
+          ※ 譜面ファイル未配置のためデモ譜面で代替中（実譜面は #9 で配置予定）
+        </p>
+      )}
       <ul className="stage-list">
-        {STAGES.map((stage) => (
+        {stages.map((stage) => (
           <li key={stage.id}>
             <StageCard stage={stage} best={bests[stage.id]} onStart={start} />
           </li>

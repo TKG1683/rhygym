@@ -1,7 +1,10 @@
 import { create } from 'zustand';
 import type { GameResult, JudgementRecord } from '../../core/judgement';
 import type { Stage } from '../../core/model';
+import type { StageWithMeta } from '../../core/score/stages';
 import { getCalibration } from '../../core/storage/localStore';
+
+export type StagesLoadState = 'idle' | 'loading' | 'ready' | 'error';
 
 export type Screen = 'title' | 'select' | 'game' | 'result' | 'calibration';
 
@@ -35,6 +38,12 @@ interface AppState {
    * un-calibrated player still has a usable game.
    */
   calibrationOffsetSec: number;
+  /** Roster loaded over the network (null until ready or on fallback). */
+  loadedStages: readonly StageWithMeta[] | null;
+  /** Lifecycle of the initial roster fetch. */
+  stagesLoadState: StagesLoadState;
+  /** Last error message from a failed manifest / stage load. */
+  stagesLoadError: string | null;
   /**
    * Navigate to a screen AND push that destination onto the browser
    * history. This is what UI buttons should call — it keeps the OS
@@ -53,6 +62,9 @@ interface AppState {
   setLastRecords: (records: readonly JudgementRecord[]) => void;
   setBpmMultiplier: (multiplier: number) => void;
   setCalibrationOffsetSec: (sec: number) => void;
+  setLoadedStages: (stages: readonly StageWithMeta[] | null) => void;
+  setStagesLoadState: (state: StagesLoadState) => void;
+  setStagesLoadError: (error: string | null) => void;
 }
 
 export const useAppStore = create<AppState>((set) => ({
@@ -67,6 +79,9 @@ export const useAppStore = create<AppState>((set) => ({
   // uses the saved calibration without anyone having to remember to
   // re-load it manually.
   calibrationOffsetSec: getCalibration()?.offsetSec ?? 0,
+  loadedStages: null,
+  stagesLoadState: 'idle',
+  stagesLoadError: null,
   goto: (screen) => {
     // Push the destination so the OS back button steps backwards
     // through the app rather than leaving it.
@@ -83,4 +98,7 @@ export const useAppStore = create<AppState>((set) => ({
   setLastRecords: (records) => set({ lastRecords: records }),
   setBpmMultiplier: (multiplier) => set({ bpmMultiplier: multiplier }),
   setCalibrationOffsetSec: (sec) => set({ calibrationOffsetSec: sec }),
+  setLoadedStages: (stages) => set({ loadedStages: stages }),
+  setStagesLoadState: (state) => set({ stagesLoadState: state }),
+  setStagesLoadError: (error) => set({ stagesLoadError: error }),
 }));

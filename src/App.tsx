@@ -1,4 +1,5 @@
 import { useEffect } from 'react';
+import { loadAllStages } from './core/score/stageLoader';
 import { useAppStore, type Screen } from './ui/store/appStore';
 import { TitleScreen } from './ui/screens/TitleScreen';
 import { StageSelectScreen } from './ui/screens/StageSelectScreen';
@@ -11,6 +12,35 @@ const VALID_SCREENS: readonly Screen[] = ['title', 'select', 'game', 'result', '
 export default function App() {
   const screen = useAppStore((s) => s.screen);
   const setScreen = useAppStore((s) => s.setScreen);
+  const setLoadedStages = useAppStore((s) => s.setLoadedStages);
+  const setStagesLoadState = useAppStore((s) => s.setStagesLoadState);
+  const setStagesLoadError = useAppStore((s) => s.setStagesLoadError);
+
+  // Pull the real stage roster from public/stages/ once on mount.
+  // While this is running (and on failure) StageSelect falls back to
+  // the hardcoded placeholder STAGES so the app stays playable even
+  // before any MIDI files exist on disk.
+  useEffect(() => {
+    let cancelled = false;
+    setStagesLoadState('loading');
+    setStagesLoadError(null);
+    loadAllStages().then(
+      (stages) => {
+        if (cancelled) return;
+        setLoadedStages(stages);
+        setStagesLoadState('ready');
+      },
+      (err: unknown) => {
+        if (cancelled) return;
+        const message = err instanceof Error ? err.message : String(err);
+        setStagesLoadError(message);
+        setStagesLoadState('error');
+      },
+    );
+    return () => {
+      cancelled = true;
+    };
+  }, [setLoadedStages, setStagesLoadState, setStagesLoadError]);
 
   // Hook the in-app screen switch into the browser's history stack.
   // Without this, the OS back button always exits the site even after
