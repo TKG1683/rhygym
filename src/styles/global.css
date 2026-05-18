@@ -696,6 +696,17 @@ input[type='range']:disabled {
   opacity: 1;
 }
 
+/* Wrap the Result-screen score so a long staff (Lv9-10 with 16+
+ * measures) gets a horizontal scroll area instead of being crushed
+ * into viewport width. overscroll-behavior-x: contain stops a
+ * horizontal swipe from leaking out and dragging the whole page. */
+.result-score-scroll {
+  width: 100%;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
 .new-best-badge {
   display: inline-block;
   background: #E8612E;
