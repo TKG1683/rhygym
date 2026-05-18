@@ -1,0 +1,10 @@
+{
+  "id": "level-6-exam",
+  "level": 6,
+  "indexInLevel": 6,
+  "isExam": true,
+  "name": "Level 6 — Exam",
+  "description": "次レベルへ向け、三連符の予告",
+  "bpm": 120,
+  "themeColor": "#a079d6"
+}

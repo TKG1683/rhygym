@@ -1,0 +1,10 @@
+{
+  "id": "level-9-exam",
+  "level": 9,
+  "indexInLevel": 6,
+  "isExam": true,
+  "name": "Level 9 — Exam",
+  "description": "次レベルへ向け、拍子切替の予告",
+  "bpm": 152,
+  "themeColor": "#e2785a"
+}

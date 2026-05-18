@@ -1,0 +1,10 @@
+{
+  "id": "level-1-exam",
+  "level": 1,
+  "indexInLevel": 6,
+  "isExam": true,
+  "name": "Level 1 — Exam",
+  "description": "次レベルへ向け、休符を一足先に",
+  "bpm": 80,
+  "themeColor": "#9bd4a2"
+}

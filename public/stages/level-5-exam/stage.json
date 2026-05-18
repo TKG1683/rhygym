@@ -1,0 +1,10 @@
+{
+  "id": "level-5-exam",
+  "level": 5,
+  "indexInLevel": 6,
+  "isExam": true,
+  "name": "Level 5 — Exam",
+  "description": "次レベルへ向け、シンコペーションの予告",
+  "bpm": 110,
+  "themeColor": "#7d8edf"
+}
