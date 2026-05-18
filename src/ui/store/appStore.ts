@@ -14,10 +14,18 @@ interface AppState {
   audioContext: AudioContext | null;
   /** Result of the most recent play; consumed by ResultScreen. */
   lastResult: GameResult | null;
+  /**
+   * Tempo scaling factor (1 = stage's authored BPM). Lives in the store
+   * so the player's chosen tempo survives the Game→Result→Retry round-
+   * trip — without this, hitting "リトライ" would silently reset the
+   * BPM slider to 1.0 every time.
+   */
+  bpmMultiplier: number;
   goto: (screen: Screen) => void;
   selectStage: (id: string) => void;
   setAudioContext: (ctx: AudioContext) => void;
   setLastResult: (result: GameResult) => void;
+  setBpmMultiplier: (multiplier: number) => void;
 }
 
 export const useAppStore = create<AppState>((set) => ({
@@ -25,8 +33,10 @@ export const useAppStore = create<AppState>((set) => ({
   selectedStageId: null,
   audioContext: null,
   lastResult: null,
+  bpmMultiplier: 1,
   goto: (screen) => set({ screen }),
   selectStage: (id) => set({ selectedStageId: id }),
   setAudioContext: (ctx) => set({ audioContext: ctx }),
   setLastResult: (result) => set({ lastResult: result }),
+  setBpmMultiplier: (multiplier) => set({ bpmMultiplier: multiplier }),
 }));
