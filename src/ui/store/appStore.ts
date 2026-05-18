@@ -35,7 +35,17 @@ interface AppState {
    * un-calibrated player still has a usable game.
    */
   calibrationOffsetSec: number;
+  /**
+   * Navigate to a screen AND push that destination onto the browser
+   * history. This is what UI buttons should call — it keeps the OS
+   * back button in sync with in-app navigation.
+   */
   goto: (screen: Screen) => void;
+  /**
+   * Set the screen without touching history. Used by the popstate
+   * handler so back/forward don't double-push.
+   */
+  setScreen: (screen: Screen) => void;
   selectStage: (id: string) => void;
   setAudioContext: (ctx: AudioContext) => void;
   setLastResult: (result: GameResult) => void;
@@ -57,7 +67,15 @@ export const useAppStore = create<AppState>((set) => ({
   // uses the saved calibration without anyone having to remember to
   // re-load it manually.
   calibrationOffsetSec: getCalibration()?.offsetSec ?? 0,
-  goto: (screen) => set({ screen }),
+  goto: (screen) => {
+    // Push the destination so the OS back button steps backwards
+    // through the app rather than leaving it.
+    if (typeof history !== 'undefined') {
+      history.pushState({ screen }, '');
+    }
+    set({ screen });
+  },
+  setScreen: (screen) => set({ screen }),
   selectStage: (id) => set({ selectedStageId: id }),
   setAudioContext: (ctx) => set({ audioContext: ctx }),
   setLastResult: (result) => set({ lastResult: result }),

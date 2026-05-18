@@ -61,8 +61,17 @@ export const STAGES: readonly StageWithMeta[] = STAGE_METAS.map((m) => ({
   bpm: m.bpm,
   level: m.level,
   themeColor: m.themeColor,
+  // Re-use DEMO_STAGE's note pattern but override its tempo with this
+  // level's authored BPM. Without this override, every stage played at
+  // DEMO_STAGE's 100 BPM regardless of stage.bpm — the metronome ran at
+  // stage.bpm while the scheduler / playhead ran at DEMO_STAGE's 100,
+  // so the two were audibly out of sync on every level except Level 4
+  // (which happens to be 100 BPM).
   // TODO(#9): replace with the real per-stage MIDI-loaded score.
-  score: DEMO_STAGE.score,
+  score: {
+    ...DEMO_STAGE.score,
+    tempos: [{ tick: 0, bpm: m.bpm }],
+  },
 }));
 
 export function getStageById(id: string): StageWithMeta | null {

@@ -30,9 +30,11 @@ interface Props {
  * by `excludeSelector` — taps on them are ignored by the rhythm judge
  * and bubble up to React event handlers as normal clicks.
  *
- * touchstart is also intentionally captured (passive: false) on mobile
- * because some Android browsers delay the equivalent pointerdown when
- * gesture recognition is involved.
+ * pointerdown alone covers both mouse and touch on every browser we
+ * target (Pixel 7a Chrome, desktop Chrome, iOS Safari). An earlier
+ * version also attached touchstart as a fallback, but that double-
+ * fired on mobile — every tap counted twice (4 taps finished the
+ * 8-sample calibration).
  */
 export function TapArea({ ctx, onTap, excludeSelector = '.no-tap', children, className }: Props) {
   const ref = useRef<HTMLDivElement>(null);
@@ -53,7 +55,7 @@ export function TapArea({ ctx, onTap, excludeSelector = '.no-tap', children, cla
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
-    const handle = (e: Event) => {
+    const handle = (e: PointerEvent) => {
       const target = e.target;
       if (target instanceof Element && target.closest(excludeRef.current)) {
         // Don't swallow events meant for an interactive control.
@@ -65,10 +67,8 @@ export function TapArea({ ctx, onTap, excludeSelector = '.no-tap', children, cla
       onTapRef.current(c.currentTime);
     };
     el.addEventListener('pointerdown', handle);
-    el.addEventListener('touchstart', handle, { passive: false });
     return () => {
       el.removeEventListener('pointerdown', handle);
-      el.removeEventListener('touchstart', handle);
     };
   }, []);
 
