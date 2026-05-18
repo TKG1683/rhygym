@@ -111,13 +111,13 @@ h1, h2, h3, h4, .title-logo-name, .stage-card-name, .result-rank {
   width: 100%;
   max-width: 720px;
   min-height: 100dvh;
-  padding: 24px;
+  padding: var(--space-5);
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   text-align: center;
-  gap: 12px;
+  gap: var(--space-3);
   /* 250 ms fade + 8px settle so every navigation feels intentional
    * rather than an instant teleport. Animation runs forwards/both so
    * the screen doesn't snap back to opacity 0 after the keyframe
@@ -145,6 +145,22 @@ h1, h2, h3, h4, .title-logo-name, .stage-card-name, .result-rank {
      * preference. */
     animation: screen-enter 200ms ease-out both;
   }
+}
+
+/* Title screen — comfortable breathing room between logo / tagline /
+ * Start / calibration / first-run banner so the screen feels
+ * "welcome" rather than packed. */
+.screen-title {
+  gap: var(--space-4);
+}
+.screen-title .tagline {
+  /* The tagline already carries a hand-tuned bottom margin from the
+   * pre-polish layout; collapse it so the screen's flex gap is the
+   * single source of rhythm here. */
+  margin: 0;
+}
+.screen-title .title-calib-suggest {
+  margin-top: var(--space-4);
 }
 
 .logo {
@@ -432,6 +448,15 @@ button.secondary:active {
   flex-direction: column;
   align-items: stretch;
   gap: 6px;
+  /* The staff is the headline element on this screen; the BPM slider
+   * is a one-off "before you start" knob. Drop its opacity so it
+   * sits visually behind the staff. */
+  opacity: 0.7;
+}
+
+.bpm-control:focus-within,
+.bpm-control:hover {
+  opacity: 1;
 }
 
 .bpm-label {
@@ -570,8 +595,10 @@ input[type='range']:disabled {
 
 .screen-result {
   justify-content: flex-start;
-  padding-top: 16px;
-  gap: 8px;
+  padding-top: var(--space-4);
+  /* Clear vertical rhythm: rank chip / score / accuracy / breakdown /
+   * banner / CTAs all sit on the same gap so nothing feels bunched. */
+  gap: var(--space-3);
 }
 
 .result-plot-section {
@@ -689,8 +716,8 @@ input[type='range']:disabled {
 /* StageSelect — list of class cards. */
 .screen-select {
   justify-content: flex-start;
-  padding-top: 24px;
-  gap: 12px;
+  padding-top: var(--space-5);
+  gap: var(--space-3);
 }
 
 .select-title {
@@ -713,10 +740,10 @@ input[type='range']:disabled {
 .stage-list {
   list-style: none;
   padding: 0;
-  margin: 0 0 8px;
+  margin: 0 0 var(--space-2);
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: var(--space-3);
   width: 100%;
   max-width: 480px;
 }
@@ -803,8 +830,16 @@ input[type='range']:disabled {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 8px;
-  margin-top: 2px;
+  gap: var(--space-2);
+  margin-top: var(--space-1);
+}
+
+.stage-card-best {
+  /* Push the medal+score block hard to the right edge so the medal
+   * column lines up across cards. The .stage-card-meta is already
+   * space-between, so margin-left:auto is belt-and-braces for cases
+   * where the left cell happens to be empty (Level cards w/ no bpm). */
+  margin-left: auto;
 }
 
 .stage-card-bpm {
