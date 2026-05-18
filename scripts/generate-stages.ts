@@ -1193,18 +1193,27 @@ const STAGE_DEFS: readonly StageDef[] = [
     level: 10,
     indexInLevel: 2,
     name: 'Level 10 — 2',
-    description: 'テンポチェンジを乗りこなす',
+    description: 'テンポチェンジ + 6/8 への揺らぎ',
     bpm: 168,
     themeColor: COLOR[10],
+    // Combine tempo dips with a mid-piece swing to 6/8 so the
+    // "tempo change" theme also exercises a meter shift.
     score: buildScore({ ts: [4, 4], bpm: 168 }, [
+      // 4/4 opening at full tempo
       q(), q(), q(), q(),
       h(), q(), q(),
+      // Slow down and drop into 6/8 — same pulse, different grouping.
       tempoChange(120),
-      eighth(), eighth(), q(), h(),
-      eighthTriplet(), eighthTriplet(), eighthTriplet(), q(), h(),
+      tsChange(6, 8),
+      qd(), qd(),
+      eighth(), eighth(), eighth(), qd(),
+      eighthTriplet(), eighthTriplet(), eighthTriplet(), eighthTriplet(), eighthTriplet(), eighthTriplet(), q(),
+      // Snap back to 4/4 and accelerate.
+      tsChange(4, 4),
       tempoChange(168),
       q(), eighth(), eighth(), q(), q(),
       sixteenth(), sixteenth(), sixteenth(), sixteenth(), q(), h(),
+      // Final ritardando.
       tempoChange(96),
       hd(), q(),
       w(),
@@ -1215,17 +1224,25 @@ const STAGE_DEFS: readonly StageDef[] = [
     level: 10,
     indexInLevel: 3,
     name: 'Level 10 — 3',
-    description: 'クロスリズム 3 against 2',
+    description: 'クロスリズムを拍子切替で揺さぶる',
     bpm: 168,
     themeColor: COLOR[10],
+    // Cross-rhythm theme that also travels across a meter change:
+    // quarter-triplet runs straddle the 4/4 → 3/4 → 4/4 shift so the
+    // 3-against-2 feel keeps reorienting against a new bar length.
     score: buildScore({ ts: [4, 4], bpm: 168 }, [
+      // 4/4: establish the 3-against-2 cross-rhythm.
       quarterTriplet(), quarterTriplet(), quarterTriplet(), h(),
       eighthTriplet(), eighthTriplet(), eighthTriplet(), eighth(), eighth(), h(),
       quarterTriplet(), quarterTriplet(), quarterTriplet(), q(), q(),
-      eighthTriplet(), eighthTriplet(), eighthTriplet(), eighthTriplet(), eighthTriplet(), eighthTriplet(), sixteenth(), sixteenth(), sixteenth(), sixteenth(), q(),
+      // 3/4: triplets now span the whole bar — hemiola territory.
+      tsChange(3, 4),
+      quarterTriplet(), quarterTriplet(), quarterTriplet(), q(),
+      eighthTriplet(), eighthTriplet(), eighthTriplet(), eighthTriplet(), eighthTriplet(), eighthTriplet(), q(),
+      // Back to 4/4 to land the cross-rhythm with sextuplets.
+      tsChange(4, 4),
       h(), quarterTriplet(), quarterTriplet(), quarterTriplet(),
       sixTuplet(), sixTuplet(), sixTuplet(), sixTuplet(), sixTuplet(), sixTuplet(), q(), h(),
-      quarterTriplet(), quarterTriplet(), quarterTriplet(), eighth(), eighth(), q(),
       w(),
     ]),
   },
@@ -1259,22 +1276,38 @@ const STAGE_DEFS: readonly StageDef[] = [
     level: 10,
     indexInLevel: 5,
     name: 'Level 10 — 5',
-    description: '全要素の総決算',
+    description: '拍子変化のグランドツアー',
     bpm: 168,
     themeColor: COLOR[10],
+    // Meter-change grand finale: 4/4 → 5/8 → 7/8 → 3/4 → 6/8 → 4/4.
+    // The journey starts on solid 4/4 ground, lurches into asymmetric
+    // 5/8 and 7/8, breathes in a 3/4 waltz with a quarter-triplet
+    // hemiola, swings into a 6/8 jig with sixteenth subdivisions, and
+    // returns home to 4/4 for a quintuplet flourish and a tied cadence.
     score: buildScore({ ts: [4, 4], bpm: 168 }, [
+      // 1. 4/4 — opening statement.
       eighthDotted(), sixteenth(), eighth(), eighth(), q(), q(),
-      quarterTriplet(), quarterTriplet(), quarterTriplet(), tie(eighth(), q()), eighth(), q(),
+      quarterTriplet(), quarterTriplet(), quarterTriplet(), tie(eighth(), q()), eighth(),
+      // 2. 5/8 — asymmetric pulse (2+3 then 3+2).
+      tsChange(5, 8),
+      qd(), q(),
+      eighth(), eighth(), eighth(), q(),
+      // 3. 7/8 — extra eighth knocks the bar sideways.
       tsChange(7, 8),
       qd(), q(), q(),
-      eighth(), eighth(), eighth(), qd(), q(),
+      eighth(), eighth(), qd(), q(),
+      // 4. 3/4 — waltz breather, then quarter-triplet hemiola.
+      tsChange(3, 4),
+      q(), q(), q(),
+      quarterTriplet(), quarterTriplet(), quarterTriplet(), q(),
+      // 5. 6/8 — compound jig with sixteenth subdivisions.
+      tsChange(6, 8),
+      qd(), eighth(), eighth(), eighth(),
+      sixteenth(), sixteenth(), sixteenth(), sixteenth(), sixteenth(), sixteenth(), sixteenth(), sixteenth(), eighth(), eighth(),
+      // 6. 4/4 — homecoming flourish, tied cadence.
       tsChange(4, 4),
-      tempoChange(140),
-      fiveTuplet(), fiveTuplet(), fiveTuplet(), fiveTuplet(), fiveTuplet(), q(), h(),
-      sixTuplet(), sixTuplet(), sixTuplet(), sixTuplet(), sixTuplet(), sixTuplet(), eighthTriplet(), eighthTriplet(), eighthTriplet(), q(),
-      tempoChange(168),
-      h(), tie(q(), h()), q(),
-      w(),
+      fiveTuplet(), fiveTuplet(), fiveTuplet(), fiveTuplet(), fiveTuplet(), h(), q(),
+      tie(h(), q()), q(),
     ]),
   },
   {
