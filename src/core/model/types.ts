@@ -42,4 +42,8 @@ export interface Stage {
   description: string;
   bpm: number;
   score: Score;
+  /** 1-based position within a Level's stage list. Undefined for single-stage Levels. */
+  indexInLevel?: number;
+  /** True for the "skip-test" stage in the Duolingo-style Level progression. */
+  isExam?: boolean;
 }
