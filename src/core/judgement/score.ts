@@ -2,6 +2,26 @@ import type { Judgement } from './timing';
 
 export type Rank = 'S' | 'A' | 'B' | 'C' | 'D';
 
+/**
+ * Per-tap audit trail used by Result-screen feedback (timing plot,
+ * accuracy stats, eventual replay). One record is appended for every
+ * judgement event the game emits — successful hits, stray taps, and
+ * auto-MISS expirations.
+ *
+ * Field semantics by record source:
+ * - successful hit:  noteId set, noteSec set, tapSec set, diffSec set
+ * - stray tap:       noteId null, noteSec null, tapSec set, diffSec null
+ * - auto-MISS:       noteId set, noteSec set, tapSec null, diffSec null
+ */
+export interface JudgementRecord {
+  noteId: string | null;
+  noteSec: number | null;
+  tapSec: number | null;
+  /** tap − noteSec in seconds. Positive = late tap. Null for stray / auto-MISS. */
+  diffSec: number | null;
+  judgement: Judgement;
+}
+
 /** Accuracy thresholds for each rank. First match wins. */
 const RANK_THRESHOLDS: ReadonlyArray<{ rank: Rank; min: number }> = [
   { rank: 'S', min: 0.95 },
@@ -27,16 +47,16 @@ export interface GameResult {
   rank: Rank;
 }
 
-export function computeResult(judgements: readonly Judgement[]): GameResult {
+export function computeResult(records: readonly JudgementRecord[]): GameResult {
   let perfect = 0;
   let good = 0;
   let miss = 0;
-  for (const j of judgements) {
-    if (j === 'PERFECT') perfect++;
-    else if (j === 'GOOD') good++;
+  for (const r of records) {
+    if (r.judgement === 'PERFECT') perfect++;
+    else if (r.judgement === 'GOOD') good++;
     else miss++;
   }
-  const total = judgements.length;
+  const total = records.length;
   const accuracy =
     total === 0 ? 0 : (perfect * PERFECT_WEIGHT + good * GOOD_WEIGHT) / total;
   return {
@@ -48,6 +68,36 @@ export function computeResult(judgements: readonly Judgement[]): GameResult {
     score: Math.round(accuracy * MAX_SCORE),
     rank: rankForAccuracy(accuracy),
   };
+}
+
+export interface TimingStats {
+  /** Mean of all (tapSec - noteSec) values, in ms. Positive = consistently late. */
+  meanDiffMs: number;
+  /** Standard deviation across hits, in ms. Smaller = more consistent. */
+  stdDiffMs: number;
+  /** Number of records that actually carry a diff (i.e. real hits, not stray/auto-MISS). */
+  hitCount: number;
+}
+
+/**
+ * Summary statistics over the diffSec values in the audit trail. Only
+ * records with a non-null diffSec contribute — stray taps and auto-
+ * MISSes are excluded since they aren't paired with a target note.
+ *
+ * Tells the player two things at a glance:
+ *  - meanDiffMs: whether they consistently rush (negative) or drag (positive)
+ *  - stdDiffMs: how tight their timing is, irrespective of bias
+ */
+export function computeTimingStats(records: readonly JudgementRecord[]): TimingStats {
+  const diffsMs: number[] = [];
+  for (const r of records) {
+    if (r.diffSec !== null) diffsMs.push(r.diffSec * 1000);
+  }
+  const n = diffsMs.length;
+  if (n === 0) return { meanDiffMs: 0, stdDiffMs: 0, hitCount: 0 };
+  const mean = diffsMs.reduce((a, b) => a + b, 0) / n;
+  const variance = diffsMs.reduce((s, d) => s + (d - mean) ** 2, 0) / n;
+  return { meanDiffMs: mean, stdDiffMs: Math.sqrt(variance), hitCount: n };
 }
 
 export function rankForAccuracy(accuracy: number): Rank {

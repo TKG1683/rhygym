@@ -23,6 +23,7 @@ import {
   findExpiredNotes,
   judgeTap,
   type Judgement,
+  type JudgementRecord,
   type NoteCandidate,
 } from '../../core/judgement';
 import type { Score, Stage } from '../../core/model';
@@ -48,6 +49,8 @@ interface Props {
 export function GameView({ stage }: Props) {
   const audioContext = useAppStore((s) => s.audioContext);
   const setLastResult = useAppStore((s) => s.setLastResult);
+  const setLastStage = useAppStore((s) => s.setLastStage);
+  const setLastRecords = useAppStore((s) => s.setLastRecords);
   const goto = useAppStore((s) => s.goto);
   /**
    * BPM scaling factor the player can dial in while waiting. 1.0 = play
@@ -88,7 +91,7 @@ export function GameView({ stage }: Props) {
   const schedulerRef = useRef<GameScheduler | null>(null);
   const freeMetronomeRef = useRef<FreeMetronome | null>(null);
   const judgedIdsRef = useRef<Set<string>>(new Set());
-  const verdictsRef = useRef<Judgement[]>([]);
+  const verdictsRef = useRef<JudgementRecord[]>([]);
   /**
    * AudioContext.currentTime at the moment of the very first tap.
    * Acts as the song's t=0 in audio-time space. Tap-to-song-sec
@@ -147,16 +150,34 @@ export function GameView({ stage }: Props) {
    * A hit lands PERFECT/GOOD; a tap with no note within reach is logged
    * as MISS so wild taps actually cost the player score instead of
    * being silently ignored.
+   *
+   * Both branches push a full JudgementRecord (not just the verdict
+   * string) so the Result screen has every diff it needs to draw the
+   * timing plot.
    */
   const judgeAndApply = (tapSec: number) => {
     const remaining = candidates.filter((c) => !judgedIdsRef.current.has(c.id));
     const result = judgeTap(tapSec, remaining);
     if (result) {
       judgedIdsRef.current.add(result.noteId);
-      verdictsRef.current.push(result.judgement);
+      const note = candidates.find((c) => c.id === result.noteId);
+      verdictsRef.current.push({
+        noteId: result.noteId,
+        noteSec: note?.sec ?? null,
+        tapSec,
+        diffSec: result.diffSec,
+        judgement: result.judgement,
+      });
       showVerdict(result.judgement);
     } else {
-      verdictsRef.current.push('MISS');
+      // Stray tap — no candidate within the GOOD window.
+      verdictsRef.current.push({
+        noteId: null,
+        noteSec: null,
+        tapSec,
+        diffSec: null,
+        judgement: 'MISS',
+      });
       showVerdict('MISS');
     }
   };
@@ -220,13 +241,22 @@ export function GameView({ stage }: Props) {
         const expired = findExpiredNotes(audioSec, remaining);
         for (const e of expired) {
           judgedIdsRef.current.add(e.id);
-          verdictsRef.current.push('MISS');
+          verdictsRef.current.push({
+            noteId: e.id,
+            noteSec: e.sec,
+            tapSec: null,
+            diffSec: null,
+            judgement: 'MISS',
+          });
           showVerdict('MISS');
         }
         if (judgedIdsRef.current.size >= candidates.length) {
           schedulerRef.current?.stop();
           freeMetronomeRef.current?.stop();
-          setLastResult(computeResult(verdictsRef.current));
+          const finalRecords = [...verdictsRef.current];
+          setLastResult(computeResult(finalRecords));
+          setLastStage(stage);
+          setLastRecords(finalRecords);
           setPhase('done');
           // Hold for a beat so the last judgement effect and final
           // metronome click can register before we cut to Result.
