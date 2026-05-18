@@ -30,6 +30,17 @@ export function CalibrationScreen() {
   const audioContext = useAppStore((s) => s.audioContext);
   const setCalibrationOffsetSec = useAppStore((s) => s.setCalibrationOffsetSec);
   const currentOffset = useAppStore((s) => s.calibrationOffsetSec);
+  const returnScreen = useAppStore((s) => s.calibrationReturnScreen);
+  const setReturnScreen = useAppStore((s) => s.setCalibrationReturnScreen);
+
+  // Common exit: honor the caller's return target (set by ResultScreen
+  // when funneling from there), then clear it so subsequent entries
+  // default back to Title.
+  const exit = () => {
+    const target = returnScreen ?? 'title';
+    setReturnScreen(null);
+    goto(target);
+  };
 
   const [phase, setPhase] = useState<'measuring' | 'done'>('measuring');
   const [samples, setSamples] = useState<number[]>([]);
@@ -119,7 +130,7 @@ export function CalibrationScreen() {
       measuredAt: new Date().toISOString(),
     });
     setCalibrationOffsetSec(offsetSec);
-    goto('title');
+    exit();
   };
 
   if (!audioContext) {
@@ -127,7 +138,7 @@ export function CalibrationScreen() {
       <main className="screen">
         <h1>キャリブレーション</h1>
         <p className="muted">先にタイトルから Start を押して音声を初期化してください。</p>
-        <button className="secondary" onClick={() => goto('title')}>タイトルへ</button>
+        <button className="secondary" onClick={exit}>戻る</button>
       </main>
     );
   }
@@ -168,7 +179,7 @@ export function CalibrationScreen() {
             <button className="secondary" onClick={reset}>
               やり直し
             </button>
-            <button className="secondary" onClick={() => goto('title')}>
+            <button className="secondary" onClick={exit}>
               戻る
             </button>
           </div>

@@ -45,6 +45,13 @@ interface AppState {
   /** Last error message from a failed manifest / stage load. */
   stagesLoadError: string | null;
   /**
+   * Where to send the player after they finish (or back out of) the
+   * CalibrationScreen. Lets Result → Calib → return land them back
+   * on Result instead of dumping them on Title. Cleared on calibration
+   * exit so the next entry defaults to Title.
+   */
+  calibrationReturnScreen: Screen | null;
+  /**
    * Navigate to a screen AND push that destination onto the browser
    * history. This is what UI buttons should call — it keeps the OS
    * back button in sync with in-app navigation.
@@ -65,6 +72,7 @@ interface AppState {
   setLoadedStages: (stages: readonly StageWithMeta[] | null) => void;
   setStagesLoadState: (state: StagesLoadState) => void;
   setStagesLoadError: (error: string | null) => void;
+  setCalibrationReturnScreen: (screen: Screen | null) => void;
 }
 
 export const useAppStore = create<AppState>((set) => ({
@@ -82,6 +90,7 @@ export const useAppStore = create<AppState>((set) => ({
   loadedStages: null,
   stagesLoadState: 'idle',
   stagesLoadError: null,
+  calibrationReturnScreen: null,
   goto: (screen) => {
     // Push the destination so the OS back button steps backwards
     // through the app rather than leaving it.
@@ -101,4 +110,5 @@ export const useAppStore = create<AppState>((set) => ({
   setLoadedStages: (stages) => set({ loadedStages: stages }),
   setStagesLoadState: (state) => set({ stagesLoadState: state }),
   setStagesLoadError: (error) => set({ stagesLoadError: error }),
+  setCalibrationReturnScreen: (screen) => set({ calibrationReturnScreen: screen }),
 }));

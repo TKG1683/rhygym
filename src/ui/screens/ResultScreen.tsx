@@ -69,7 +69,16 @@ export function ResultScreen() {
   const records = useAppStore((s) => s.lastRecords);
   const calibrationOffsetSec = useAppStore((s) => s.calibrationOffsetSec);
   const loadedStages = useAppStore((s) => s.loadedStages);
+  const setCalibrationReturnScreen = useAppStore((s) => s.setCalibrationReturnScreen);
   const calibrated = calibrationOffsetSec !== 0;
+
+  // Mark this screen as the return target so calibration can bring the
+  // player back here (with their same result still on display) rather
+  // than dropping them on Title.
+  const goCalibration = () => {
+    setCalibrationReturnScreen('result');
+    goto('calibration');
+  };
 
   const [noteCoords, setNoteCoords] = useState<Map<string, NoteCoords> | null>(null);
   const wrapperRef = useRef<HTMLDivElement>(null);
@@ -231,7 +240,7 @@ export function ResultScreen() {
               ? `端末を変えた？再キャリブレーションがおすすめです。(現在の傾向: ${formatSignedMs(driftSuggestion)})`
               : `全体的に ${formatSignedMs(driftSuggestion)} ${driftSuggestion > 0 ? '遅め' : '早め'}傾向です。キャリブレーションで精度が上がる可能性があります。`}
           </p>
-          <button className="primary calib-suggest-cta" onClick={() => goto('calibration')}>
+          <button className="primary calib-suggest-cta" onClick={goCalibration}>
             キャリブレーションする
           </button>
         </div>
@@ -269,13 +278,17 @@ export function ResultScreen() {
           </button>
         </div>
       )}
-      <div className="row">
-        <button className="secondary calib-funnel-btn" onClick={() => goto('calibration')}>
-          {calibrated
-            ? `再キャリブレーションする (現在 ${formatSignedMs(Math.round(calibrationOffsetSec * 1000))})`
-            : 'キャリブレーションする'}
-        </button>
-      </div>
+      {/* When the drift banner is up it already carries a calibration
+       * CTA, so the permanent funnel button would just be redundant. */}
+      {driftSuggestion === null && (
+        <div className="row">
+          <button className="secondary calib-funnel-btn" onClick={goCalibration}>
+            {calibrated
+              ? `再キャリブレーションする (現在 ${formatSignedMs(Math.round(calibrationOffsetSec * 1000))})`
+              : 'キャリブレーションする'}
+          </button>
+        </div>
+      )}
     </main>
   );
 }
