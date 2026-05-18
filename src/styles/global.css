@@ -1,10 +1,72 @@
 /* Rhygym global styles
- * Color palette is shared with the app icon:
- *   #FFD24A  background (main yellow)
- *   #FFE08A  background highlight band
- *   #2A1B06  foreground (dark brown)
- *   #E8612E  accent (dumbbell weight orange)
+ * Color palette is shared with the app icon (cream/brown/orange).
+ * All visual tokens live in :root below so screens, components and
+ * future themes can re-skin by overriding a single block instead of
+ * hunting for hex literals scattered across this file.
  */
+
+:root {
+  /* Brand palette
+   * --brand-primary  : dark brown ink — primary text, primary button bg
+   * --brand-secondary: warm yellow — page background ("main yellow")
+   * --brand-accent   : dumbbell-weight orange — slider thumbs, focus ring,
+   *                    "new best!" badge, drift-banner border
+   * --surface        : cream — staff/score panel background
+   * --surface-elevated: slightly warmer cream — stage-card body
+   * --surface-hover  : warmer still — stage-card hover tint
+   * --highlight-band : pale yellow accent band (icon highlight)
+   * --text-strong    : same as brand-primary, named for contrast intent
+   * --text-muted     : same ink at reduced opacity (set via rgba)
+   * --text-on-dark   : cream used on dark buttons / medals
+   * --medal-gold/silver/bronze: level-medal disc base colors
+   * --rank-s/a/b/c/d : per-tier accent for rank chips and gradients
+   */
+  --brand-primary: #2A1B06;
+  --brand-secondary: #FFD24A;
+  --brand-accent: #E8612E;
+  --surface: #fffaef;
+  --surface-elevated: #fffaef;
+  --surface-hover: #fff5d6;
+  --highlight-band: #FFE08A;
+  --text-strong: #2A1B06;
+  --text-muted: rgba(42, 27, 6, 0.7);
+  --text-on-dark: #fffaef;
+  --border-soft: rgba(42, 27, 6, 0.15);
+  --shadow-soft: rgba(42, 27, 6, 0.08);
+  --shadow-hover: rgba(42, 27, 6, 0.18);
+
+  --medal-gold: #e9b834;
+  --medal-silver: #c7ccd1;
+  --medal-bronze: #c97e3e;
+
+  --rank-s: #d4a017;
+  --rank-s-strong: #cba000;
+  --rank-a: #3a8dde;
+  --rank-b: #6aa84f;
+  --rank-c: #b58c50;
+  --rank-d: #8a6b4a;
+
+  /* Type scale — single source of truth so every screen pulls from
+   * the same ladder instead of bespoke pixel values. */
+  --fs-xs: 12px;
+  --fs-sm: 14px;
+  --fs-md: 16px;
+  --fs-lg: 20px;
+  --fs-xl: 28px;
+  --fs-2xl: 40px;
+
+  /* Spacing rhythm — used by the new per-screen spacing pass. */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 14px;
+}
 
 * {
   box-sizing: border-box;
@@ -14,8 +76,8 @@ html,
 body {
   margin: 0;
   padding: 0;
-  background: #FFD24A;
-  color: #2A1B06;
+  background: var(--brand-secondary);
+  color: var(--text-strong);
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Hiragino Kaku Gothic ProN',
     'Yu Gothic UI', sans-serif;
   -webkit-font-smoothing: antialiased;
@@ -184,15 +246,15 @@ button {
 }
 
 button.primary {
-  background: #2A1B06;
-  color: #FFD24A;
+  background: var(--brand-primary);
+  color: var(--brand-secondary);
   font-weight: 600;
 }
 
 button.secondary {
   background: transparent;
-  color: #2A1B06;
-  border: 2px solid #2A1B06;
+  color: var(--text-strong);
+  border: 2px solid var(--brand-primary);
 }
 
 button:hover {
@@ -237,8 +299,8 @@ button:active {
 
 .score-view {
   width: 100%;
-  background: #fffaef;
-  border-radius: 12px;
+  background: var(--surface);
+  border-radius: var(--radius-md);
   padding: 12px;
   overflow-x: auto;
 }
@@ -326,7 +388,7 @@ button:active {
 
 input[type='range'] {
   width: 100%;
-  accent-color: #E8612E;
+  accent-color: var(--brand-accent);
   cursor: pointer;
 }
 
@@ -380,9 +442,9 @@ input[type='range']:disabled {
   margin-bottom: 16px;
   font-weight: 600;
 }
-.r-perfect { color: #cba000; }
-.r-good    { color: #3a8dde; }
-.r-miss    { color: #E8612E; }
+.r-perfect { color: var(--rank-s-strong); }
+.r-good    { color: var(--rank-a); }
+.r-miss    { color: var(--brand-accent); }
 
 .screen-result {
   justify-content: flex-start;
@@ -409,8 +471,8 @@ input[type='range']:disabled {
 
 .score-with-timing {
   width: 100%;
-  background: #fffaef;
-  border-radius: 10px;
+  background: var(--surface);
+  border-radius: var(--radius-sm);
   padding: 8px 0 4px;
   /* Horizontal scroll lets long single-row scores stay aligned with the
    * timing plot beneath, even on phone widths. */
@@ -540,28 +602,28 @@ input[type='range']:disabled {
   position: relative;
   width: 100%;
   text-align: left;
-  background: #fffaef;
-  color: #2A1B06;
-  border: 2px solid rgba(42, 27, 6, 0.15);
-  border-radius: 14px;
+  background: var(--surface-elevated);
+  color: var(--text-strong);
+  border: 2px solid var(--border-soft);
+  border-radius: var(--radius-lg);
   padding: 14px 16px 14px 22px;
   display: flex;
   gap: 4px;
   cursor: pointer;
   overflow: hidden;
-  box-shadow: 0 2px 0 rgba(42, 27, 6, 0.08);
+  box-shadow: 0 2px 0 var(--shadow-soft);
   transition: transform 0.12s ease, box-shadow 0.12s ease, background 0.15s;
 }
 
 .stage-card:hover {
-  background: #fff5d6;
+  background: var(--surface-hover);
   transform: translateY(-2px);
-  box-shadow: 0 6px 12px rgba(42, 27, 6, 0.18);
+  box-shadow: 0 6px 12px var(--shadow-hover);
 }
 
 .stage-card:active {
   transform: translateY(0);
-  box-shadow: 0 2px 0 rgba(42, 27, 6, 0.08);
+  box-shadow: 0 2px 0 var(--shadow-soft);
 }
 
 /* Vertical color stripe down the left edge — the only place each
@@ -650,18 +712,18 @@ input[type='range']:disabled {
   border-radius: 50%;
   font-weight: 800;
   font-size: 15px;
-  color: #fffaef;
+  color: var(--text-on-dark);
   background-image: radial-gradient(circle at 30% 28%, rgba(255, 255, 255, 0.55), rgba(255, 255, 255, 0) 60%);
   background-color: #888;
   box-shadow: inset 0 -2px 3px rgba(0, 0, 0, 0.25), 0 1px 2px rgba(0, 0, 0, 0.2);
   text-shadow: 0 1px 1px rgba(0, 0, 0, 0.25);
 }
 
-.rank-medal.rank-S { background-color: #d4a017; }
-.rank-medal.rank-A { background-color: #3a8dde; }
-.rank-medal.rank-B { background-color: #6aa84f; }
-.rank-medal.rank-C { background-color: #b58c50; }
-.rank-medal.rank-D { background-color: #8a6b4a; }
+.rank-medal.rank-S { background-color: var(--rank-s); }
+.rank-medal.rank-A { background-color: var(--rank-a); }
+.rank-medal.rank-B { background-color: var(--rank-b); }
+.rank-medal.rank-C { background-color: var(--rank-c); }
+.rank-medal.rank-D { background-color: var(--rank-d); }
 
 /* Level-summary medal disc. Tier is communicated by color (gold/
  * silver/bronze metal). Animation-free — depth comes from a stacked
@@ -695,9 +757,9 @@ input[type='range']:disabled {
     0 2px 3px rgba(0, 0, 0, 0.4);
 }
 
-.medal-disc-gold   { --medal-base: #e9b834; }
-.medal-disc-silver { --medal-base: #c7ccd1; }
-.medal-disc-bronze { --medal-base: #c97e3e; }
+.medal-disc-gold   { --medal-base: var(--medal-gold); }
+.medal-disc-silver { --medal-base: var(--medal-silver); }
+.medal-disc-bronze { --medal-base: var(--medal-bronze); }
 
 .medal-disc-icon {
   font-size: 17px;
@@ -719,14 +781,14 @@ input[type='range']:disabled {
   border-radius: 50%;
   font-weight: 800;
   font-size: 14px;
-  color: #fffaef;
+  color: var(--text-on-dark);
 }
 
-.rank-S { background: #cba000; }
-.rank-A { background: #3a8dde; }
-.rank-B { background: #6aa84f; }
-.rank-C { background: #b58c50; }
-.rank-D { background: #8a6b4a; }
+.rank-S { background: var(--rank-s-strong); }
+.rank-A { background: var(--rank-a); }
+.rank-B { background: var(--rank-b); }
+.rank-C { background: var(--rank-c); }
+.rank-D { background: var(--rank-d); }
 
 /* Result-screen calibration-suggestion banner. Sits between the
  * primary retry row and the stats — clearly an actionable suggestion
@@ -736,9 +798,9 @@ input[type='range']:disabled {
   max-width: 480px;
   margin: 8px 0;
   padding: 12px 16px;
-  background: #fff5d6;
-  border: 2px solid #E8612E;
-  border-radius: 12px;
+  background: var(--surface-hover);
+  border: 2px solid var(--brand-accent);
+  border-radius: var(--radius-md);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -798,7 +860,7 @@ input[type='range']:disabled {
   font-size: 18px;
   line-height: 1;
   padding: 4px 8px;
-  color: #2A1B06;
+  color: var(--text-strong);
   opacity: 0.6;
   cursor: pointer;
 }
@@ -820,8 +882,8 @@ input[type='range']:disabled {
 
 .new-best-badge {
   display: inline-block;
-  background: #E8612E;
-  color: #fffaef;
+  background: var(--brand-accent);
+  color: var(--text-on-dark);
   font-weight: 800;
   font-size: 14px;
   letter-spacing: 0.1em;
