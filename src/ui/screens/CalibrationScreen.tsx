@@ -152,9 +152,14 @@ export function CalibrationScreen() {
 
       {phase === 'measuring' ? (
         <>
-          <p className="calib-progress no-tap">
-            {samples.length} / {TARGET_SAMPLES}
-          </p>
+          {/* Pulsing ring around the progress counter signals "tap to
+           * begin" — first-timers don't know the entire screen is a
+           * TapArea until something visually invites the tap. */}
+          <div className="calib-tap-cue no-tap" aria-hidden="true">
+            <p className="calib-progress" style={{ margin: 0 }}>
+              {samples.length} / {TARGET_SAMPLES}
+            </p>
+          </div>
           <p className="muted no-tap">
             画面のどこをタップしても OK
           </p>

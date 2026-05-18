@@ -61,7 +61,7 @@ export function TitleScreen() {
   };
 
   return (
-    <main className="screen">
+    <main className="screen screen-title">
       <div className="title-logo" aria-label="Rhygym">
         <span className="title-logo-icon title-logo-icon-left" aria-hidden="true">
           ♪♬

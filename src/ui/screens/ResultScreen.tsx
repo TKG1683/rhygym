@@ -233,7 +233,12 @@ export function ResultScreen() {
       </section>
 
       {newBest && <p className="new-best-badge">NEW BEST!</p>}
-      <h1 className="result-rank">{result.rank}</h1>
+      <div
+        className={`result-rank-chip rank-${result.rank}`}
+        aria-label={`ランク ${result.rank}`}
+      >
+        <h1 className="result-rank">{result.rank}</h1>
+      </div>
       <p className="result-score">{result.score}</p>
       <p className="result-accuracy">正確率 {(result.accuracy * 100).toFixed(1)}%</p>
       {prevBest && !newBest && (

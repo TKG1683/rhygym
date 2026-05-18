@@ -1,10 +1,85 @@
 /* Rhygym global styles
- * Color palette is shared with the app icon:
- *   #FFD24A  background (main yellow)
- *   #FFE08A  background highlight band
- *   #2A1B06  foreground (dark brown)
- *   #E8612E  accent (dumbbell weight orange)
+ * Color palette is shared with the app icon (cream/brown/orange).
+ * All visual tokens live in :root below so screens, components and
+ * future themes can re-skin by overriding a single block instead of
+ * hunting for hex literals scattered across this file.
  */
+
+:root {
+  /* Brand palette
+   * --brand-primary  : dark brown ink — primary text, primary button bg
+   * --brand-secondary: warm yellow — page background ("main yellow")
+   * --brand-accent   : dumbbell-weight orange — slider thumbs, focus ring,
+   *                    "new best!" badge, drift-banner border
+   * --surface        : cream — staff/score panel background
+   * --surface-elevated: slightly warmer cream — stage-card body
+   * --surface-hover  : warmer still — stage-card hover tint
+   * --highlight-band : pale yellow accent band (icon highlight)
+   * --text-strong    : same as brand-primary, named for contrast intent
+   * --text-muted     : same ink at reduced opacity (set via rgba)
+   * --text-on-dark   : cream used on dark buttons / medals
+   * --medal-gold/silver/bronze: level-medal disc base colors
+   * --rank-s/a/b/c/d : per-tier accent for rank chips and gradients
+   */
+  --brand-primary: #2A1B06;
+  --brand-secondary: #FFD24A;
+  --brand-accent: #E8612E;
+  --surface: #fffaef;
+  --surface-elevated: #fffaef;
+  --surface-hover: #fff5d6;
+  --highlight-band: #FFE08A;
+  --text-strong: #2A1B06;
+  --text-muted: rgba(42, 27, 6, 0.7);
+  --text-on-dark: #fffaef;
+  --border-soft: rgba(42, 27, 6, 0.15);
+  --shadow-soft: rgba(42, 27, 6, 0.08);
+  --shadow-hover: rgba(42, 27, 6, 0.18);
+
+  --medal-gold: #e9b834;
+  --medal-silver: #c7ccd1;
+  --medal-bronze: #c97e3e;
+
+  --rank-s: #d4a017;
+  --rank-s-strong: #cba000;
+  --rank-a: #3a8dde;
+  --rank-b: #6aa84f;
+  --rank-c: #b58c50;
+  --rank-d: #8a6b4a;
+
+  /* Type scale — single source of truth so every screen pulls from
+   * the same ladder instead of bespoke pixel values. */
+  --fs-xs: 12px;
+  --fs-sm: 14px;
+  --fs-md: 16px;
+  --fs-lg: 20px;
+  --fs-xl: 28px;
+  --fs-2xl: 40px;
+
+  /* Spacing rhythm — used by the new per-screen spacing pass. */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 14px;
+
+  /* Font families
+   * --font-display: Poppins — for wordmarks/headings, has a slightly
+   *   geometric "branded" feel that pairs with the dumbbell logo.
+   * --font-body   : Noto Sans JP — covers Japanese labels cleanly and
+   *   still has a tasteful Latin fallback for English UI strings, so
+   *   we don't need a separate Latin family for body copy. Falls
+   *   through to system stack if the network fetch fails.
+   */
+  --font-display: 'Poppins', 'Noto Sans JP', -apple-system, BlinkMacSystemFont,
+    'Segoe UI', 'Hiragino Kaku Gothic ProN', 'Yu Gothic UI', sans-serif;
+  --font-body: 'Noto Sans JP', -apple-system, BlinkMacSystemFont, 'Segoe UI',
+    'Hiragino Kaku Gothic ProN', 'Yu Gothic UI', sans-serif;
+}
 
 * {
   box-sizing: border-box;
@@ -14,12 +89,16 @@ html,
 body {
   margin: 0;
   padding: 0;
-  background: #FFD24A;
-  color: #2A1B06;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Hiragino Kaku Gothic ProN',
-    'Yu Gothic UI', sans-serif;
+  background: var(--brand-secondary);
+  color: var(--text-strong);
+  font-family: var(--font-body);
+  font-size: var(--fs-md);
   -webkit-font-smoothing: antialiased;
   touch-action: manipulation;
+}
+
+h1, h2, h3, h4, .title-logo-name, .stage-card-name, .result-rank {
+  font-family: var(--font-display);
 }
 
 #root {
@@ -32,13 +111,56 @@ body {
   width: 100%;
   max-width: 720px;
   min-height: 100dvh;
-  padding: 24px;
+  padding: var(--space-5);
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   text-align: center;
-  gap: 12px;
+  gap: var(--space-3);
+  /* 250 ms fade + 8px settle so every navigation feels intentional
+   * rather than an instant teleport. Animation runs forwards/both so
+   * the screen doesn't snap back to opacity 0 after the keyframe
+   * finishes. The keyframe is opacity-only — translateY is applied
+   * via a separate keyframe (screen-settle) so prefers-reduced-motion
+   * can drop the slide while keeping the fade. */
+  animation: screen-enter 250ms ease-out both,
+             screen-settle 250ms ease-out both;
+}
+
+@keyframes screen-enter {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes screen-settle {
+  from { transform: translateY(8px); }
+  to   { transform: translateY(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .screen {
+    /* Keep the fade (it's gentle and helps mask layout flashes) but
+     * drop the slide that would otherwise violate the user's motion
+     * preference. */
+    animation: screen-enter 200ms ease-out both;
+  }
+}
+
+/* Title screen — comfortable breathing room between logo / tagline /
+ * Start / calibration / first-run banner so the screen feels
+ * "welcome" rather than packed. */
+.screen-title {
+  gap: var(--space-4);
+}
+.screen-title .tagline {
+  /* The tagline already carries a hand-tuned bottom margin from the
+   * pre-polish layout; collapse it so the screen's flex gap is the
+   * single source of rhythm here. */
+  margin: 0;
+}
+.screen-title .title-calib-suggest {
+  margin-top: var(--space-4);
 }
 
 .logo {
@@ -159,47 +281,73 @@ body {
 }
 
 .tagline {
-  font-size: 16px;
-  margin: 0 0 24px;
+  font-size: var(--fs-md);
+  margin: 0 0 var(--space-5);
   opacity: 0.85;
 }
 
 h1 {
   margin: 0;
-  font-size: 28px;
+  font-size: var(--fs-xl);
 }
 
 .muted {
   opacity: 0.7;
-  font-size: 14px;
+  font-size: var(--fs-sm);
 }
 
+/* Unified button system.
+ * - 12px radius (matches --radius-md, the panel/card rhythm).
+ * - 12-14px vertical padding + min-height 44px so we always clear the
+ *   iOS Human-Interface 44pt touch-target floor, even when a variant
+ *   shrinks the font.
+ * - Focus ring uses the brand accent (orange) so it's clearly visible
+ *   on both the cream and brown surfaces. outline-offset: 2px sits the
+ *   ring just outside the rounded corner — flush 0 looks pinched on a
+ *   12px-radius corner because the outline doesn't follow border-radius.
+ * - :active translates the button down 1px AND drops the shadow so the
+ *   press feels physical, not just a color tween.
+ */
 button {
   font: inherit;
+  font-family: var(--font-body);
+  font-weight: 600;
   border: none;
-  border-radius: 10px;
+  border-radius: var(--radius-md);
   padding: 12px 24px;
+  min-height: 44px;
   cursor: pointer;
-  transition: opacity 0.15s;
+  transition: opacity 0.15s, transform 0.08s, box-shadow 0.12s;
+}
+
+button:focus-visible {
+  outline: 2px solid var(--brand-accent);
+  outline-offset: 2px;
 }
 
 button.primary {
-  background: #2A1B06;
-  color: #FFD24A;
-  font-weight: 600;
+  background: var(--brand-primary);
+  color: var(--brand-secondary);
+  font-weight: 700;
+  box-shadow: 0 2px 0 rgba(0, 0, 0, 0.18);
 }
 
 button.secondary {
   background: transparent;
-  color: #2A1B06;
-  border: 2px solid #2A1B06;
+  color: var(--text-strong);
+  border: 2px solid var(--brand-primary);
 }
 
 button:hover {
-  opacity: 0.85;
+  opacity: 0.9;
 }
 
-button:active {
+button.primary:active {
+  transform: translateY(1px);
+  box-shadow: 0 0 0 rgba(0, 0, 0, 0.18);
+}
+
+button.secondary:active {
   transform: translateY(1px);
 }
 
@@ -227,7 +375,7 @@ button:active {
 }
 
 .debug-toggle {
-  font-size: 12px;
+  font-size: var(--fs-xs);
   opacity: 0.7;
   display: flex;
   gap: 6px;
@@ -237,8 +385,8 @@ button:active {
 
 .score-view {
   width: 100%;
-  background: #fffaef;
-  border-radius: 12px;
+  background: var(--surface);
+  border-radius: var(--radius-md);
   padding: 12px;
   overflow-x: auto;
 }
@@ -249,9 +397,9 @@ button:active {
 }
 
 .status-text {
-  font-size: 18px;
+  font-size: var(--fs-md);
   font-weight: 600;
-  margin-top: 8px;
+  margin-top: var(--space-2);
   opacity: 0.9;
 }
 
@@ -290,7 +438,7 @@ button:active {
 }
 
 .game-title {
-  font-size: 22px;
+  font-size: var(--fs-lg);
   margin: 0;
 }
 
@@ -300,10 +448,19 @@ button:active {
   flex-direction: column;
   align-items: stretch;
   gap: 6px;
+  /* The staff is the headline element on this screen; the BPM slider
+   * is a one-off "before you start" knob. Drop its opacity so it
+   * sits visually behind the staff. */
+  opacity: 0.7;
+}
+
+.bpm-control:focus-within,
+.bpm-control:hover {
+  opacity: 1;
 }
 
 .bpm-label {
-  font-size: 14px;
+  font-size: var(--fs-sm);
   font-weight: 600;
   display: flex;
   gap: 8px;
@@ -313,20 +470,20 @@ button:active {
 }
 
 .bpm-value {
-  font-size: 18px;
+  font-size: var(--fs-md);
   font-weight: 800;
   letter-spacing: 0.02em;
 }
 
 .bpm-multiplier {
   opacity: 0.6;
-  font-size: 12px;
+  font-size: var(--fs-xs);
   font-weight: 500;
 }
 
 input[type='range'] {
   width: 100%;
-  accent-color: #E8612E;
+  accent-color: var(--brand-accent);
   cursor: pointer;
 }
 
@@ -358,36 +515,90 @@ input[type='range']:disabled {
 
 /* Result screen */
 .result-rank {
-  font-size: 96px;
+  /* Manually bumped above the 40px --fs-2xl ceiling — the rank is the
+   * single biggest moment of the screen, and the tier gradient needs
+   * the surface area to read clearly. */
+  font-size: 88px;
   margin: 0;
   line-height: 1;
 }
+
+/* Rank "chip" — square-ish badge behind the letter, tier-coloured so
+ * S/A/B/C/D each carry a distinct visual identity. Re-uses the
+ * StageSelect medal-disc shimmer pattern (two stacked gradients +
+ * inset highlight/shadow + drop shadow) so the whole game shares one
+ * trophy-badge vocabulary. The letter sits on top via the surrounding
+ * .result-rank span, which means we don't change the markup beyond
+ * adding a wrapper class. */
+.result-rank-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 132px;
+  height: 132px;
+  margin: var(--space-2) auto;
+  border-radius: 28px;
+  position: relative;
+  background-color: var(--rank-chip-base, var(--rank-d));
+  background-image:
+    linear-gradient(
+      160deg,
+      rgba(255, 255, 255, 0.6) 0%,
+      rgba(255, 255, 255, 0.1) 28%,
+      rgba(0, 0, 0, 0.18) 55%,
+      rgba(255, 255, 255, 0.22) 78%,
+      rgba(0, 0, 0, 0.3) 100%
+    );
+  box-shadow:
+    inset 0 2px 1px rgba(255, 255, 255, 0.85),
+    inset 0 -2px 2px rgba(0, 0, 0, 0.4),
+    inset 0 0 0 2px rgba(0, 0, 0, 0.18),
+    0 4px 10px rgba(0, 0, 0, 0.18);
+  color: var(--text-on-dark);
+}
+
+.result-rank-chip .result-rank {
+  color: inherit;
+  text-shadow:
+    0 2px 2px rgba(0, 0, 0, 0.45),
+    0 -1px 1px rgba(255, 255, 255, 0.35);
+  font-weight: 800;
+}
+
+.result-rank-chip.rank-S { --rank-chip-base: var(--rank-s); }
+.result-rank-chip.rank-A { --rank-chip-base: var(--rank-a); }
+.result-rank-chip.rank-B { --rank-chip-base: var(--rank-b); }
+.result-rank-chip.rank-C { --rank-chip-base: var(--rank-c); }
+.result-rank-chip.rank-D { --rank-chip-base: var(--rank-d); }
 .result-score {
-  font-size: 32px;
+  font-size: var(--fs-2xl);
   font-weight: 700;
-  margin: 4px 0 0;
+  margin: var(--space-1) 0 0;
 }
 .result-accuracy {
-  font-size: 16px;
+  font-size: var(--fs-md);
   opacity: 0.8;
-  margin: 0 0 16px;
+  margin: 0 0 var(--space-4);
 }
 .result-breakdown {
   display: flex;
-  gap: 16px;
+  gap: var(--space-4);
   flex-wrap: wrap;
   justify-content: center;
-  margin-bottom: 16px;
+  margin-bottom: var(--space-4);
   font-weight: 600;
+  font-size: var(--fs-md);
 }
-.r-perfect { color: #cba000; }
-.r-good    { color: #3a8dde; }
-.r-miss    { color: #E8612E; }
+.r-perfect { color: var(--rank-s-strong); }
+.r-good    { color: var(--rank-a); }
+.r-miss    { color: var(--brand-accent); }
 
 .screen-result {
   justify-content: flex-start;
-  padding-top: 16px;
-  gap: 8px;
+  padding-top: var(--space-4);
+  /* Clear vertical rhythm: rank chip / score / accuracy / breakdown /
+   * banner / CTAs all sit on the same gap so nothing feels bunched. */
+  gap: var(--space-3);
 }
 
 .result-plot-section {
@@ -400,7 +611,7 @@ input[type='range']:disabled {
 }
 
 .result-section-title {
-  font-size: 14px;
+  font-size: var(--fs-sm);
   font-weight: 600;
   opacity: 0.7;
   margin: 0;
@@ -409,8 +620,8 @@ input[type='range']:disabled {
 
 .score-with-timing {
   width: 100%;
-  background: #fffaef;
-  border-radius: 10px;
+  background: var(--surface);
+  border-radius: var(--radius-sm);
   padding: 8px 0 4px;
   /* Horizontal scroll lets long single-row scores stay aligned with the
    * timing plot beneath, even on phone widths. */
@@ -435,7 +646,7 @@ input[type='range']:disabled {
   justify-content: center;
   align-items: baseline;
   gap: 8px;
-  font-size: 13px;
+  font-size: var(--fs-sm);
   margin: 0;
   opacity: 0.85;
 }
@@ -445,7 +656,7 @@ input[type='range']:disabled {
 }
 
 .calib-badge {
-  font-size: 12px;
+  font-size: var(--fs-xs);
   opacity: 0.75;
 }
 
@@ -467,9 +678,9 @@ input[type='range']:disabled {
 }
 
 .calib-progress {
-  font-size: 28px;
+  font-size: var(--fs-xl);
   font-weight: 800;
-  margin: 8px 0;
+  margin: var(--space-2) 0;
 }
 
 .calib-result {
@@ -480,16 +691,17 @@ input[type='range']:disabled {
 }
 
 .calib-offset-label {
-  font-size: 14px;
+  font-size: var(--fs-sm);
   opacity: 0.7;
   margin: 0;
 }
 
 .calib-offset-value {
-  font-size: 48px;
+  font-size: var(--fs-2xl);
   font-weight: 800;
   margin: 0;
   letter-spacing: 0.02em;
+  font-family: var(--font-display);
 }
 
 .calib-offset-bias {
@@ -497,15 +709,51 @@ input[type='range']:disabled {
 }
 
 .calib-current {
-  font-size: 12px;
+  font-size: var(--fs-xs);
   margin-top: auto;
+}
+
+/* "Tap here" cue — a soft pulsing ring drawn around the progress
+ * counter so first-time players see an interactive target instead
+ * of guessing the whole screen is tappable. Decorative only — taps
+ * outside still work because the whole .screen-calibration is a
+ * TapArea; this is purely affordance signalling.
+ *
+ * The pulse is two stacked box-shadows that ripple out and fade
+ * away; running on the progress counter (which sits in the middle
+ * of the screen) keeps the cue centered through the layout. */
+.calib-tap-cue {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-3) var(--space-5);
+  border-radius: 999px;
+  background: var(--surface);
+  box-shadow: 0 0 0 0 rgba(232, 97, 46, 0.45);
+  animation: calib-tap-pulse 1.6s ease-out infinite;
+}
+
+@keyframes calib-tap-pulse {
+  0%   { box-shadow: 0 0 0 0   rgba(232, 97, 46, 0.45); }
+  70%  { box-shadow: 0 0 0 22px rgba(232, 97, 46, 0);   }
+  100% { box-shadow: 0 0 0 0   rgba(232, 97, 46, 0);   }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .calib-tap-cue {
+    /* Drop the rippling shadow but keep a static accent ring so the
+     * "tap here" affordance still reads. */
+    animation: none;
+    box-shadow: 0 0 0 3px rgba(232, 97, 46, 0.45);
+  }
 }
 
 /* StageSelect — list of class cards. */
 .screen-select {
   justify-content: flex-start;
-  padding-top: 24px;
-  gap: 12px;
+  padding-top: var(--space-5);
+  gap: var(--space-3);
 }
 
 .select-title {
@@ -513,25 +761,25 @@ input[type='range']:disabled {
 }
 
 .select-hint {
-  font-size: 12px;
-  margin: 0 0 8px;
+  font-size: var(--fs-xs);
+  margin: 0 0 var(--space-2);
   text-align: center;
 }
 
 .select-back {
   align-self: flex-start;
-  font-size: 13px;
+  font-size: var(--fs-sm);
   padding: 6px 12px;
-  margin-bottom: 4px;
+  margin-bottom: var(--space-1);
 }
 
 .stage-list {
   list-style: none;
   padding: 0;
-  margin: 0 0 8px;
+  margin: 0 0 var(--space-2);
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: var(--space-3);
   width: 100%;
   max-width: 480px;
 }
@@ -540,28 +788,28 @@ input[type='range']:disabled {
   position: relative;
   width: 100%;
   text-align: left;
-  background: #fffaef;
-  color: #2A1B06;
-  border: 2px solid rgba(42, 27, 6, 0.15);
-  border-radius: 14px;
+  background: var(--surface-elevated);
+  color: var(--text-strong);
+  border: 2px solid var(--border-soft);
+  border-radius: var(--radius-lg);
   padding: 14px 16px 14px 22px;
   display: flex;
   gap: 4px;
   cursor: pointer;
   overflow: hidden;
-  box-shadow: 0 2px 0 rgba(42, 27, 6, 0.08);
+  box-shadow: 0 2px 0 var(--shadow-soft);
   transition: transform 0.12s ease, box-shadow 0.12s ease, background 0.15s;
 }
 
 .stage-card:hover {
-  background: #fff5d6;
+  background: var(--surface-hover);
   transform: translateY(-2px);
-  box-shadow: 0 6px 12px rgba(42, 27, 6, 0.18);
+  box-shadow: 0 6px 12px var(--shadow-hover);
 }
 
 .stage-card:active {
   transform: translateY(0);
-  box-shadow: 0 2px 0 rgba(42, 27, 6, 0.08);
+  box-shadow: 0 2px 0 var(--shadow-soft);
 }
 
 /* Vertical color stripe down the left edge — the only place each
@@ -604,13 +852,13 @@ input[type='range']:disabled {
 }
 
 .stage-card-name {
-  font-size: 24px;
-  font-weight: 800;
+  font-size: var(--fs-lg);
+  font-weight: 700;
   letter-spacing: 0.04em;
 }
 
 .stage-card-desc {
-  font-size: 13px;
+  font-size: var(--fs-sm);
   opacity: 0.8;
 }
 
@@ -618,12 +866,20 @@ input[type='range']:disabled {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 8px;
-  margin-top: 2px;
+  gap: var(--space-2);
+  margin-top: var(--space-1);
+}
+
+.stage-card-best {
+  /* Push the medal+score block hard to the right edge so the medal
+   * column lines up across cards. The .stage-card-meta is already
+   * space-between, so margin-left:auto is belt-and-braces for cases
+   * where the left cell happens to be empty (Level cards w/ no bpm). */
+  margin-left: auto;
 }
 
 .stage-card-bpm {
-  font-size: 13px;
+  font-size: var(--fs-sm);
   opacity: 0.75;
 }
 
@@ -635,7 +891,7 @@ input[type='range']:disabled {
 
 .stage-card-score {
   font-weight: 700;
-  font-size: 14px;
+  font-size: var(--fs-sm);
   opacity: 0.85;
 }
 
@@ -650,18 +906,18 @@ input[type='range']:disabled {
   border-radius: 50%;
   font-weight: 800;
   font-size: 15px;
-  color: #fffaef;
+  color: var(--text-on-dark);
   background-image: radial-gradient(circle at 30% 28%, rgba(255, 255, 255, 0.55), rgba(255, 255, 255, 0) 60%);
   background-color: #888;
   box-shadow: inset 0 -2px 3px rgba(0, 0, 0, 0.25), 0 1px 2px rgba(0, 0, 0, 0.2);
   text-shadow: 0 1px 1px rgba(0, 0, 0, 0.25);
 }
 
-.rank-medal.rank-S { background-color: #d4a017; }
-.rank-medal.rank-A { background-color: #3a8dde; }
-.rank-medal.rank-B { background-color: #6aa84f; }
-.rank-medal.rank-C { background-color: #b58c50; }
-.rank-medal.rank-D { background-color: #8a6b4a; }
+.rank-medal.rank-S { background-color: var(--rank-s); }
+.rank-medal.rank-A { background-color: var(--rank-a); }
+.rank-medal.rank-B { background-color: var(--rank-b); }
+.rank-medal.rank-C { background-color: var(--rank-c); }
+.rank-medal.rank-D { background-color: var(--rank-d); }
 
 /* Level-summary medal disc. Tier is communicated by color (gold/
  * silver/bronze metal). Animation-free — depth comes from a stacked
@@ -695,9 +951,9 @@ input[type='range']:disabled {
     0 2px 3px rgba(0, 0, 0, 0.4);
 }
 
-.medal-disc-gold   { --medal-base: #e9b834; }
-.medal-disc-silver { --medal-base: #c7ccd1; }
-.medal-disc-bronze { --medal-base: #c97e3e; }
+.medal-disc-gold   { --medal-base: var(--medal-gold); }
+.medal-disc-silver { --medal-base: var(--medal-silver); }
+.medal-disc-bronze { --medal-base: var(--medal-bronze); }
 
 .medal-disc-icon {
   font-size: 17px;
@@ -709,25 +965,6 @@ input[type='range']:disabled {
     0 -1px 1px rgba(255, 255, 255, 0.35);
 }
 
-/* Legacy circular rank chip kept for ResultScreen breakdown. */
-.stage-card-rank {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 26px;
-  height: 26px;
-  border-radius: 50%;
-  font-weight: 800;
-  font-size: 14px;
-  color: #fffaef;
-}
-
-.rank-S { background: #cba000; }
-.rank-A { background: #3a8dde; }
-.rank-B { background: #6aa84f; }
-.rank-C { background: #b58c50; }
-.rank-D { background: #8a6b4a; }
-
 /* Result-screen calibration-suggestion banner. Sits between the
  * primary retry row and the stats — clearly an actionable suggestion
  * but visually distinct from the rank/score chrome. */
@@ -736,9 +973,9 @@ input[type='range']:disabled {
   max-width: 480px;
   margin: 8px 0;
   padding: 12px 16px;
-  background: #fff5d6;
-  border: 2px solid #E8612E;
-  border-radius: 12px;
+  background: var(--surface-hover);
+  border: 2px solid var(--brand-accent);
+  border-radius: var(--radius-md);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -747,38 +984,38 @@ input[type='range']:disabled {
 
 .calib-suggest-text {
   margin: 0;
-  font-size: 14px;
+  font-size: var(--fs-sm);
   text-align: center;
   line-height: 1.4;
 }
 
 .calib-suggest-cta {
-  font-size: 14px;
-  padding: 8px 18px;
+  font-size: var(--fs-sm);
+  padding: 10px 18px;
 }
 
 .calib-funnel-btn {
-  font-size: 13px;
-  padding: 8px 16px;
+  font-size: var(--fs-sm);
+  padding: 10px 16px;
 }
 
 /* Pass-rank "next stage" CTA — visually loud and tall so it reads as
  * the obvious next move once the player has cleared a stage. */
 .next-stage-cta {
-  font-size: 18px;
+  font-size: var(--fs-md);
   font-weight: 700;
   padding: 14px 32px;
   min-width: 240px;
-  margin-top: 4px;
+  margin-top: var(--space-1);
 }
 
 .result-secondary-row {
-  margin-top: 4px;
+  margin-top: var(--space-1);
 }
 
 .result-secondary-btn {
-  font-size: 13px;
-  padding: 8px 16px;
+  font-size: var(--fs-sm);
+  padding: 10px 16px;
 }
 
 /* Title-screen first-run variant: same banner shell, but tighter and
@@ -795,10 +1032,15 @@ input[type='range']:disabled {
   right: 8px;
   background: transparent;
   border: none;
-  font-size: 18px;
+  font-size: var(--fs-lg);
   line-height: 1;
+  /* Override global button defaults so the X stays a tight close icon
+   * rather than a full 44px-tall button. Accessibility note: visually
+   * smaller but still focusable + has an aria-label in the markup. */
   padding: 4px 8px;
-  color: #2A1B06;
+  min-height: auto;
+  border-radius: var(--radius-sm);
+  color: var(--text-strong);
   opacity: 0.6;
   cursor: pointer;
 }
@@ -820,14 +1062,30 @@ input[type='range']:disabled {
 
 .new-best-badge {
   display: inline-block;
-  background: #E8612E;
-  color: #fffaef;
+  background: var(--brand-accent);
+  color: var(--text-on-dark);
   font-weight: 800;
-  font-size: 14px;
+  font-size: var(--fs-sm);
   letter-spacing: 0.1em;
-  padding: 4px 12px;
+  padding: 6px 14px;
   border-radius: 999px;
-  margin: 4px 0 0;
-  animation: judgement-fade 600ms ease-out;
-  animation-iteration-count: 1;
+  margin: var(--space-1) 0 0;
+  box-shadow: 0 2px 6px rgba(232, 97, 46, 0.4);
+  /* Pop in with a small overshoot bounce so it actually catches the
+   * player's eye on a successful new best. cubic-bezier with
+   * out-of-range overshoot is the cheapest way to get that "spring"
+   * feel without a JS animation library. */
+  animation: new-best-pop 480ms cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+@keyframes new-best-pop {
+  0%   { opacity: 0; transform: scale(0.5); }
+  60%  { opacity: 1; transform: scale(1.15); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .new-best-badge {
+    animation: screen-enter 250ms ease-out both;
+  }
 }
