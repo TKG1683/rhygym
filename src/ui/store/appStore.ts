@@ -1,8 +1,9 @@
 import { create } from 'zustand';
 import type { GameResult, JudgementRecord } from '../../core/judgement';
 import type { Stage } from '../../core/model';
+import { getCalibration } from '../../core/storage/localStore';
 
-export type Screen = 'title' | 'select' | 'game' | 'result';
+export type Screen = 'title' | 'select' | 'game' | 'result' | 'calibration';
 
 interface AppState {
   screen: Screen;
@@ -26,6 +27,14 @@ interface AppState {
    * BPM slider to 1.0 every time.
    */
   bpmMultiplier: number;
+  /**
+   * Per-device tap latency offset in seconds, measured by the
+   * CalibrationScreen. Subtracted from every tapSec before judgement
+   * so PERFECT means "on the beat as the player feels it" rather than
+   * "on the beat assuming zero touch latency". Defaults to 0 — an
+   * un-calibrated player still has a usable game.
+   */
+  calibrationOffsetSec: number;
   goto: (screen: Screen) => void;
   selectStage: (id: string) => void;
   setAudioContext: (ctx: AudioContext) => void;
@@ -33,6 +42,7 @@ interface AppState {
   setLastStage: (stage: Stage) => void;
   setLastRecords: (records: readonly JudgementRecord[]) => void;
   setBpmMultiplier: (multiplier: number) => void;
+  setCalibrationOffsetSec: (sec: number) => void;
 }
 
 export const useAppStore = create<AppState>((set) => ({
@@ -43,6 +53,10 @@ export const useAppStore = create<AppState>((set) => ({
   lastStage: null,
   lastRecords: null,
   bpmMultiplier: 1,
+  // Eagerly seed from localStorage so the first play after a reload
+  // uses the saved calibration without anyone having to remember to
+  // re-load it manually.
+  calibrationOffsetSec: getCalibration()?.offsetSec ?? 0,
   goto: (screen) => set({ screen }),
   selectStage: (id) => set({ selectedStageId: id }),
   setAudioContext: (ctx) => set({ audioContext: ctx }),
@@ -50,4 +64,5 @@ export const useAppStore = create<AppState>((set) => ({
   setLastStage: (stage) => set({ lastStage: stage }),
   setLastRecords: (records) => set({ lastRecords: records }),
   setBpmMultiplier: (multiplier) => set({ bpmMultiplier: multiplier }),
+  setCalibrationOffsetSec: (sec) => set({ calibrationOffsetSec: sec }),
 }));

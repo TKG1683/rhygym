@@ -3,6 +3,7 @@ import { TitleScreen } from './ui/screens/TitleScreen';
 import { StageSelectScreen } from './ui/screens/StageSelectScreen';
 import { GameScreen } from './ui/screens/GameScreen';
 import { ResultScreen } from './ui/screens/ResultScreen';
+import { CalibrationScreen } from './ui/screens/CalibrationScreen';
 
 export default function App() {
   const screen = useAppStore((s) => s.screen);
@@ -15,5 +16,7 @@ export default function App() {
       return <GameScreen />;
     case 'result':
       return <ResultScreen />;
+    case 'calibration':
+      return <CalibrationScreen />;
   }
 }

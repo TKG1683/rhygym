@@ -4,6 +4,8 @@ export function TitleScreen() {
   const goto = useAppStore((s) => s.goto);
   const audioContext = useAppStore((s) => s.audioContext);
   const setAudioContext = useAppStore((s) => s.setAudioContext);
+  const calibrationOffsetSec = useAppStore((s) => s.calibrationOffsetSec);
+  const calibrated = calibrationOffsetSec !== 0;
 
   const handleStart = async () => {
     // Create (or reuse) the AudioContext while we are still inside the
@@ -25,12 +27,36 @@ export function TitleScreen() {
     goto('select');
   };
 
+  const goCalibrate = async () => {
+    // Calibration also needs a live AudioContext; reuse the same
+    // user-gesture handling as Start.
+    let ctx = audioContext;
+    if (!ctx) {
+      ctx = new AudioContext();
+      setAudioContext(ctx);
+    }
+    if (ctx.state === 'suspended') {
+      await ctx.resume();
+    }
+    warmUpAudio(ctx);
+    goto('calibration');
+  };
+
   return (
     <main className="screen">
       <h1 className="logo">Rhygym</h1>
       <p className="tagline">楽譜を読み、タップでリズムを叩け。</p>
       <button className="primary" onClick={handleStart}>
         Start
+      </button>
+      <button className="secondary" onClick={goCalibrate}>
+        キャリブレーション
+        {calibrated && (
+          <span className="calib-badge">
+            {' '}
+            ({Math.round(calibrationOffsetSec * 1000)}ms)
+          </span>
+        )}
       </button>
     </main>
   );
