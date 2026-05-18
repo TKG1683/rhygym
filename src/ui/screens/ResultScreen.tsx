@@ -105,6 +105,13 @@ export function ResultScreen() {
     return Math.max(1, Math.ceil(stage.score.totalTicks / ticksPerMeasure));
   }, [stage]);
 
+  // Reserve at least this much width per measure inside the horizontal
+  // scroll area. A long score (e.g. Lv9-5, 16 measures) needs ~2000px
+  // to read clearly; shorter scores still get a comfortable layout via
+  // the wrapper's natural viewport width.
+  const SCORE_MEASURE_WIDTH_RESULT = 140;
+  const scoreMinWidth = totalMeasures * SCORE_MEASURE_WIDTH_RESULT;
+
   const stats = useMemo(
     () => (records ? computeTimingStats(records) : null),
     [records],
@@ -190,19 +197,25 @@ export function ResultScreen() {
     <main className="screen screen-result">
       <section className="result-plot-section">
         <h2 className="result-section-title">タイミング</h2>
-        <div ref={wrapperRef} className="score-with-timing">
-          <ScoreView
-            score={stage.score}
-            onRender={setNoteCoords}
-            measuresPerLine={totalMeasures}
-          />
-          {records && noteCoords && wrapperWidth > 0 && (
-            <TimingPlot
-              records={records}
-              noteCoords={noteCoords}
-              width={wrapperWidth}
+        <div className="result-score-scroll">
+          <div
+            ref={wrapperRef}
+            className="score-with-timing"
+            style={{ minWidth: scoreMinWidth }}
+          >
+            <ScoreView
+              score={stage.score}
+              onRender={setNoteCoords}
+              measuresPerLine={totalMeasures}
             />
-          )}
+            {records && noteCoords && wrapperWidth > 0 && (
+              <TimingPlot
+                records={records}
+                noteCoords={noteCoords}
+                width={wrapperWidth}
+              />
+            )}
+          </div>
         </div>
         {stats && stats.hitCount > 0 && (
           <p className="timing-stats">

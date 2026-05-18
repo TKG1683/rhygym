@@ -7,7 +7,7 @@
  * hit effects) can align with each note.
  */
 
-import { Barline, Beam, Dot, Formatter, Renderer, Stave, StaveNote, Stem, Voice } from 'vexflow';
+import { Barline, Beam, Dot, Formatter, Renderer, Stave, StaveNote, Stem, Tuplet, Voice } from 'vexflow';
 import { QUARTER_NOTE_TICKS, type Score } from '../../core/model';
 import { scoreToVex, type VexNote } from './scoreToVex';
 
@@ -116,6 +116,7 @@ export function renderScore(score: Score, opts: RenderOptions): RenderResult {
     // (Beam.generateBeams() also doesn't suppress flags reliably; manual
     // `new Beam(notes)` is the only path that works.)
     const beams = buildBeams(staveNotes, m.notes);
+    const tuplets = buildTuplets(staveNotes, m.notes);
 
     const voice = new Voice({ numBeats: m.numerator, beatValue: m.denominator });
     voice.setStrict(false);
@@ -127,6 +128,7 @@ export function renderScore(score: Score, opts: RenderOptions): RenderResult {
     new Formatter().joinVoices([voice]).format([voice], formatWidth);
     voice.draw(ctx, stave);
     beams.forEach((b) => b.setContext(ctx).draw());
+    tuplets.forEach((t) => t.setContext(ctx).draw());
 
     staveNotes.forEach((sn, i) => {
       const vNote = m.notes[i]!;
@@ -144,6 +146,30 @@ export function renderScore(score: Score, opts: RenderOptions): RenderResult {
   });
 
   return { noteCoords, height };
+}
+
+/**
+ * Group consecutive notes sharing a tupletGroupId into Tuplet brackets.
+ * Each group becomes one Tuplet drawn above the run; without these the
+ * notes look identical to plain duplets and the reader can't tell a
+ * triplet from three eighths.
+ */
+function buildTuplets(staveNotes: StaveNote[], vexNotes: VexNote[]): Tuplet[] {
+  const tuplets: Tuplet[] = [];
+  const byGroup = new Map<number, { notes: StaveNote[]; shape: { num: number; denom: number } }>();
+  for (let i = 0; i < vexNotes.length; i++) {
+    const v = vexNotes[i]!;
+    if (v.tupletGroupId == null || !v.tupletShape) continue;
+    const entry = byGroup.get(v.tupletGroupId) ?? { notes: [], shape: v.tupletShape };
+    entry.notes.push(staveNotes[i]!);
+    byGroup.set(v.tupletGroupId, entry);
+  }
+  for (const { notes, shape } of byGroup.values()) {
+    tuplets.push(
+      new Tuplet(notes, { numNotes: shape.num, notesOccupied: shape.denom }),
+    );
+  }
+  return tuplets;
 }
 
 /**
