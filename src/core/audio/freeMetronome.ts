@@ -17,7 +17,12 @@ const SCHEDULE_PAST_TOLERANCE_SEC = 0.01;
 
 export interface FreeMetronomeOptions {
   bpm: number;
-  /** How many beats make up one measure (downbeat every Nth click). */
+  /**
+   * How many beats make up one measure. Currently unused by the click
+   * itself — every beat renders identically (see schedule() for why).
+   * Kept on the API so a future "accent downbeat" setting can plug in
+   * without changing the constructor signature.
+   */
   beatsPerMeasure: number;
   volume?: number;
 }
@@ -133,8 +138,13 @@ export class FreeMetronome {
     for (let i = startBeatIndex; i < endBeatIndex; i++) {
       const beatTime = this.startTime + i * beatSec;
       if (beatTime < now - SCHEDULE_PAST_TOLERANCE_SEC) continue;
-      const isDownbeat = i % this.beatsPerMeasure === 0;
-      const osc = scheduleClick(this.ctx, beatTime, isDownbeat, this.volume);
+      // Always render every click identically (no downbeat accent).
+      // Accenting beat 1 would tell the player exactly where the
+      // measure begins, which is the exact thing we want them reading
+      // off the staff. Flat clicks also mean the player can choose any
+      // beat as their starting "1" when they tap to begin — the click
+      // grid carries no opinion about phrasing.
+      const osc = scheduleClick(this.ctx, beatTime, false, this.volume);
       this.scheduledOscs.push(osc);
       osc.onended = () => {
         const idx = this.scheduledOscs.indexOf(osc);
