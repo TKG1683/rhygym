@@ -47,6 +47,69 @@ body {
   letter-spacing: 0.05em;
 }
 
+/* Title logo: ♪♬ | Rhygym / リジム | 🏋
+ * Side icons flank a stacked English+Katakana wordmark. Kept on a
+ * single flex row so it stays visually balanced down to 360px width. */
+.title-logo {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  width: 100%;
+  max-width: 480px;
+  margin: 0 auto;
+  padding: 0 4px;
+}
+
+.title-logo-icon {
+  font-size: 36px;
+  line-height: 1;
+  flex-shrink: 0;
+  /* Emoji + music-glyph render slightly off-baseline — nudge the
+   * decorative side icons down a hair so they sit with the wordmark. */
+  transform: translateY(2px);
+}
+
+.title-logo-center {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  min-width: 0;
+}
+
+.title-logo-name {
+  font-size: 56px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  line-height: 1;
+}
+
+.title-logo-sub {
+  font-size: 16px;
+  letter-spacing: 0.3em;
+  /* trailing letter-spacing pushes the block visually off-center; pull
+   * it back so リジム sits centred under "Rhygym". */
+  padding-left: 0.3em;
+  opacity: 0.7;
+  font-weight: 500;
+}
+
+@media (max-width: 380px) {
+  .title-logo {
+    gap: 10px;
+  }
+  .title-logo-icon {
+    font-size: 30px;
+  }
+  .title-logo-name {
+    font-size: 44px;
+  }
+  .title-logo-sub {
+    font-size: 14px;
+  }
+}
+
 .tagline {
   font-size: 16px;
   margin: 0 0 24px;
