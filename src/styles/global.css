@@ -651,6 +651,25 @@ input[type='range']:disabled {
   padding: 8px 16px;
 }
 
+/* Pass-rank "next stage" CTA — visually loud and tall so it reads as
+ * the obvious next move once the player has cleared a stage. */
+.next-stage-cta {
+  font-size: 18px;
+  font-weight: 700;
+  padding: 14px 32px;
+  min-width: 240px;
+  margin-top: 4px;
+}
+
+.result-secondary-row {
+  margin-top: 4px;
+}
+
+.result-secondary-btn {
+  font-size: 13px;
+  padding: 8px 16px;
+}
+
 /* Title-screen first-run variant: same banner shell, but tighter and
  * carrying a dismiss × so a returning player can silence it once and
  * never see it again. */

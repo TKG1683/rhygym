@@ -1,19 +1,74 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { computeTimingStats } from '../../core/judgement';
-import { CALIBRATION_SUGGEST_THRESHOLD_MS } from '../../core/judgement/score';
+import {
+  CALIBRATION_SUGGEST_THRESHOLD_MS,
+  PASS_RANK_THRESHOLD,
+} from '../../core/judgement/score';
 import { PPQ } from '../../core/model';
+import { STAGES, type StageWithMeta } from '../../core/score/stages';
 import { getBest, isNewBest, setBest } from '../../core/storage/localStore';
 import { TimingPlot } from '../game/TimingPlot';
 import { ScoreView } from '../vexflow/ScoreView';
 import type { NoteCoords } from '../vexflow/ScoreRenderer';
 import { useAppStore } from '../store/appStore';
 
+/** Rank ordering for "is this rank at least PASS_RANK_THRESHOLD?". */
+const RANK_ORDER = ['D', 'C', 'B', 'A', 'S'] as const;
+function rankAtLeast(rank: string, min: string): boolean {
+  return RANK_ORDER.indexOf(rank as (typeof RANK_ORDER)[number]) >=
+    RANK_ORDER.indexOf(min as (typeof RANK_ORDER)[number]);
+}
+
+/**
+ * Pick the "next stage" relative to `current` from the loaded roster.
+ *  1. Same level, indexInLevel + 1 (or — if neither carries an index —
+ *     the next entry in the roster that shares the same level).
+ *  2. Otherwise, the first stage of the next-higher level.
+ *  3. Otherwise (current is the last stage of the highest level), null.
+ *
+ * Exam stages count as the end of their level, so "next" from an exam
+ * is the next level's stage 1.
+ */
+function findNextStage(
+  roster: readonly StageWithMeta[],
+  current: StageWithMeta,
+): StageWithMeta | null {
+  if (current.isExam) {
+    return firstStageOfLevel(roster, current.level + 1);
+  }
+  if (current.indexInLevel != null) {
+    const sameLevelNext = roster.find(
+      (s) => s.level === current.level && s.indexInLevel === current.indexInLevel! + 1,
+    );
+    if (sameLevelNext) return sameLevelNext;
+  } else {
+    // Roster doesn't carry per-stage indices (placeholder STAGES): use
+    // roster order within the level.
+    const sameLevel = roster.filter((s) => s.level === current.level);
+    const idx = sameLevel.findIndex((s) => s.id === current.id);
+    if (idx >= 0 && idx + 1 < sameLevel.length) return sameLevel[idx + 1]!;
+  }
+  return firstStageOfLevel(roster, current.level + 1);
+}
+
+function firstStageOfLevel(
+  roster: readonly StageWithMeta[],
+  level: number,
+): StageWithMeta | null {
+  const inLevel = roster.filter((s) => s.level === level);
+  if (inLevel.length === 0) return null;
+  const withIndex = inLevel.find((s) => s.indexInLevel === 1);
+  return withIndex ?? inLevel[0] ?? null;
+}
+
 export function ResultScreen() {
   const goto = useAppStore((s) => s.goto);
+  const selectStage = useAppStore((s) => s.selectStage);
   const result = useAppStore((s) => s.lastResult);
   const stage = useAppStore((s) => s.lastStage);
   const records = useAppStore((s) => s.lastRecords);
   const calibrationOffsetSec = useAppStore((s) => s.calibrationOffsetSec);
+  const loadedStages = useAppStore((s) => s.loadedStages);
   const calibrated = calibrationOffsetSec !== 0;
 
   const [noteCoords, setNoteCoords] = useState<Map<string, NoteCoords> | null>(null);
@@ -85,6 +140,30 @@ export function ResultScreen() {
     if (Math.abs(stats.meanDiffMs) < CALIBRATION_SUGGEST_THRESHOLD_MS) return null;
     return Math.round(stats.meanDiffMs);
   }, [stats]);
+
+  // "Next stage" lookup — only relevant once we know the player cleared
+  // (rank A or higher). Resolved against the loaded roster (with the
+  // bundled STAGES as a fallback for the same reasons GameScreen does).
+  const nextStage = useMemo<StageWithMeta | null>(() => {
+    if (!stage || !result) return null;
+    if (!rankAtLeast(result.rank, PASS_RANK_THRESHOLD)) return null;
+    const roster = loadedStages ?? STAGES;
+    const currentMeta = roster.find((s) => s.id === stage.id);
+    if (!currentMeta) return null;
+    return findNextStage(roster, currentMeta);
+  }, [stage, result, loadedStages]);
+
+  const passed =
+    result != null && rankAtLeast(result.rank, PASS_RANK_THRESHOLD);
+  // If the player cleared the very last stage there's no "next" to go
+  // to — the level-list itself becomes the celebration target.
+  const endOfRoster = passed && nextStage === null;
+
+  const goNext = () => {
+    if (!nextStage) return;
+    selectStage(nextStage.id);
+    goto('game');
+  };
 
   if (!result || !stage) {
     return (
@@ -158,14 +237,38 @@ export function ResultScreen() {
         </div>
       )}
 
-      <div className="row">
-        <button className="primary" onClick={() => goto('game')}>
-          リトライ
-        </button>
-        <button className="secondary" onClick={() => goto('select')}>
-          級選択へ
-        </button>
-      </div>
+      {passed ? (
+        <>
+          {nextStage ? (
+            <button className="primary next-stage-cta" onClick={goNext}>
+              次のステージへ →
+            </button>
+          ) : (
+            <button className="primary next-stage-cta" onClick={() => goto('select')}>
+              Level 一覧へ
+            </button>
+          )}
+          <div className="row result-secondary-row">
+            <button className="secondary result-secondary-btn" onClick={() => goto('game')}>
+              リトライ
+            </button>
+            {!endOfRoster && (
+              <button className="secondary result-secondary-btn" onClick={() => goto('select')}>
+                Level 一覧へ
+              </button>
+            )}
+          </div>
+        </>
+      ) : (
+        <div className="row">
+          <button className="primary" onClick={() => goto('game')}>
+            リトライ
+          </button>
+          <button className="secondary" onClick={() => goto('select')}>
+            級選択へ
+          </button>
+        </div>
+      )}
       <div className="row">
         <button className="secondary calib-funnel-btn" onClick={() => goto('calibration')}>
           {calibrated
