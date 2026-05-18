@@ -272,3 +272,77 @@ input[type='range']:disabled {
 .r-perfect { color: #cba000; }
 .r-good    { color: #3a8dde; }
 .r-miss    { color: #E8612E; }
+
+.screen-result {
+  justify-content: flex-start;
+  padding-top: 16px;
+  gap: 8px;
+}
+
+.result-plot-section {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.result-section-title {
+  font-size: 14px;
+  font-weight: 600;
+  opacity: 0.7;
+  margin: 0;
+  text-align: left;
+}
+
+.score-with-timing {
+  width: 100%;
+  background: #fffaef;
+  border-radius: 10px;
+  padding: 8px 0 4px;
+  /* Horizontal scroll lets long single-row scores stay aligned with the
+   * timing plot beneath, even on phone widths. */
+  overflow-x: auto;
+}
+
+.score-with-timing .score-view {
+  background: transparent;
+  border-radius: 0;
+  padding: 0 0 4px;
+  overflow: visible;
+}
+
+.timing-plot {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+.timing-stats {
+  display: flex;
+  justify-content: center;
+  align-items: baseline;
+  gap: 8px;
+  font-size: 13px;
+  margin: 0;
+  opacity: 0.85;
+}
+
+.timing-stats .dot-sep {
+  opacity: 0.4;
+}
+
+.new-best-badge {
+  display: inline-block;
+  background: #E8612E;
+  color: #fffaef;
+  font-weight: 800;
+  font-size: 14px;
+  letter-spacing: 0.1em;
+  padding: 4px 12px;
+  border-radius: 999px;
+  margin: 4px 0 0;
+  animation: judgement-fade 600ms ease-out;
+  animation-iteration-count: 1;
+}
