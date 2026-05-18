@@ -86,7 +86,7 @@ export function TitleScreen() {
           >
             ×
           </button>
-          <p className="calib-suggest-text">初めての方はキャリブレーションがおすすめ</p>
+          <p className="calib-suggest-text">プレー開始前のキャリブレーションをおすすめします</p>
           <button className="primary calib-suggest-cta" onClick={goCalibrate}>
             キャリブレーションする
           </button>
