@@ -66,6 +66,19 @@
   --radius-sm: 8px;
   --radius-md: 12px;
   --radius-lg: 14px;
+
+  /* Font families
+   * --font-display: Poppins — for wordmarks/headings, has a slightly
+   *   geometric "branded" feel that pairs with the dumbbell logo.
+   * --font-body   : Noto Sans JP — covers Japanese labels cleanly and
+   *   still has a tasteful Latin fallback for English UI strings, so
+   *   we don't need a separate Latin family for body copy. Falls
+   *   through to system stack if the network fetch fails.
+   */
+  --font-display: 'Poppins', 'Noto Sans JP', -apple-system, BlinkMacSystemFont,
+    'Segoe UI', 'Hiragino Kaku Gothic ProN', 'Yu Gothic UI', sans-serif;
+  --font-body: 'Noto Sans JP', -apple-system, BlinkMacSystemFont, 'Segoe UI',
+    'Hiragino Kaku Gothic ProN', 'Yu Gothic UI', sans-serif;
 }
 
 * {
@@ -78,10 +91,14 @@ body {
   padding: 0;
   background: var(--brand-secondary);
   color: var(--text-strong);
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Hiragino Kaku Gothic ProN',
-    'Yu Gothic UI', sans-serif;
+  font-family: var(--font-body);
+  font-size: var(--fs-md);
   -webkit-font-smoothing: antialiased;
   touch-action: manipulation;
+}
+
+h1, h2, h3, h4, .title-logo-name, .stage-card-name, .result-rank {
+  font-family: var(--font-display);
 }
 
 #root {
@@ -221,19 +238,19 @@ body {
 }
 
 .tagline {
-  font-size: 16px;
-  margin: 0 0 24px;
+  font-size: var(--fs-md);
+  margin: 0 0 var(--space-5);
   opacity: 0.85;
 }
 
 h1 {
   margin: 0;
-  font-size: 28px;
+  font-size: var(--fs-xl);
 }
 
 .muted {
   opacity: 0.7;
-  font-size: 14px;
+  font-size: var(--fs-sm);
 }
 
 button {
@@ -289,7 +306,7 @@ button:active {
 }
 
 .debug-toggle {
-  font-size: 12px;
+  font-size: var(--fs-xs);
   opacity: 0.7;
   display: flex;
   gap: 6px;
@@ -311,9 +328,9 @@ button:active {
 }
 
 .status-text {
-  font-size: 18px;
+  font-size: var(--fs-md);
   font-weight: 600;
-  margin-top: 8px;
+  margin-top: var(--space-2);
   opacity: 0.9;
 }
 
@@ -352,7 +369,7 @@ button:active {
 }
 
 .game-title {
-  font-size: 22px;
+  font-size: var(--fs-lg);
   margin: 0;
 }
 
@@ -365,7 +382,7 @@ button:active {
 }
 
 .bpm-label {
-  font-size: 14px;
+  font-size: var(--fs-sm);
   font-weight: 600;
   display: flex;
   gap: 8px;
@@ -375,14 +392,14 @@ button:active {
 }
 
 .bpm-value {
-  font-size: 18px;
+  font-size: var(--fs-md);
   font-weight: 800;
   letter-spacing: 0.02em;
 }
 
 .bpm-multiplier {
   opacity: 0.6;
-  font-size: 12px;
+  font-size: var(--fs-xs);
   font-weight: 500;
 }
 
@@ -420,27 +437,31 @@ input[type='range']:disabled {
 
 /* Result screen */
 .result-rank {
-  font-size: 96px;
+  /* Manually bumped above the 40px --fs-2xl ceiling — the rank is the
+   * single biggest moment of the screen, and the tier gradient (added
+   * in a later commit) needs the surface area to read clearly. */
+  font-size: 88px;
   margin: 0;
   line-height: 1;
 }
 .result-score {
-  font-size: 32px;
+  font-size: var(--fs-2xl);
   font-weight: 700;
-  margin: 4px 0 0;
+  margin: var(--space-1) 0 0;
 }
 .result-accuracy {
-  font-size: 16px;
+  font-size: var(--fs-md);
   opacity: 0.8;
-  margin: 0 0 16px;
+  margin: 0 0 var(--space-4);
 }
 .result-breakdown {
   display: flex;
-  gap: 16px;
+  gap: var(--space-4);
   flex-wrap: wrap;
   justify-content: center;
-  margin-bottom: 16px;
+  margin-bottom: var(--space-4);
   font-weight: 600;
+  font-size: var(--fs-md);
 }
 .r-perfect { color: var(--rank-s-strong); }
 .r-good    { color: var(--rank-a); }
@@ -462,7 +483,7 @@ input[type='range']:disabled {
 }
 
 .result-section-title {
-  font-size: 14px;
+  font-size: var(--fs-sm);
   font-weight: 600;
   opacity: 0.7;
   margin: 0;
@@ -497,7 +518,7 @@ input[type='range']:disabled {
   justify-content: center;
   align-items: baseline;
   gap: 8px;
-  font-size: 13px;
+  font-size: var(--fs-sm);
   margin: 0;
   opacity: 0.85;
 }
@@ -507,7 +528,7 @@ input[type='range']:disabled {
 }
 
 .calib-badge {
-  font-size: 12px;
+  font-size: var(--fs-xs);
   opacity: 0.75;
 }
 
@@ -529,9 +550,9 @@ input[type='range']:disabled {
 }
 
 .calib-progress {
-  font-size: 28px;
+  font-size: var(--fs-xl);
   font-weight: 800;
-  margin: 8px 0;
+  margin: var(--space-2) 0;
 }
 
 .calib-result {
@@ -542,16 +563,17 @@ input[type='range']:disabled {
 }
 
 .calib-offset-label {
-  font-size: 14px;
+  font-size: var(--fs-sm);
   opacity: 0.7;
   margin: 0;
 }
 
 .calib-offset-value {
-  font-size: 48px;
+  font-size: var(--fs-2xl);
   font-weight: 800;
   margin: 0;
   letter-spacing: 0.02em;
+  font-family: var(--font-display);
 }
 
 .calib-offset-bias {
@@ -559,7 +581,7 @@ input[type='range']:disabled {
 }
 
 .calib-current {
-  font-size: 12px;
+  font-size: var(--fs-xs);
   margin-top: auto;
 }
 
@@ -575,16 +597,16 @@ input[type='range']:disabled {
 }
 
 .select-hint {
-  font-size: 12px;
-  margin: 0 0 8px;
+  font-size: var(--fs-xs);
+  margin: 0 0 var(--space-2);
   text-align: center;
 }
 
 .select-back {
   align-self: flex-start;
-  font-size: 13px;
+  font-size: var(--fs-sm);
   padding: 6px 12px;
-  margin-bottom: 4px;
+  margin-bottom: var(--space-1);
 }
 
 .stage-list {
@@ -666,13 +688,13 @@ input[type='range']:disabled {
 }
 
 .stage-card-name {
-  font-size: 24px;
-  font-weight: 800;
+  font-size: var(--fs-lg);
+  font-weight: 700;
   letter-spacing: 0.04em;
 }
 
 .stage-card-desc {
-  font-size: 13px;
+  font-size: var(--fs-sm);
   opacity: 0.8;
 }
 
@@ -685,7 +707,7 @@ input[type='range']:disabled {
 }
 
 .stage-card-bpm {
-  font-size: 13px;
+  font-size: var(--fs-sm);
   opacity: 0.75;
 }
 
@@ -697,7 +719,7 @@ input[type='range']:disabled {
 
 .stage-card-score {
   font-weight: 700;
-  font-size: 14px;
+  font-size: var(--fs-sm);
   opacity: 0.85;
 }
 
@@ -809,38 +831,38 @@ input[type='range']:disabled {
 
 .calib-suggest-text {
   margin: 0;
-  font-size: 14px;
+  font-size: var(--fs-sm);
   text-align: center;
   line-height: 1.4;
 }
 
 .calib-suggest-cta {
-  font-size: 14px;
-  padding: 8px 18px;
+  font-size: var(--fs-sm);
+  padding: 10px 18px;
 }
 
 .calib-funnel-btn {
-  font-size: 13px;
-  padding: 8px 16px;
+  font-size: var(--fs-sm);
+  padding: 10px 16px;
 }
 
 /* Pass-rank "next stage" CTA — visually loud and tall so it reads as
  * the obvious next move once the player has cleared a stage. */
 .next-stage-cta {
-  font-size: 18px;
+  font-size: var(--fs-md);
   font-weight: 700;
   padding: 14px 32px;
   min-width: 240px;
-  margin-top: 4px;
+  margin-top: var(--space-1);
 }
 
 .result-secondary-row {
-  margin-top: 4px;
+  margin-top: var(--space-1);
 }
 
 .result-secondary-btn {
-  font-size: 13px;
-  padding: 8px 16px;
+  font-size: var(--fs-sm);
+  padding: 10px 16px;
 }
 
 /* Title-screen first-run variant: same banner shell, but tighter and
@@ -885,11 +907,11 @@ input[type='range']:disabled {
   background: var(--brand-accent);
   color: var(--text-on-dark);
   font-weight: 800;
-  font-size: 14px;
+  font-size: var(--fs-sm);
   letter-spacing: 0.1em;
   padding: 4px 12px;
   border-radius: 999px;
-  margin: 4px 0 0;
+  margin: var(--space-1) 0 0;
   animation: judgement-fade 600ms ease-out;
   animation-iteration-count: 1;
 }
