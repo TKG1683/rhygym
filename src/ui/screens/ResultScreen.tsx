@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { computeTimingStats } from '../../core/judgement';
+import { CALIBRATION_SUGGEST_THRESHOLD_MS } from '../../core/judgement/score';
 import { PPQ } from '../../core/model';
 import { getBest, isNewBest, setBest } from '../../core/storage/localStore';
 import { TimingPlot } from '../game/TimingPlot';
@@ -12,6 +13,8 @@ export function ResultScreen() {
   const result = useAppStore((s) => s.lastResult);
   const stage = useAppStore((s) => s.lastStage);
   const records = useAppStore((s) => s.lastRecords);
+  const calibrationOffsetSec = useAppStore((s) => s.calibrationOffsetSec);
+  const calibrated = calibrationOffsetSec !== 0;
 
   const [noteCoords, setNoteCoords] = useState<Map<string, NoteCoords> | null>(null);
   const wrapperRef = useRef<HTMLDivElement>(null);
@@ -74,6 +77,15 @@ export function ResultScreen() {
     });
   }, [stage, result, newBest]);
 
+  // Drift large enough to suggest (re-)calibration. Reuses the same
+  // mean-signed-error already computed for the timing-stats line so we
+  // don't re-walk the audit trail.
+  const driftSuggestion = useMemo(() => {
+    if (!stats || stats.hitCount === 0) return null;
+    if (Math.abs(stats.meanDiffMs) < CALIBRATION_SUGGEST_THRESHOLD_MS) return null;
+    return Math.round(stats.meanDiffMs);
+  }, [stats]);
+
   if (!result || !stage) {
     return (
       <main className="screen">
@@ -133,6 +145,19 @@ export function ResultScreen() {
         <span className="r-good">GOOD {result.good}</span>
         <span className="r-miss">MISS {result.miss}</span>
       </div>
+      {driftSuggestion !== null && (
+        <div className="calib-suggest-banner">
+          <p className="calib-suggest-text">
+            {calibrated
+              ? `端末を変えた？再キャリブレーションがおすすめです。(現在の傾向: ${formatSignedMs(driftSuggestion)})`
+              : `全体的に ${formatSignedMs(driftSuggestion)} ${driftSuggestion > 0 ? '遅め' : '早め'}傾向です。キャリブレーションで精度が上がる可能性があります。`}
+          </p>
+          <button className="primary calib-suggest-cta" onClick={() => goto('calibration')}>
+            キャリブレーションする
+          </button>
+        </div>
+      )}
+
       <div className="row">
         <button className="primary" onClick={() => goto('game')}>
           リトライ
@@ -141,8 +166,20 @@ export function ResultScreen() {
           級選択へ
         </button>
       </div>
+      <div className="row">
+        <button className="secondary calib-funnel-btn" onClick={() => goto('calibration')}>
+          {calibrated
+            ? `再キャリブレーションする (現在 ${formatSignedMs(Math.round(calibrationOffsetSec * 1000))})`
+            : 'キャリブレーションする'}
+        </button>
+      </div>
     </main>
   );
+}
+
+function formatSignedMs(ms: number): string {
+  if (ms > 0) return `+${ms}ms`;
+  return `${ms}ms`;
 }
 
 function formatBiasMs(ms: number): string {
