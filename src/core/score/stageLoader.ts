@@ -70,6 +70,8 @@ export async function loadStage(id: string): Promise<StageWithMeta> {
     bpm: meta.bpm,
     level: meta.level,
     themeColor: meta.themeColor,
+    indexInLevel: meta.indexInLevel,
+    isExam: meta.isExam,
     score,
   };
 }

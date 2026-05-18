@@ -52,6 +52,10 @@ const STAGE_METAS: readonly StageMeta[] = [
 export interface StageWithMeta extends Stage {
   level: number;
   themeColor: string;
+  /** 1-based position within a level's stage list. Undefined = single-stage level. */
+  indexInLevel?: number;
+  /** True for the "skip-test" stage in #31's Duolingo-style progression. */
+  isExam?: boolean;
 }
 
 export const STAGES: readonly StageWithMeta[] = STAGE_METAS.map((m) => ({
