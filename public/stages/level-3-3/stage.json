@@ -1,7 +1,7 @@
 {
   "id": "level-3-3",
-  "level": 3,
-  "indexInLevel": 3,
+  "movement": 3,
+  "indexInMovement": 3,
   "name": "Etude 3-3",
   "description": "裏拍を踏みしめる",
   "bpm": 90,

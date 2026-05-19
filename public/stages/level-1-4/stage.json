@@ -1,7 +1,7 @@
 {
   "id": "level-1-4",
-  "level": 1,
-  "indexInLevel": 4,
+  "movement": 1,
+  "indexInMovement": 4,
   "name": "Etude 1-4",
   "description": "4分と2分のリレー",
   "bpm": 80,

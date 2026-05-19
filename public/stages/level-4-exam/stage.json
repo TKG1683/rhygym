@@ -1,8 +1,8 @@
 {
   "id": "level-4-exam",
-  "level": 4,
-  "indexInLevel": 6,
-  "isExam": true,
+  "movement": 4,
+  "indexInMovement": 6,
+  "isFinal": true,
   "name": "Movement 4-Final",
   "description": "次レベルへ向け、16分音符の予告",
   "bpm": 92,

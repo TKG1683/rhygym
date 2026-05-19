@@ -22,7 +22,7 @@ function rankAtLeast(rank: string, min: string): boolean {
 
 /**
  * Pick the "next stage" relative to `current` from the loaded roster.
- *  1. Same level, indexInLevel + 1 (or — if neither carries an index —
+ *  1. Same level, indexInMovement + 1 (or — if neither carries an index —
  *     the next entry in the roster that shares the same level).
  *  2. Otherwise, the first stage of the next-higher level.
  *  3. Otherwise (current is the last stage of the highest level), null.
@@ -34,31 +34,31 @@ function findNextEtude(
   roster: readonly EtudeWithMovementMeta[],
   current: EtudeWithMovementMeta,
 ): EtudeWithMovementMeta | null {
-  if (current.isExam) {
-    return firstEtudeOfMovement(roster, current.level + 1);
+  if (current.isFinal) {
+    return firstEtudeOfMovement(roster, current.movement + 1);
   }
-  if (current.indexInLevel != null) {
+  if (current.indexInMovement != null) {
     const sameLevelNext = roster.find(
-      (s) => s.level === current.level && s.indexInLevel === current.indexInLevel! + 1,
+      (s) => s.movement === current.movement && s.indexInMovement === current.indexInMovement! + 1,
     );
     if (sameLevelNext) return sameLevelNext;
   } else {
     // Roster doesn't carry per-stage indices (placeholder ETUDES): use
     // roster order within the level.
-    const sameLevel = roster.filter((s) => s.level === current.level);
+    const sameLevel = roster.filter((s) => s.movement === current.movement);
     const idx = sameLevel.findIndex((s) => s.id === current.id);
     if (idx >= 0 && idx + 1 < sameLevel.length) return sameLevel[idx + 1]!;
   }
-  return firstEtudeOfMovement(roster, current.level + 1);
+  return firstEtudeOfMovement(roster, current.movement + 1);
 }
 
 function firstEtudeOfMovement(
   roster: readonly EtudeWithMovementMeta[],
-  level: number,
+  movement: number,
 ): EtudeWithMovementMeta | null {
-  const inLevel = roster.filter((s) => s.level === level);
+  const inLevel = roster.filter((s) => s.movement === movement);
   if (inLevel.length === 0) return null;
-  const withIndex = inLevel.find((s) => s.indexInLevel === 1);
+  const withIndex = inLevel.find((s) => s.indexInMovement === 1);
   return withIndex ?? inLevel[0] ?? null;
 }
 
@@ -90,7 +90,7 @@ export function ResultScreen() {
     if (stage) {
       const roster = loadedEtudes ?? ETUDES;
       const meta = roster.find((s) => s.id === stage.id);
-      if (meta) setSelectInitialMovement(meta.level);
+      if (meta) setSelectInitialMovement(meta.movement);
     }
     goto('select');
   };

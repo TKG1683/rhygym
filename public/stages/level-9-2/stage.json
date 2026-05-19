@@ -1,7 +1,7 @@
 {
   "id": "level-9-2",
-  "level": 9,
-  "indexInLevel": 2,
+  "movement": 9,
+  "indexInMovement": 2,
   "name": "Etude 9-2",
   "description": "7/8 拍子の躍動",
   "bpm": 236,

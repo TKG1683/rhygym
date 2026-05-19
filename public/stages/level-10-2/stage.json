@@ -1,7 +1,7 @@
 {
   "id": "level-10-2",
-  "level": 10,
-  "indexInLevel": 2,
+  "movement": 10,
+  "indexInMovement": 2,
   "name": "Etude 10-2",
   "description": "テンポチェンジ + 6/8 への揺らぎ",
   "bpm": 126,

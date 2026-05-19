@@ -1,7 +1,7 @@
 {
   "id": "level-9-3",
-  "level": 9,
-  "indexInLevel": 3,
+  "movement": 9,
+  "indexInMovement": 3,
   "name": "Etude 9-3",
   "description": "ヘミオラ — 3 を 2 に組替",
   "bpm": 118,

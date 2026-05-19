@@ -1,7 +1,7 @@
 {
   "id": "level-6-5",
-  "level": 6,
-  "indexInLevel": 5,
+  "movement": 6,
+  "indexInMovement": 5,
   "name": "Etude 6-5",
   "description": "裏拍とタイで踊る",
   "bpm": 103,

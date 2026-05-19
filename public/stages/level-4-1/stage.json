@@ -1,7 +1,7 @@
 {
   "id": "level-4-1",
-  "level": 4,
-  "indexInLevel": 1,
+  "movement": 4,
+  "indexInMovement": 1,
   "name": "Etude 4-1",
   "description": "付点4分音符の躍動",
   "bpm": 92,

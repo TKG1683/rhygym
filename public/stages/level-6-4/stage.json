@@ -1,7 +1,7 @@
 {
   "id": "level-6-4",
-  "level": 6,
-  "indexInLevel": 4,
+  "movement": 6,
+  "indexInMovement": 4,
   "name": "Etude 6-4",
   "description": "アンチシペーションで先取り",
   "bpm": 103,

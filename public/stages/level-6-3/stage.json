@@ -1,7 +1,7 @@
 {
   "id": "level-6-3",
-  "level": 6,
-  "indexInLevel": 3,
+  "movement": 6,
+  "indexInMovement": 3,
   "name": "Etude 6-3",
   "description": "シンコペとタイの混合",
   "bpm": 103,

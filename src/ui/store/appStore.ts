@@ -92,7 +92,7 @@ interface AppState {
   setEtudesLoadState: (state: EtudesLoadState) => void;
   setEtudesLoadError: (error: string | null) => void;
   setCalibrationReturnScreen: (screen: Screen | null) => void;
-  setSelectInitialMovement: (level: number | null) => void;
+  setSelectInitialMovement: (movement: number | null) => void;
   setMetronomeAccentForTs: (tsKey: string, pattern: boolean[]) => void;
   resetMetronomeAccentForTs: (tsKey: string) => void;
 }

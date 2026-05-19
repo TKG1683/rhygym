@@ -37,7 +37,7 @@ function movementMedal(stages: readonly EtudeWithMovementMeta[], bests: Record<s
 }
 
 interface MovementGroup {
-  level: number;
+  movement: number;
   themeColor: string;
   stages: readonly EtudeWithMovementMeta[];
 }
@@ -66,14 +66,14 @@ export function StageSelectScreen() {
   const levelGroups = useMemo<MovementGroup[]>(() => {
     const byLevel = new Map<number, EtudeWithMovementMeta[]>();
     for (const stage of stages) {
-      const list = byLevel.get(stage.level) ?? [];
+      const list = byLevel.get(stage.movement) ?? [];
       list.push(stage);
-      byLevel.set(stage.level, list);
+      byLevel.set(stage.movement, list);
     }
     return Array.from(byLevel.entries())
       .sort((a, b) => a[0] - b[0])
-      .map(([level, groupStages]) => ({
-        level,
+      .map(([movement, groupStages]) => ({
+        movement,
         themeColor: groupStages[0]!.themeColor,
         stages: groupStages,
       }));
@@ -95,7 +95,7 @@ export function StageSelectScreen() {
   };
 
   if (openMovement !== null) {
-    const group = levelGroups.find((g) => g.level === openMovement);
+    const group = levelGroups.find((g) => g.movement === openMovement);
     if (!group) {
       // Level disappeared (shouldn't happen, but guard anyway).
       setOpenMovement(null);
@@ -132,7 +132,7 @@ interface MovementListProps {
   bests: Record<string, BestRecord>;
   loadingHint: string | null;
   fallbackHint: string | null;
-  onOpenMovement: (level: number) => void;
+  onOpenMovement: (movement: number) => void;
   onBack: () => void;
 }
 
@@ -148,7 +148,7 @@ function MovementListView({ groups, bests, loadingHint, fallbackHint, onOpenMove
             CLEAR_RANKS.has(bests[s.id]?.rank ?? 'D'),
           ).length;
           return (
-            <li key={group.level}>
+            <li key={group.movement}>
               <MovementCard
                 group={group}
                 medal={movementMedal(group.stages, bests)}
@@ -172,21 +172,21 @@ interface MovementCardProps {
   medal: Medal | null;
   cleared: number;
   total: number;
-  onOpen: (level: number) => void;
+  onOpen: (movement: number) => void;
 }
 
 function MovementCard({ group, medal, cleared, total, onOpen }: MovementCardProps) {
   return (
     <button
       className="etude-card"
-      onClick={() => onOpen(group.level)}
+      onClick={() => onOpen(group.movement)}
       style={{ borderColor: group.themeColor }}
     >
       <span className="etude-card-stripe" style={{ background: group.themeColor }} />
-      <span className="etude-card-glyph" aria-hidden="true">{movementGlyph(group.level)}</span>
+      <span className="etude-card-glyph" aria-hidden="true">{movementGlyph(group.movement)}</span>
       <div className="etude-card-body">
         <div className="etude-card-head">
-          <span className="etude-card-name">Movement {group.level}</span>
+          <span className="etude-card-name">Movement {group.movement}</span>
         </div>
         <div className="etude-card-desc">
           {cleared}/{total} クリア (A以上)
@@ -234,7 +234,7 @@ function EtudeListView({ group, bests, onStart, onBack }: EtudeListProps) {
       <button className="secondary select-back" onClick={onBack}>
         ← Movement 一覧へ
       </button>
-      <h1 className="select-title">Movement {group.level}</h1>
+      <h1 className="select-title">Movement {group.movement}</h1>
       <ul className="etude-list">
         {group.stages.map((stage) => (
           <li key={stage.id}>
@@ -295,8 +295,8 @@ function RankMedal({ rank }: { rank: Rank }) {
  * Glyph for each level (1-10). Reads as a small "you're climbing the
  * music notation tree" indicator on top of the theme color.
  */
-function movementGlyph(level: number): string {
-  switch (level) {
+function movementGlyph(movement: number): string {
+  switch (movement) {
     case 1:  return '♩';
     case 2:  return '♪';
     case 3:  return '♫';
@@ -312,8 +312,8 @@ function movementGlyph(level: number): string {
 }
 
 function etudeGlyph(stage: EtudeWithMovementMeta): string {
-  if (stage.isExam) return '★';
-  return movementGlyph(stage.level);
+  if (stage.isFinal) return '★';
+  return movementGlyph(stage.movement);
 }
 
 /** Display the piece's opening time signature on the Etude card. */
