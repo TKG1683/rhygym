@@ -1056,6 +1056,130 @@ input[type='range']:disabled {
   opacity: 1;
 }
 
+/* In-game metronome accent editor. One row per unique time signature
+ * the piece visits; each beat is a toggle. Custom patterns persist to
+ * localStorage via the appStore so the player's preferences survive
+ * a reload. Collapsed by default via <details> so it doesn't crowd
+ * the game screen — players who never customise never see it. */
+.metronome-config {
+  width: 100%;
+  max-width: 480px;
+  margin-top: var(--space-2);
+  padding: 0;
+  background: var(--surface);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-md);
+  box-sizing: border-box;
+}
+
+.metronome-config-summary {
+  padding: var(--space-3);
+  font-size: var(--fs-sm);
+  font-weight: 700;
+  opacity: 0.8;
+  cursor: pointer;
+  list-style: none;
+  user-select: none;
+  position: relative;
+  padding-right: calc(var(--space-3) + 16px);
+}
+
+.metronome-config-summary::-webkit-details-marker {
+  display: none;
+}
+
+.metronome-config-summary::after {
+  content: '▾';
+  position: absolute;
+  right: var(--space-3);
+  top: 50%;
+  transform: translateY(-50%) rotate(-90deg);
+  transition: transform 150ms ease;
+  font-size: 12px;
+}
+
+.metronome-config[open] > .metronome-config-summary::after {
+  transform: translateY(-50%) rotate(0deg);
+}
+
+.metronome-config-body {
+  padding: 0 var(--space-3) var(--space-3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.metronome-config-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  width: 100%;
+}
+
+.metronome-config-ts {
+  font-weight: 700;
+  font-size: var(--fs-md);
+  min-width: 40px;
+  font-variant-numeric: tabular-nums;
+  flex-shrink: 0;
+}
+
+.metronome-config-beats {
+  display: flex;
+  gap: 6px;
+  flex: 1;
+  justify-content: space-evenly;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+
+.metronome-beat {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 2px solid var(--brand-primary);
+  background: var(--surface-elevated);
+  color: var(--text-strong);
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 700;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-variant-numeric: tabular-nums;
+  transition: background 120ms ease, transform 80ms ease;
+}
+
+.metronome-beat.is-accent {
+  background: var(--brand-accent);
+  color: var(--text-on-dark, #fffaef);
+  border-color: var(--brand-accent);
+}
+
+.metronome-beat.is-soft {
+  opacity: 0.55;
+}
+
+.metronome-beat:active {
+  transform: scale(0.94);
+}
+
+.metronome-reset {
+  font-size: var(--fs-xs);
+  padding: 6px 10px;
+  background: transparent;
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-sm);
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.metronome-reset:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
 /* Wrap the Result-screen score so a long staff (Lv9-10 with 16+
  * measures) gets a horizontal scroll area instead of being crushed
  * into viewport width. overscroll-behavior-x: contain stops a

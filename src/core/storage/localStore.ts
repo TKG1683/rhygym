@@ -12,6 +12,7 @@ import type { Rank } from '../judgement/score';
 const STORAGE_KEY = 'rhygym:best:v1';
 const CALIB_KEY = 'rhygym:calibration:v1';
 const CALIB_SUGGEST_DISMISSED_KEY = 'rhygym:calibSuggestDismissed:v1';
+const METRONOME_ACCENTS_KEY = 'rhygym:metronomeAccents:v1';
 
 export interface BestRecord {
   stageId: string;
@@ -156,5 +157,47 @@ export function setCalibSuggestDismissed(dismissed: boolean): void {
     localStorage.setItem(CALIB_SUGGEST_DISMISSED_KEY, JSON.stringify(dismissed));
   } catch {
     // storage unavailable — banner will just reappear next visit
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/*  Metronome accent overrides per time signature                     */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Per-time-sig accent override map. Key is "<numerator>/<denominator>"
+ * (e.g. "6/8"); value is a boolean[] of length numerator where true =
+ * accent (loud click), false = soft (ghost click). When a time
+ * signature isn't in the map, the metronome falls back to its built-in
+ * defaults (compound = group head, 5/8 = 3+2, 7/8 = 2+2+3,
+ * everything else = all accented).
+ */
+export type MetronomeAccents = Record<string, boolean[]>;
+
+export function getMetronomeAccents(): MetronomeAccents {
+  try {
+    if (typeof localStorage === 'undefined') return {};
+    const raw = localStorage.getItem(METRONOME_ACCENTS_KEY);
+    if (!raw) return {};
+    const parsed = JSON.parse(raw);
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return {};
+    const out: MetronomeAccents = {};
+    for (const [k, v] of Object.entries(parsed)) {
+      if (Array.isArray(v) && v.every((x) => typeof x === 'boolean')) {
+        out[k] = v as boolean[];
+      }
+    }
+    return out;
+  } catch {
+    return {};
+  }
+}
+
+export function setMetronomeAccents(value: MetronomeAccents): void {
+  try {
+    if (typeof localStorage === 'undefined') return;
+    localStorage.setItem(METRONOME_ACCENTS_KEY, JSON.stringify(value));
+  } catch {
+    // storage unavailable — settings just won't persist this session
   }
 }

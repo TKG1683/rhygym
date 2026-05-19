@@ -82,8 +82,8 @@ function ticksPerBeat(ts: TimeSignatureEvent): number {
 }
 
 /**
- * Decide whether a given beat-within-measure should be accented for
- * the click grid:
+ * Default accent pattern for a time signature, as a boolean array of
+ * length numerator (true = accent, false = soft):
  *  - compound 8/ (6/8, 9/8, 12/8): every 3rd eighth ("TA-ta-ta")
  *  - asymmetric 5/8 (3+2): beats 0 and 3
  *  - asymmetric 7/8 (2+2+3): beats 0, 2, 4
@@ -91,25 +91,42 @@ function ticksPerBeat(ts: TimeSignatureEvent): number {
  *    grid stays "neutral" so the player has to read phrasing from
  *    the staff, not the metronome.
  *
- * The asymmetric patterns are the most common Greek / Bulgarian
- * defaults; stages that want a different grouping (e.g. 7/8 = 3+2+2)
- * can override later.
+ * Stages that want a different grouping (e.g. 7/8 = 3+2+2) plug in a
+ * custom override via the appStore metronomeAccents map.
+ */
+export function defaultAccentPattern(numerator: number, denominator: number): boolean[] {
+  if (denominator === 8 && numerator % 3 === 0) {
+    return Array.from({ length: numerator }, (_, i) => i % 3 === 0);
+  }
+  if (denominator === 8 && numerator === 5) {
+    return Array.from({ length: numerator }, (_, i) => i === 0 || i === 3);
+  }
+  if (denominator === 8 && numerator === 7) {
+    return Array.from({ length: numerator }, (_, i) => i === 0 || i === 2 || i === 4);
+  }
+  return Array.from({ length: numerator }, () => true);
+}
+
+/**
+ * Whether a given beat-within-measure should be accented. If a custom
+ * pattern is supplied and its length matches `numerator`, that wins;
+ * otherwise the built-in default (see `defaultAccentPattern`) applies.
  */
 export function isAccentBeat(
   numerator: number,
   denominator: number,
   beatIndexInMeasure: number,
+  customPattern?: readonly boolean[],
 ): boolean {
-  if (denominator === 8 && numerator % 3 === 0) {
-    return beatIndexInMeasure % 3 === 0;
+  if (customPattern && customPattern.length === numerator) {
+    return customPattern[beatIndexInMeasure] ?? false;
   }
-  if (denominator === 8 && numerator === 5) {
-    return beatIndexInMeasure === 0 || beatIndexInMeasure === 3;
-  }
-  if (denominator === 8 && numerator === 7) {
-    return beatIndexInMeasure === 0 || beatIndexInMeasure === 2 || beatIndexInMeasure === 4;
-  }
-  return true;
+  return defaultAccentPattern(numerator, denominator)[beatIndexInMeasure] ?? true;
+}
+
+/** Standard "n/d" key used by the accent override map. */
+export function tsKey(numerator: number, denominator: number): string {
+  return `${numerator}/${denominator}`;
 }
 
 function ticksPerMeasure(ts: TimeSignatureEvent): number {
@@ -129,6 +146,7 @@ export function collectBeats(
   timeSigs: readonly TimeSignatureEvent[],
   fromTick: number,
   toTick: number,
+  accentOverrides?: Readonly<Record<string, readonly boolean[]>>,
 ): Beat[] {
   const result: Beat[] = [];
   if (timeSigs.length === 0 || toTick <= fromTick) return result;
@@ -163,7 +181,13 @@ export function collectBeats(
     }
     const posInMeasure = (tick - ts.tick) % measureTicks;
     const beatIndexInMeasure = posInMeasure / beatTicks;
-    const isDownbeat = isAccentBeat(ts.numerator, ts.denominator, beatIndexInMeasure);
+    const override = accentOverrides?.[tsKey(ts.numerator, ts.denominator)];
+    const isDownbeat = isAccentBeat(
+      ts.numerator,
+      ts.denominator,
+      beatIndexInMeasure,
+      override,
+    );
     result.push({ tick, isDownbeat });
     tick += beatTicks;
   }

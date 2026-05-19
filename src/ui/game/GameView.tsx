@@ -29,6 +29,7 @@ import {
 import type { Score, Stage } from '../../core/model';
 import { STAGES } from '../../core/score/stages';
 import { TickTimeConverter } from '../../core/timing/tickTime';
+import { defaultAccentPattern, tsKey } from '../../core/audio/metronome';
 import type { NoteCoords } from '../vexflow/ScoreRenderer';
 import { useAppStore } from '../store/appStore';
 import { ScoreView } from '../vexflow/ScoreView';
@@ -64,6 +65,9 @@ export function GameView({ stage }: Props) {
   const setBpmMultiplier = useAppStore((s) => s.setBpmMultiplier);
   const loadedStages = useAppStore((s) => s.loadedStages);
   const setSelectInitialLevel = useAppStore((s) => s.setSelectInitialLevel);
+  const metronomeAccents = useAppStore((s) => s.metronomeAccents);
+  const setMetronomeAccentForTs = useAppStore((s) => s.setMetronomeAccentForTs);
+  const resetMetronomeAccentForTs = useAppStore((s) => s.resetMetronomeAccentForTs);
 
   // Abort the run and drop the player back into the Movement's Etude
   // list (NOT the top-level Movement grid). Same idea as Result's
@@ -90,6 +94,34 @@ export function GameView({ stage }: Props) {
   const isCompoundPiece =
     tsFirst != null && tsFirst.denominator === 8 && tsFirst.numerator % 3 === 0;
   const beatSymbol = isCompoundPiece ? '♩.' : '♩';
+
+  // Unique time signatures the piece visits, in score order. Drives
+  // the accent-config UI — one row per distinct meter, in the order
+  // the player encounters them.
+  const uniqueTimeSigs = useMemo(() => {
+    const seen = new Set<string>();
+    const out: { numerator: number; denominator: number; key: string }[] = [];
+    for (const ts of stage.score.timeSigs) {
+      const key = tsKey(ts.numerator, ts.denominator);
+      if (seen.has(key)) continue;
+      seen.add(key);
+      out.push({ numerator: ts.numerator, denominator: ts.denominator, key });
+    }
+    return out;
+  }, [stage]);
+
+  const accentPatternFor = (numerator: number, denominator: number): boolean[] => {
+    const key = tsKey(numerator, denominator);
+    const stored = metronomeAccents[key];
+    if (stored && stored.length === numerator) return stored;
+    return defaultAccentPattern(numerator, denominator);
+  };
+  const toggleAccent = (key: string, numerator: number, denominator: number, beat: number) => {
+    const current = accentPatternFor(numerator, denominator);
+    const next = current.map((b, i) => (i === beat ? !b : b));
+    setMetronomeAccentForTs(key, next);
+  };
+
   /** Debug: draw a moving playhead over the staff so we can eyeball timing. */
   const [showPlayhead, setShowPlayhead] = useState(false);
   const [noteCoords, setNoteCoords] = useState<Map<string, NoteCoords> | null>(null);
@@ -124,6 +156,18 @@ export function GameView({ stage }: Props) {
    */
   const startAudioTimeRef = useRef(0);
 
+  // Push accent-pattern changes into the running FreeMetronome without
+  // tearing the audio graph down — toggling a beat shouldn't cause a
+  // click drop-out. Only the primary time-sig is relevant since
+  // FreeMetronome runs at the piece's opening meter (mid-piece meter
+  // changes for the click grid are a separate issue).
+  useEffect(() => {
+    const fm = freeMetronomeRef.current;
+    if (!fm) return;
+    const ts = adjustedScore.timeSigs[0] ?? { tick: 0, numerator: 4, denominator: 4 };
+    fm.setAccentPattern(metronomeAccents[tsKey(ts.numerator, ts.denominator)]);
+  }, [metronomeAccents, adjustedScore]);
+
   // Build/tear down the audio machinery for this stage. Re-runs when the
   // player changes BPM in waiting state so the metronome restarts at the
   // new tempo.
@@ -134,10 +178,12 @@ export function GameView({ stage }: Props) {
     setPhase('waiting');
 
     const ts = adjustedScore.timeSigs[0] ?? { tick: 0, numerator: 4, denominator: 4 };
+    const fmKey = tsKey(ts.numerator, ts.denominator);
     const fm = new FreeMetronome(audioContext, {
       bpm: effectiveBpm,
       numerator: ts.numerator,
       denominator: ts.denominator,
+      accentPattern: metronomeAccents[fmKey],
     });
     // Push beat 1 100 ms into the future so the audio thread has time
     // to fully warm up before it has to render the first real click.
@@ -408,6 +454,41 @@ export function GameView({ stage }: Props) {
           onChange={(e) => setBpmMultiplier(Number(e.target.value))}
         />
       </div>
+      <details className="metronome-config no-tap">
+        <summary className="metronome-config-summary">メトロノーム アクセント設定</summary>
+        <div className="metronome-config-body">
+          {uniqueTimeSigs.map((ts) => {
+            const pattern = accentPatternFor(ts.numerator, ts.denominator);
+            const isCustom = ts.key in metronomeAccents;
+            return (
+              <div className="metronome-config-row" key={ts.key}>
+                <span className="metronome-config-ts">{ts.key}</span>
+                <div className="metronome-config-beats">
+                  {pattern.map((accent, i) => (
+                    <button
+                      key={i}
+                      type="button"
+                      className={`metronome-beat ${accent ? 'is-accent' : 'is-soft'}`}
+                      onClick={() => toggleAccent(ts.key, ts.numerator, ts.denominator, i)}
+                      aria-label={`${ts.key} の ${i + 1} 拍目を${accent ? 'アクセント無し' : 'アクセント'}に切替`}
+                    >
+                      {i + 1}
+                    </button>
+                  ))}
+                </div>
+                <button
+                  type="button"
+                  className="metronome-reset"
+                  onClick={() => resetMetronomeAccentForTs(ts.key)}
+                  disabled={!isCustom}
+                >
+                  リセット
+                </button>
+              </div>
+            );
+          })}
+        </div>
+      </details>
       <p className="status-text">{status}</p>
       <JudgementLayer verdict={verdict} triggerId={triggerId} />
     </TapArea>

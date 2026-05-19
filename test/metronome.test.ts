@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { PPQ, QUARTER_NOTE_TICKS, WHOLE_NOTE_TICKS } from '../src/core/model';
 import {
   collectBeats,
+  defaultAccentPattern,
+  isAccentBeat,
   METRONOME_DOWNBEAT_FREQUENCY_HZ,
   METRONOME_OFFBEAT_FREQUENCY_HZ,
   scheduleClick,
@@ -103,6 +105,45 @@ describe('collectBeats — time-signature change mid-window', () => {
       WHOLE_NOTE_TICKS + QUARTER_NOTE_TICKS * 2,
     ]);
     expect(beats[4]!.isDownbeat).toBe(true);
+  });
+});
+
+describe('collectBeats — accent overrides', () => {
+  it('user-supplied 4/4 pattern (only beat 1 accented) overrides the simple-meter default', () => {
+    const ts = [{ tick: 0, numerator: 4, denominator: 4 }];
+    const overrides = { '4/4': [true, false, false, false] };
+    const beats = collectBeats(ts, 0, WHOLE_NOTE_TICKS, overrides);
+    expect(beats.map((b) => b.isDownbeat)).toEqual([true, false, false, false]);
+  });
+
+  it('override of wrong length is ignored — defaults apply', () => {
+    const ts = [{ tick: 0, numerator: 4, denominator: 4 }];
+    const overrides = { '4/4': [true, false] }; // wrong length
+    const beats = collectBeats(ts, 0, WHOLE_NOTE_TICKS, overrides);
+    expect(beats.map((b) => b.isDownbeat)).toEqual([true, true, true, true]);
+  });
+
+  it('a custom 6/8 pattern lets the player flatten the dotted-quarter accent', () => {
+    const ts = [{ tick: 0, numerator: 6, denominator: 8 }];
+    const eighth = PPQ / 2;
+    const overrides = { '6/8': [true, true, true, true, true, true] };
+    const beats = collectBeats(ts, 0, eighth * 6, overrides);
+    expect(beats.every((b) => b.isDownbeat)).toBe(true);
+  });
+});
+
+describe('defaultAccentPattern + isAccentBeat', () => {
+  it('defaultAccentPattern returns a length-numerator array', () => {
+    expect(defaultAccentPattern(4, 4)).toEqual([true, true, true, true]);
+    expect(defaultAccentPattern(6, 8)).toEqual([true, false, false, true, false, false]);
+    expect(defaultAccentPattern(5, 8)).toEqual([true, false, false, true, false]);
+    expect(defaultAccentPattern(7, 8)).toEqual([true, false, true, false, true, false, false]);
+  });
+
+  it('isAccentBeat with custom pattern wins over defaults', () => {
+    // 4/4 default = all accent; custom = only beat 1
+    expect(isAccentBeat(4, 4, 0, [true, false, false, false])).toBe(true);
+    expect(isAccentBeat(4, 4, 2, [true, false, false, false])).toBe(false);
   });
 });
 
