@@ -269,7 +269,7 @@ function EtudeCard({ stage, best, onStart }: EtudeCardProps) {
         <div className="etude-card-meta">
           <span className="etude-card-ts">{etudeTimeSig(stage)}</span>
           <span className="etude-card-bpm">
-            ♩{isCompoundEtude(stage) && <span className="bpm-dot">.</span>} = {stage.bpm}
+            {isAsymmetricEtude(stage) ? '♪' : '♩'}{isCompoundEtude(stage) && <span className="bpm-dot">.</span>} = {stage.bpm}
           </span>
           {best && (
             <span className="etude-card-best">
@@ -330,4 +330,13 @@ function etudeTimeSig(stage: EtudeWithMovementMeta): string {
 function isCompoundEtude(stage: EtudeWithMovementMeta): boolean {
   const ts = stage.score.timeSigs[0];
   return ts != null && ts.denominator === 8 && ts.numerator % 3 === 0;
+}
+
+/**
+ * True for asymmetric primary meters (5/8 / 7/8) where the bpm value
+ * is counted in eighths and we render "♪" instead of "♩".
+ */
+function isAsymmetricEtude(stage: EtudeWithMovementMeta): boolean {
+  const ts = stage.score.timeSigs[0];
+  return ts != null && ts.denominator === 8 && (ts.numerator === 5 || ts.numerator === 7);
 }
