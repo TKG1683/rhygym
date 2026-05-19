@@ -479,9 +479,9 @@ const STAGE_DEFS: readonly StageDef[] = [
     indexInLevel: 3,
     name: 'Etude 4-3',
     description: '6/8 拍子に入門',
-    bpm: 100,
+    bpm: 67,
     themeColor: COLOR[4],
-    score: buildScore({ ts: [6, 8], bpm: 100 }, [
+    score: buildScore({ ts: [6, 8], bpm: 67 }, [
       qd(), qd(),
       q(), eighth(), qd(),
       eighth(), eighth(), eighth(), qd(),
@@ -498,9 +498,9 @@ const STAGE_DEFS: readonly StageDef[] = [
     indexInLevel: 4,
     name: 'Etude 4-4',
     description: '6/8 + 付点四分の流れ',
-    bpm: 100,
+    bpm: 67,
     themeColor: COLOR[4],
-    score: buildScore({ ts: [6, 8], bpm: 100 }, [
+    score: buildScore({ ts: [6, 8], bpm: 67 }, [
       qd(), qd(),
       eighth(), eighth(), eighth(), qd(),
       q(), eighth(), q(), eighth(),
@@ -599,9 +599,9 @@ const STAGE_DEFS: readonly StageDef[] = [
     indexInLevel: 3,
     name: 'Etude 5-3',
     description: '6/8 で十六分を散りばめる',
-    bpm: 110,
+    bpm: 73,
     themeColor: COLOR[5],
-    score: buildScore({ ts: [6, 8], bpm: 110 }, [
+    score: buildScore({ ts: [6, 8], bpm: 73 }, [
       qd(), eighth(), sixteenth(), sixteenth(), eighth(),
       eighth(), sixteenth(), sixteenth(), eighth(), qd(),
       qd(), eighth(), eighth(), eighth(),
@@ -859,9 +859,9 @@ const STAGE_DEFS: readonly StageDef[] = [
     indexInLevel: 4,
     name: 'Etude 7-4',
     description: '9/8 拍子に親しむ',
-    bpm: 130,
+    bpm: 87,
     themeColor: COLOR[7],
-    score: buildScore({ ts: [9, 8], bpm: 130 }, [
+    score: buildScore({ ts: [9, 8], bpm: 87 }, [
       qd(), qd(), qd(),
       eighth(), eighth(), eighth(), qd(), qd(),
       qd(), eighth(), eighth(), eighth(), eighth(), eighth(), eighth(),
@@ -1100,9 +1100,9 @@ const STAGE_DEFS: readonly StageDef[] = [
     indexInLevel: 4,
     name: 'Etude 9-4',
     description: '複合拍子の組替え (9/8 ⇄ 6/8)',
-    bpm: 152,
+    bpm: 101,
     themeColor: COLOR[9],
-    score: buildScore({ ts: [9, 8], bpm: 152 }, [
+    score: buildScore({ ts: [9, 8], bpm: 101 }, [
       qd(), qd(), qd(),
       eighth(), eighth(), eighth(), eighth(), eighth(), eighth(), eighth(), eighth(), eighth(),
       tsChange(6, 8),
