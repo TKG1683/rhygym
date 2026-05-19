@@ -46,10 +46,14 @@ const COLOR: Record<number, string> = {
   10: '#E8612E',
 };
 
-// Per-Level BPM target — the headline tempo for that Level's curriculum.
+// Per-Level BPM target — the headline tempo for that Movement's
+// curriculum. Graded slowdown: Lv1 keeps the original tempo, each
+// subsequent Movement multiplies by a factor that bottoms out at
+// 0.75 by Lv10. Keeps the climb upward while easing the high-level
+// pieces that previously felt sprinted.
 const MOVEMENT_BPM: Record<number, number> = {
-  1: 80, 2: 90, 3: 95, 4: 100, 5: 110,
-  6: 120, 7: 130, 8: 140, 9: 152, 10: 168,
+  1: 80, 2: 87, 3: 90, 4: 92, 5: 98,
+  6: 103, 7: 108, 8: 113, 9: 118, 10: 126,
 };
 
 // One-line description for each Level's 5 graded stages + exam. Authored
