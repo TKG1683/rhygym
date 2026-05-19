@@ -38,15 +38,21 @@ export function JudgementLayer({ verdict, triggerId }: Props) {
     return () => clearTimeout(t);
   }, [verdict, triggerId]);
 
-  if (!visible || verdict === null) return null;
-
+  // Always render the reserved band so the surrounding layout doesn't
+  // jump when a verdict appears/disappears. The inner label is what
+  // actually fades in/out — keeping the band height-stable is the whole
+  // point of issue #67's "dedicated verdict zone" fix.
   return (
-    <div
-      key={triggerId}
-      className="judgement-effect"
-      style={{ color: COLORS[verdict] }}
-    >
-      {verdict}
+    <div className="judgement-band no-tap" aria-live="polite" aria-atomic="true">
+      {visible && verdict !== null && (
+        <span
+          key={triggerId}
+          className="judgement-effect"
+          style={{ color: COLORS[verdict] }}
+        >
+          {verdict}
+        </span>
+      )}
     </div>
   );
 }

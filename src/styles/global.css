@@ -492,25 +492,57 @@ input[type='range']:disabled {
   opacity: 0.5;
 }
 
+/* Verdict band — reserved vertical slot between the staff and the
+ * BPM/metronome controls. Always rendered (even empty) so the
+ * surrounding layout can't jump when a PERFECT/GOOD/MISS pops in.
+ * min-height holds the same room the 56px verdict label needs plus
+ * a touch of breathing space, so on 360px screens the band reads as
+ * a clean dedicated zone rather than a layout shift trap. */
+.judgement-band {
+  width: 100%;
+  min-height: 64px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  position: relative;
+  z-index: 5;
+}
+
 @keyframes judgement-fade {
-  0%   { opacity: 0; transform: translate(-50%, -50%) scale(0.7); }
-  20%  { opacity: 1; transform: translate(-50%, -50%) scale(1.15); }
-  60%  { opacity: 1; transform: translate(-50%, -50%) scale(1.0); }
-  100% { opacity: 0; transform: translate(-50%, -50%) scale(1.0); }
+  0%   { opacity: 0; transform: scale(0.7); }
+  20%  { opacity: 1; transform: scale(1.15); }
+  60%  { opacity: 1; transform: scale(1.0); }
+  100% { opacity: 0; transform: scale(1.0); }
 }
 
 .judgement-effect {
-  position: fixed;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
   font-size: 56px;
   font-weight: 800;
   letter-spacing: 0.08em;
+  line-height: 1;
   pointer-events: none;
   text-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
   animation: judgement-fade 320ms ease-out forwards;
-  z-index: 50;
+  /* Keep the loud size at every viewport — issue #67 explicitly
+   * forbids shrinking the verdict. Letter-spacing 0.08em on "PERFECT"
+   * fits comfortably inside 360px (≈260px wide at this size). */
+  white-space: nowrap;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* Drop the scale pop but keep a brief fade so the verdict still
+   * reads as "the thing that just happened". */
+  .judgement-effect {
+    animation: judgement-fade-reduced 320ms ease-out forwards;
+  }
+}
+
+@keyframes judgement-fade-reduced {
+  0%   { opacity: 0; }
+  20%  { opacity: 1; }
+  60%  { opacity: 1; }
+  100% { opacity: 0; }
 }
 
 /* Result screen */
