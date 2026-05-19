@@ -156,13 +156,13 @@ export function ResultScreen() {
 
   const newBest =
     stage && result
-      ? isNewBest({ stageId: stage.id, score: result.score })
+      ? isNewBest({ etudeId: stage.id, score: result.score })
       : false;
 
   useEffect(() => {
     if (!stage || !result || !newBest) return;
     setBest({
-      stageId: stage.id,
+      etudeId: stage.id,
       score: result.score,
       rank: result.rank,
       achievedAt: new Date().toISOString(),
