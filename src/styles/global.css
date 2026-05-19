@@ -872,7 +872,11 @@ input[type='range']:disabled {
 .stage-card-meta {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  /* flex-start so ts + bpm stay anchored together on the left
+   * regardless of whether a best record is present. .stage-card-best
+   * uses margin-left:auto to push itself to the right edge. With
+   * space-between the bpm would drift right whenever best was hidden. */
+  justify-content: flex-start;
   gap: var(--space-2);
   margin-top: var(--space-1);
 }
@@ -1054,6 +1058,29 @@ input[type='range']:disabled {
 
 .calib-suggest-close:hover {
   opacity: 1;
+}
+
+/* Pull the augmentation dot on "♩." in tight against the notehead.
+ * The default kerning between U+2669 (♩) and "." is too loose — they
+ * read as two separate glyphs rather than one dotted note. */
+.bpm-dot {
+  display: inline-block;
+  margin-left: -0.35em;
+  font-weight: 900;
+}
+
+/* Time-signature badge on Etude cards — sits next to the BPM mark so
+ * the player can see the meter without opening the piece. */
+.stage-card-ts {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  font-size: var(--fs-sm);
+  padding: 2px 8px;
+  border-radius: var(--radius-sm);
+  background: var(--surface-elevated);
+  color: var(--text-strong);
+  border: 1px solid var(--border-soft);
+  margin-right: var(--space-2);
 }
 
 /* In-game metronome accent editor. One row per unique time signature

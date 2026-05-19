@@ -21,7 +21,18 @@ export interface BuildOptions {
 export function buildScore(opts: BuildOptions, items: ReadonlyArray<DslItem>): Score {
   let tick = 0;
   const notes: RhythmNote[] = [];
-  const tempos: TempoEvent[] = [{ tick: 0, bpm: opts.bpm }];
+
+  // Tempo semantic: opts.bpm is what the *author* feels — for compound
+  // primary meters (6/8, 9/8, 12/8) that's the dotted-quarter pulse
+  // (♩.=N), so the internal MIDI tempo (quarter per minute) needs a
+  // ×1.5 scale to play back at the same audible speed the author
+  // expected. Simple primary meters interpret opts.bpm as ♩=N (the
+  // MIDI default), so no scale. tempoChange events use the same scale,
+  // so a mid-piece "tempoChange(120)" in a 6/8 piece still means
+  // ♩.=120 to the author.
+  const isCompoundPrimary = opts.ts[1] === 8 && opts.ts[0] % 3 === 0;
+  const tempoScale = isCompoundPrimary ? 1.5 : 1.0;
+  const tempos: TempoEvent[] = [{ tick: 0, bpm: opts.bpm * tempoScale }];
   const timeSigs: TimeSignatureEvent[] = [
     { tick: 0, numerator: opts.ts[0], denominator: opts.ts[1] },
   ];
@@ -38,7 +49,7 @@ export function buildScore(opts: BuildOptions, items: ReadonlyArray<DslItem>): S
     } else if (item.kind === 'timeSigChange') {
       timeSigs.push({ tick, numerator: item.numerator, denominator: item.denominator });
     } else if (item.kind === 'tempoChange') {
-      tempos.push({ tick, bpm: item.bpm });
+      tempos.push({ tick, bpm: item.bpm * tempoScale });
     }
   }
 
