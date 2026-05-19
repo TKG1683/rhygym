@@ -130,20 +130,26 @@ const STAGE_DESCRIPTIONS: Record<string, string> = {
 function buildLevelMetas(level: number): StageMeta[] {
   const bpm = LEVEL_BPM[level]!;
   const color = COLOR[level]!;
-  const indices: Array<{ key: string; indexInLevel: number; isExam?: boolean; suffix: string }> = [
-    { key: '1', indexInLevel: 1, suffix: '1' },
-    { key: '2', indexInLevel: 2, suffix: '2' },
-    { key: '3', indexInLevel: 3, suffix: '3' },
-    { key: '4', indexInLevel: 4, suffix: '4' },
-    { key: '5', indexInLevel: 5, suffix: '5' },
-    { key: 'exam', indexInLevel: 6, isExam: true, suffix: 'Exam' },
+  const indices: Array<{ key: string; indexInLevel: number; isExam?: boolean; minor: string }> = [
+    { key: '1', indexInLevel: 1, minor: '1' },
+    { key: '2', indexInLevel: 2, minor: '2' },
+    { key: '3', indexInLevel: 3, minor: '3' },
+    { key: '4', indexInLevel: 4, minor: '4' },
+    { key: '5', indexInLevel: 5, minor: '5' },
+    { key: 'exam', indexInLevel: 6, isExam: true, minor: 'F' },
   ];
   return indices.map((it) => {
     const id = `level-${level}-${it.key}`;
+    // Exam is no longer an étude — it's the Movement's Final, so it
+    // gets its own label rather than an "Etude N-F" suffix. Hyphen
+    // separators across the board for visual consistency.
+    const name = it.isExam
+      ? `Movement ${level}-Final`
+      : `Etude ${level}-${it.minor}`;
     const meta: StageMeta = {
       id,
-      name: `Level ${level} — ${it.suffix}`,
-      description: STAGE_DESCRIPTIONS[id] ?? `Level ${level} stage ${it.indexInLevel}`,
+      name,
+      description: STAGE_DESCRIPTIONS[id] ?? name,
       bpm,
       level,
       themeColor: color,

@@ -139,7 +139,7 @@ interface LevelListProps {
 function LevelListView({ groups, bests, loadingHint, fallbackHint, onOpenLevel, onBack }: LevelListProps) {
   return (
     <main className="screen screen-select">
-      <h1 className="select-title">Level を選ぶ</h1>
+      <h1 className="select-title">Movement を選ぶ</h1>
       {loadingHint && <p className="muted select-hint">{loadingHint}</p>}
       {fallbackHint && <p className="muted select-hint">{fallbackHint}</p>}
       <ul className="stage-list">
@@ -186,7 +186,7 @@ function LevelCard({ group, medal, cleared, total, onOpen }: LevelCardProps) {
       <span className="stage-card-glyph" aria-hidden="true">{levelGlyph(group.level)}</span>
       <div className="stage-card-body">
         <div className="stage-card-head">
-          <span className="stage-card-name">Level {group.level}</span>
+          <span className="stage-card-name">Movement {group.level}</span>
         </div>
         <div className="stage-card-desc">
           {cleared}/{total} クリア (A以上)
@@ -232,9 +232,9 @@ function StageListView({ group, bests, onStart, onBack }: StageListProps) {
   return (
     <main className="screen screen-select">
       <button className="secondary select-back" onClick={onBack}>
-        ← Level 一覧へ
+        ← Movement 一覧へ
       </button>
-      <h1 className="select-title">Level {group.level}</h1>
+      <h1 className="select-title">Movement {group.level}</h1>
       <ul className="stage-list">
         {group.stages.map((stage) => (
           <li key={stage.id}>

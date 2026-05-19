@@ -208,7 +208,7 @@ export function ResultScreen() {
         <h1>リザルト</h1>
         <p className="muted">直前のプレイ結果が見つかりません。</p>
         <button className="primary" onClick={() => goto('select')}>
-          級選択へ
+          Movement 一覧へ
         </button>
       </main>
     );
@@ -290,11 +290,11 @@ export function ResultScreen() {
         <>
           {nextStage ? (
             <button className="primary next-stage-cta" onClick={goNext}>
-              次のステージへ →
+              次の Etude へ →
             </button>
           ) : (
             <button className="primary next-stage-cta" onClick={goStageSelect}>
-              ステージ選択へ
+              Movement 一覧へ
             </button>
           )}
           <div className="row result-secondary-row">
@@ -303,7 +303,7 @@ export function ResultScreen() {
             </button>
             {!endOfRoster && (
               <button className="secondary result-secondary-btn" onClick={goStageSelect}>
-                ステージ選択へ
+                Etude 一覧へ
               </button>
             )}
           </div>
@@ -314,7 +314,7 @@ export function ResultScreen() {
             リトライ
           </button>
           <button className="secondary" onClick={goStageSelect}>
-            ステージ選択へ
+            Etude 一覧へ
           </button>
         </div>
       )}
