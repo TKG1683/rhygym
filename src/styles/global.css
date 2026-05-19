@@ -173,14 +173,15 @@ h1, h2, h3, h4, .title-logo-name, .etude-card-name, .result-rank {
  * Side icons flank a stacked English+Katakana wordmark. Kept on a
  * single flex row so it stays visually balanced down to 360px width. */
 .title-logo {
-  display: flex;
+  position: relative;
+  display: inline-flex;
+  flex-direction: column;
   align-items: center;
-  justify-content: center;
-  gap: 14px;
-  width: 100%;
-  max-width: 480px;
+  /* Padding gives the absolutely-positioned diagonal icons (top-left
+   * note glyph + bottom-right dumbbell) room to breathe outside the
+   * wordmark's footprint without overflowing the container's hit area. */
+  padding: 24px 36px;
   margin: 0 auto;
-  padding: 0 4px;
   /* Gentle floating loop kicks in after the entrance sequence settles
    * (1.2s entrance + tiny breath). Slow + small so it reads as a music
    * sway, not a UI alarm. */
@@ -188,23 +189,29 @@ h1, h2, h3, h4, .title-logo-name, .etude-card-name, .result-rank {
 }
 
 .title-logo-icon {
+  position: absolute;
   font-size: 36px;
   line-height: 1;
-  flex-shrink: 0;
-  /* Emoji + music-glyph render slightly off-baseline — nudge the
-   * decorative side icons down a hair so they sit with the wordmark. */
-  transform: translateY(2px);
   animation-duration: 0.5s;
   animation-timing-function: cubic-bezier(0.2, 0.8, 0.2, 1);
   animation-delay: 0.4s;
   animation-fill-mode: both;
 }
 
+/* Music glyphs perch on the R's "left shoulder" — top-left, pushed
+ * slightly outside the wordmark column so they read as decoration
+ * rather than a stacked character. */
 .title-logo-icon-left {
+  top: 0;
+  left: -12px;
   animation-name: title-logo-slide-in-left;
 }
 
+/* Dumbbell sits to the right of and a touch below the wordmark — not
+ * jammed into the corner. */
 .title-logo-icon-right {
+  bottom: 24px;
+  right: 0;
   animation-name: title-logo-slide-in-right;
 }
 
@@ -235,29 +242,22 @@ h1, h2, h3, h4, .title-logo-name, .etude-card-name, .result-rank {
   font-weight: 500;
 }
 
-@media (max-width: 380px) {
-  .title-logo {
-    gap: 10px;
-  }
-  .title-logo-icon {
-    font-size: 30px;
-  }
-  .title-logo-name {
-    font-size: 44px;
-  }
-  .title-logo-sub {
-    font-size: 14px;
+/* Phone-only tweak: extra vertical breath between "Rhygym" and リジム.
+ * Icon positions are absolute so they don't need media-query overrides. */
+@media (max-width: 480px) {
+  .title-logo-center {
+    gap: 8px;
   }
 }
 
 @keyframes title-logo-slide-in-left {
-  0%   { transform: translate(-120vw, 2px); opacity: 0; }
-  100% { transform: translate(0, 2px);      opacity: 1; }
+  0%   { transform: translateX(-120vw); opacity: 0; }
+  100% { transform: translateX(0);      opacity: 1; }
 }
 
 @keyframes title-logo-slide-in-right {
-  0%   { transform: translate(120vw, 2px); opacity: 0; }
-  100% { transform: translate(0, 2px);     opacity: 1; }
+  0%   { transform: translateX(120vw); opacity: 0; }
+  100% { transform: translateX(0);     opacity: 1; }
 }
 
 @keyframes title-logo-fade-up {
@@ -374,15 +374,6 @@ button.secondary:active {
   pointer-events: none;
 }
 
-.debug-toggle {
-  font-size: var(--fs-xs);
-  opacity: 0.7;
-  display: flex;
-  gap: 6px;
-  align-items: center;
-  cursor: pointer;
-}
-
 .score-view {
   width: 100%;
   background: var(--surface);
@@ -412,21 +403,37 @@ button.secondary:active {
 .screen-game {
   justify-content: flex-start;
   padding-top: 16px;
+  padding-bottom: 32px;
   gap: 12px;
-  overflow: hidden;
-  overscroll-behavior: none;
+  /* No overflow override — the page grows past 100dvh and body scrolls
+   * naturally on phones, so players can reach the BPM slider + accent
+   * editor below the verdict band. */
+}
+
+/* Tap zone = the verdict band itself. No border, no background — the
+ * band's existing min-height + the verdict / prompt text are the only
+ * visual indicators that the area is interactive. Header buttons,
+ * BPM slider, and accent editor live outside this element so they
+ * keep normal pointer / scroll behavior. */
+.game-tap-zone {
+  width: 100%;
   cursor: pointer;
   user-select: none;
   -webkit-user-select: none;
   -webkit-tap-highlight-color: transparent;
   touch-action: none;
+  display: flex;
+  align-items: stretch;
+  justify-content: center;
 }
 
-/* Interactive controls inside the TapArea opt out of rhythm-tap
- * interception so buttons, sliders and toggles work normally. */
-.screen-game .no-tap {
-  cursor: auto;
-  touch-action: auto;
+.judgement-prompt {
+  font-weight: 700;
+  font-size: var(--fs-md);
+  color: var(--text-strong);
+  text-align: center;
+  opacity: 0.6;
+  pointer-events: none;
 }
 
 .game-header {

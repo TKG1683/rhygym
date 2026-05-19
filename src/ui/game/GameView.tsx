@@ -30,11 +30,9 @@ import type { Score, Etude } from '../../core/model';
 import { ETUDES } from '../../core/score/etudes';
 import { TickTimeConverter } from '../../core/timing/tickTime';
 import { defaultAccentPattern, tsKey } from '../../core/audio/metronome';
-import type { NoteCoords } from '../vexflow/ScoreRenderer';
 import { useAppStore } from '../store/appStore';
 import { ScoreView } from '../vexflow/ScoreView';
 import { JudgementLayer } from './JudgementLayer';
-import { PlayheadLayer } from './PlayheadLayer';
 import { TapArea } from './TapArea';
 import { startGameLoop } from './gameLoop';
 
@@ -125,8 +123,6 @@ export function GameView({ stage }: Props) {
   };
 
   /** Debug: draw a moving playhead over the staff so we can eyeball timing. */
-  const [showPlayhead, setShowPlayhead] = useState(false);
-  const [noteCoords, setNoteCoords] = useState<Map<string, NoteCoords> | null>(null);
 
   const adjustedScore: Score = useMemo(
     () => ({
@@ -393,14 +389,14 @@ export function GameView({ stage }: Props) {
     );
   }
 
-  const status =
-    phase === 'waiting' ? '♪ Tap anywhere to start' :
-    phase === 'playing' ? '♪ Playing…' :
-    '';
+  // Prompt the player only in waiting state — once they tap to start,
+  // the band stays clean (the verdict pop-ups are signal enough that
+  // they're already in the right zone).
+  const status = phase === 'waiting' ? '♪ ここをタップして開始' : '';
 
   return (
-    <TapArea ctx={audioContext} onTap={handleTap} className="screen screen-game">
-      <div className="game-header no-tap">
+    <main className="screen screen-game">
+      <div className="game-header">
         <div>
           <h1 className="game-title">{stage.name}</h1>
           <p className="muted">
@@ -417,40 +413,17 @@ export function GameView({ stage }: Props) {
         </div>
       </div>
       <div className="score-view-wrapper">
-        <ScoreView
-          score={adjustedScore}
-          onRender={setNoteCoords}
-          measuresPerLine={2}
-        />
-        {showPlayhead && noteCoords && (
-          <PlayheadLayer
-            score={adjustedScore}
-            converter={converter}
-            noteCoords={noteCoords}
-            getSongSec={() => {
-              const ctx = audioContext;
-              if (!ctx) return 0;
-              if (phase !== 'playing') return -1;
-              return ctx.currentTime - startAudioTimeRef.current;
-            }}
-          />
-        )}
+        <ScoreView score={adjustedScore} measuresPerLine={2} />
       </div>
-      {/* Dedicated verdict band — sits directly under the staff and
-       * above every control row so PERFECT/GOOD/MISS can never overlap
-       * the BPM slider or accent editor (issue #67). The band always
-       * occupies its slot so the layout doesn't jump when a verdict
-       * appears/disappears. */}
-      <JudgementLayer verdict={verdict} triggerId={triggerId} />
-      <label className="debug-toggle no-tap">
-        <input
-          type="checkbox"
-          checked={showPlayhead}
-          onChange={(e) => setShowPlayhead(e.target.checked)}
-        />
-        debug: プレイヘッド表示
-      </label>
-      <div className="bpm-control no-tap">
+      {/* The verdict band IS the tap zone. PERFECT/GOOD/MISS appears
+       * here on each tap; when no verdict is showing the same band
+       * carries a "♪ ここをタップ…" prompt. Header, BPM slider, and
+       * accent editor sit outside the TapArea so they interact
+       * normally and the page scrolls on phones. */}
+      <TapArea ctx={audioContext} onTap={handleTap} className="game-tap-zone">
+        <JudgementLayer verdict={verdict} triggerId={triggerId} prompt={status} />
+      </TapArea>
+      <div className="bpm-control">
         <label htmlFor="bpm-slider" className="bpm-label">
           Tempo: <span className="bpm-value">{effectiveBpm}</span>
           {bpmMultiplier !== 1 && (
@@ -470,7 +443,7 @@ export function GameView({ stage }: Props) {
           onChange={(e) => setBpmMultiplier(Number(e.target.value))}
         />
       </div>
-      <details className="metronome-config no-tap">
+      <details className="metronome-config">
         <summary className="metronome-config-summary">メトロノーム アクセント設定</summary>
         <div className="metronome-config-body">
           {uniqueTimeSigs.map((ts) => {
@@ -505,7 +478,6 @@ export function GameView({ stage }: Props) {
           })}
         </div>
       </details>
-      <p className="status-text">{status}</p>
-    </TapArea>
+    </main>
   );
 }

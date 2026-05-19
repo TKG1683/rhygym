@@ -11,6 +11,12 @@ interface Props {
   verdict: Judgement | null;
   /** Bumped by the caller every tap so identical verdicts retrigger the animation. */
   triggerId: number;
+  /**
+   * Optional placeholder text shown in the band whenever a verdict
+   * isn't currently visible. Used by GameView to put "♪ ここをタップ…"
+   * inside the band so the band doubles as the tap zone.
+   */
+  prompt?: string;
 }
 
 const FADE_OUT_MS = 320;
@@ -28,7 +34,7 @@ const COLORS: Record<Judgement, string> = {
  * which defeats the read-the-score practice goal. The Result screen has
  * the breakdown anyway.
  */
-export function JudgementLayer({ verdict, triggerId }: Props) {
+export function JudgementLayer({ verdict, triggerId, prompt }: Props) {
   const [visible, setVisible] = useState(false);
 
   useEffect(() => {
@@ -39,12 +45,14 @@ export function JudgementLayer({ verdict, triggerId }: Props) {
   }, [verdict, triggerId]);
 
   // Always render the reserved band so the surrounding layout doesn't
-  // jump when a verdict appears/disappears. The inner label is what
-  // actually fades in/out — keeping the band height-stable is the whole
-  // point of issue #67's "dedicated verdict zone" fix.
+  // jump when a verdict appears/disappears. When no verdict is showing
+  // the band falls back to a prompt (caller-supplied), so the same
+  // band reads as "tap here" outside of a hit and as PERFECT/GOOD/MISS
+  // during one.
+  const showingVerdict = visible && verdict !== null;
   return (
-    <div className="judgement-band no-tap" aria-live="polite" aria-atomic="true">
-      {visible && verdict !== null && (
+    <div className="judgement-band" aria-live="polite" aria-atomic="true">
+      {showingVerdict ? (
         <span
           key={triggerId}
           className="judgement-effect"
@@ -52,6 +60,8 @@ export function JudgementLayer({ verdict, triggerId }: Props) {
         >
           {verdict}
         </span>
+      ) : (
+        prompt && <span className="judgement-prompt">{prompt}</span>
       )}
     </div>
   );
