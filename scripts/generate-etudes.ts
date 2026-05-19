@@ -1,15 +1,15 @@
 /**
- * Etude build script: writes every stage in ETUDE_DEFS as a
- * `score.mid` + `stage.json` pair under public/stages/<id>/, and
+ * Etude build script: writes every étude in ETUDE_DEFS as a
+ * `score.mid` + `etude.json` pair under public/etudes/<id>/, and
  * regenerates manifest.json so the loader picks them up.
  *
- * Run via `npm run gen:stages`.
+ * Run via `npm run gen:etudes`.
  *
- * Roster: 10 Levels × 6 stages (5 graded + 1 exam) = 60 stages.
- * Each Level introduces ONE new rhythmic concept on top of the
- * previous one. Within a Level the five graded stages climb in
- * density / syncopation / subdivision; the `exam` stage previews an
- * element from the next Level so it feels like a bridge.
+ * Roster: 10 Movements × 6 études (5 graded + 1 Final) = 60 études.
+ * Each Movement introduces ONE new rhythmic concept on top of the
+ * previous one. Within a Movement the five graded études climb in
+ * density / syncopation / subdivision; the Final étude previews an
+ * element from the next Movement so it feels like a bridge.
  */
 
 import { mkdirSync, writeFileSync } from 'node:fs';
@@ -54,10 +54,11 @@ interface EtudeDef {
   score: ReturnType<typeof buildScore>;
 }
 
-const OUT_DIR = 'public/stages';
+const OUT_DIR = 'public/etudes';
 
-// Per-level theme color — same palette as src/core/score/stages.ts so the
-// authored stages and the offline fallback agree on Level coloring.
+// Per-Movement theme color — same palette as src/core/score/etudes.ts
+// so the authored études and the offline fallback agree on Movement
+// coloring.
 const COLOR = {
   1: '#9bd4a2',
   2: '#7cc8b3',
@@ -76,7 +77,7 @@ const ETUDE_DEFS: readonly EtudeDef[] = [
   // Level 1 — quarter / half / whole notes (4/4)
   // ============================================================
   {
-    id: 'level-1-1',
+    id: 'movement-1-etude-1',
     movement: 1,
     indexInMovement: 1,
     name: 'Etude 1-1',
@@ -95,7 +96,7 @@ const ETUDE_DEFS: readonly EtudeDef[] = [
     ]),
   },
   {
-    id: 'level-1-2',
+    id: 'movement-1-etude-2',
     movement: 1,
     indexInMovement: 2,
     name: 'Etude 1-2',
@@ -114,7 +115,7 @@ const ETUDE_DEFS: readonly EtudeDef[] = [
     ]),
   },
   {
-    id: 'level-1-3',
+    id: 'movement-1-etude-3',
     movement: 1,
     indexInMovement: 3,
     name: 'Etude 1-3',
@@ -133,7 +134,7 @@ const ETUDE_DEFS: readonly EtudeDef[] = [
     ]),
   },
   {
-    id: 'level-1-4',
+    id: 'movement-1-etude-4',
     movement: 1,
     indexInMovement: 4,
     name: 'Etude 1-4',
@@ -152,7 +153,7 @@ const ETUDE_DEFS: readonly EtudeDef[] = [
     ]),
   },
   {
-    id: 'level-1-5',
+    id: 'movement-1-etude-5',
     movement: 1,
     indexInMovement: 5,
     name: 'Etude 1-5',
@@ -171,7 +172,7 @@ const ETUDE_DEFS: readonly EtudeDef[] = [
     ]),
   },
   {
-    id: 'level-1-exam',
+    id: 'movement-1-final',
     movement: 1,
     indexInMovement: 6,
     isFinal: true,
@@ -196,7 +197,7 @@ const ETUDE_DEFS: readonly EtudeDef[] = [
   // Level 2 — + quarter rest, 3/4 waltz
   // ============================================================
   {
-    id: 'level-2-1',
+    id: 'movement-2-etude-1',
     movement: 2,
     indexInMovement: 1,
     name: 'Etude 2-1',
@@ -215,7 +216,7 @@ const ETUDE_DEFS: readonly EtudeDef[] = [
     ]),
   },
   {
-    id: 'level-2-2',
+    id: 'movement-2-etude-2',
     movement: 2,
     indexInMovement: 2,
     name: 'Etude 2-2',
@@ -234,7 +235,7 @@ const ETUDE_DEFS: readonly EtudeDef[] = [
     ]),
   },
   {
-    id: 'level-2-3',
+    id: 'movement-2-etude-3',
     movement: 2,
     indexInMovement: 3,
     name: 'Etude 2-3',
@@ -253,7 +254,7 @@ const ETUDE_DEFS: readonly EtudeDef[] = [
     ]),
   },
   {
-    id: 'level-2-4',
+    id: 'movement-2-etude-4',
     movement: 2,
     indexInMovement: 4,
     name: 'Etude 2-4',
@@ -272,7 +273,7 @@ const ETUDE_DEFS: readonly EtudeDef[] = [
     ]),
   },
   {
-    id: 'level-2-5',
+    id: 'movement-2-etude-5',
     movement: 2,
     indexInMovement: 5,
     name: 'Etude 2-5',
@@ -291,7 +292,7 @@ const ETUDE_DEFS: readonly EtudeDef[] = [
     ]),
   },
   {
-    id: 'level-2-exam',
+    id: 'movement-2-final',
     movement: 2,
     indexInMovement: 6,
     isFinal: true,
@@ -316,7 +317,7 @@ const ETUDE_DEFS: readonly EtudeDef[] = [
   // Level 3 — + eighth note / eighth rest
   // ============================================================
   {
-    id: 'level-3-1',
+    id: 'movement-3-etude-1',
     movement: 3,
     indexInMovement: 1,
     name: 'Etude 3-1',
@@ -335,7 +336,7 @@ const ETUDE_DEFS: readonly EtudeDef[] = [
     ]),
   },
   {
-    id: 'level-3-2',
+    id: 'movement-3-etude-2',
     movement: 3,
     indexInMovement: 2,
     name: 'Etude 3-2',
@@ -354,7 +355,7 @@ const ETUDE_DEFS: readonly EtudeDef[] = [
     ]),
   },
   {
-    id: 'level-3-3',
+    id: 'movement-3-etude-3',
     movement: 3,
     indexInMovement: 3,
     name: 'Etude 3-3',
@@ -373,7 +374,7 @@ const ETUDE_DEFS: readonly EtudeDef[] = [
     ]),
   },
   {
-    id: 'level-3-4',
+    id: 'movement-3-etude-4',
     movement: 3,
     indexInMovement: 4,
     name: 'Etude 3-4',
@@ -392,7 +393,7 @@ const ETUDE_DEFS: readonly EtudeDef[] = [
     ]),
   },
   {
-    id: 'level-3-5',
+    id: 'movement-3-etude-5',
     movement: 3,
     indexInMovement: 5,
     name: 'Etude 3-5',
@@ -411,7 +412,7 @@ const ETUDE_DEFS: readonly EtudeDef[] = [
     ]),
   },
   {
-    id: 'level-3-exam',
+    id: 'movement-3-final',
     movement: 3,
     indexInMovement: 6,
     isFinal: true,
@@ -436,7 +437,7 @@ const ETUDE_DEFS: readonly EtudeDef[] = [
   // Level 4 — + dotted quarter / dotted eighth, 6/8 intro
   // ============================================================
   {
-    id: 'level-4-1',
+    id: 'movement-4-etude-1',
     movement: 4,
     indexInMovement: 1,
     name: 'Etude 4-1',
@@ -455,7 +456,7 @@ const ETUDE_DEFS: readonly EtudeDef[] = [
     ]),
   },
   {
-    id: 'level-4-2',
+    id: 'movement-4-etude-2',
     movement: 4,
     indexInMovement: 2,
     name: 'Etude 4-2',
@@ -474,7 +475,7 @@ const ETUDE_DEFS: readonly EtudeDef[] = [
     ]),
   },
   {
-    id: 'level-4-3',
+    id: 'movement-4-etude-3',
     movement: 4,
     indexInMovement: 3,
     name: 'Etude 4-3',
@@ -493,7 +494,7 @@ const ETUDE_DEFS: readonly EtudeDef[] = [
     ]),
   },
   {
-    id: 'level-4-4',
+    id: 'movement-4-etude-4',
     movement: 4,
     indexInMovement: 4,
     name: 'Etude 4-4',
@@ -512,7 +513,7 @@ const ETUDE_DEFS: readonly EtudeDef[] = [
     ]),
   },
   {
-    id: 'level-4-5',
+    id: 'movement-4-etude-5',
     movement: 4,
     indexInMovement: 5,
     name: 'Etude 4-5',
@@ -531,7 +532,7 @@ const ETUDE_DEFS: readonly EtudeDef[] = [
     ]),
   },
   {
-    id: 'level-4-exam',
+    id: 'movement-4-final',
     movement: 4,
     indexInMovement: 6,
     isFinal: true,
@@ -556,7 +557,7 @@ const ETUDE_DEFS: readonly EtudeDef[] = [
   // Level 5 — + sixteenths and sixteenth rest (4/4 + 6/8)
   // ============================================================
   {
-    id: 'level-5-1',
+    id: 'movement-5-etude-1',
     movement: 5,
     indexInMovement: 1,
     name: 'Etude 5-1',
@@ -575,7 +576,7 @@ const ETUDE_DEFS: readonly EtudeDef[] = [
     ]),
   },
   {
-    id: 'level-5-2',
+    id: 'movement-5-etude-2',
     movement: 5,
     indexInMovement: 2,
     name: 'Etude 5-2',
@@ -594,7 +595,7 @@ const ETUDE_DEFS: readonly EtudeDef[] = [
     ]),
   },
   {
-    id: 'level-5-3',
+    id: 'movement-5-etude-3',
     movement: 5,
     indexInMovement: 3,
     name: 'Etude 5-3',
@@ -613,7 +614,7 @@ const ETUDE_DEFS: readonly EtudeDef[] = [
     ]),
   },
   {
-    id: 'level-5-4',
+    id: 'movement-5-etude-4',
     movement: 5,
     indexInMovement: 4,
     name: 'Etude 5-4',
@@ -632,7 +633,7 @@ const ETUDE_DEFS: readonly EtudeDef[] = [
     ]),
   },
   {
-    id: 'level-5-5',
+    id: 'movement-5-etude-5',
     movement: 5,
     indexInMovement: 5,
     name: 'Etude 5-5',
@@ -651,7 +652,7 @@ const ETUDE_DEFS: readonly EtudeDef[] = [
     ]),
   },
   {
-    id: 'level-5-exam',
+    id: 'movement-5-final',
     movement: 5,
     indexInMovement: 6,
     isFinal: true,
@@ -676,7 +677,7 @@ const ETUDE_DEFS: readonly EtudeDef[] = [
   // Level 6 — + syncopation, ties across barlines
   // ============================================================
   {
-    id: 'level-6-1',
+    id: 'movement-6-etude-1',
     movement: 6,
     indexInMovement: 1,
     name: 'Etude 6-1',
@@ -695,7 +696,7 @@ const ETUDE_DEFS: readonly EtudeDef[] = [
     ]),
   },
   {
-    id: 'level-6-2',
+    id: 'movement-6-etude-2',
     movement: 6,
     indexInMovement: 2,
     name: 'Etude 6-2',
@@ -715,7 +716,7 @@ const ETUDE_DEFS: readonly EtudeDef[] = [
     ]),
   },
   {
-    id: 'level-6-3',
+    id: 'movement-6-etude-3',
     movement: 6,
     indexInMovement: 3,
     name: 'Etude 6-3',
@@ -734,7 +735,7 @@ const ETUDE_DEFS: readonly EtudeDef[] = [
     ]),
   },
   {
-    id: 'level-6-4',
+    id: 'movement-6-etude-4',
     movement: 6,
     indexInMovement: 4,
     name: 'Etude 6-4',
@@ -753,7 +754,7 @@ const ETUDE_DEFS: readonly EtudeDef[] = [
     ]),
   },
   {
-    id: 'level-6-5',
+    id: 'movement-6-etude-5',
     movement: 6,
     indexInMovement: 5,
     name: 'Etude 6-5',
@@ -772,7 +773,7 @@ const ETUDE_DEFS: readonly EtudeDef[] = [
     ]),
   },
   {
-    id: 'level-6-exam',
+    id: 'movement-6-final',
     movement: 6,
     indexInMovement: 6,
     isFinal: true,
@@ -797,7 +798,7 @@ const ETUDE_DEFS: readonly EtudeDef[] = [
   // Level 7 — + triplets, sextuplets, 9/8
   // ============================================================
   {
-    id: 'level-7-1',
+    id: 'movement-7-etude-1',
     movement: 7,
     indexInMovement: 1,
     name: 'Etude 7-1',
@@ -816,7 +817,7 @@ const ETUDE_DEFS: readonly EtudeDef[] = [
     ]),
   },
   {
-    id: 'level-7-2',
+    id: 'movement-7-etude-2',
     movement: 7,
     indexInMovement: 2,
     name: 'Etude 7-2',
@@ -835,7 +836,7 @@ const ETUDE_DEFS: readonly EtudeDef[] = [
     ]),
   },
   {
-    id: 'level-7-3',
+    id: 'movement-7-etude-3',
     movement: 7,
     indexInMovement: 3,
     name: 'Etude 7-3',
@@ -854,7 +855,7 @@ const ETUDE_DEFS: readonly EtudeDef[] = [
     ]),
   },
   {
-    id: 'level-7-4',
+    id: 'movement-7-etude-4',
     movement: 7,
     indexInMovement: 4,
     name: 'Etude 7-4',
@@ -873,7 +874,7 @@ const ETUDE_DEFS: readonly EtudeDef[] = [
     ]),
   },
   {
-    id: 'level-7-5',
+    id: 'movement-7-etude-5',
     movement: 7,
     indexInMovement: 5,
     name: 'Etude 7-5',
@@ -892,7 +893,7 @@ const ETUDE_DEFS: readonly EtudeDef[] = [
     ]),
   },
   {
-    id: 'level-7-exam',
+    id: 'movement-7-final',
     movement: 7,
     indexInMovement: 6,
     isFinal: true,
@@ -917,7 +918,7 @@ const ETUDE_DEFS: readonly EtudeDef[] = [
   // Level 8 — + quintuplets, septuplets, 5/8, 7/8
   // ============================================================
   {
-    id: 'level-8-1',
+    id: 'movement-8-etude-1',
     movement: 8,
     indexInMovement: 1,
     name: 'Etude 8-1',
@@ -936,7 +937,7 @@ const ETUDE_DEFS: readonly EtudeDef[] = [
     ]),
   },
   {
-    id: 'level-8-2',
+    id: 'movement-8-etude-2',
     movement: 8,
     indexInMovement: 2,
     name: 'Etude 8-2',
@@ -955,7 +956,7 @@ const ETUDE_DEFS: readonly EtudeDef[] = [
     ]),
   },
   {
-    id: 'level-8-3',
+    id: 'movement-8-etude-3',
     movement: 8,
     indexInMovement: 3,
     name: 'Etude 8-3',
@@ -974,7 +975,7 @@ const ETUDE_DEFS: readonly EtudeDef[] = [
     ]),
   },
   {
-    id: 'level-8-4',
+    id: 'movement-8-etude-4',
     movement: 8,
     indexInMovement: 4,
     name: 'Etude 8-4',
@@ -993,7 +994,7 @@ const ETUDE_DEFS: readonly EtudeDef[] = [
     ]),
   },
   {
-    id: 'level-8-5',
+    id: 'movement-8-etude-5',
     movement: 8,
     indexInMovement: 5,
     name: 'Etude 8-5',
@@ -1012,7 +1013,7 @@ const ETUDE_DEFS: readonly EtudeDef[] = [
     ]),
   },
   {
-    id: 'level-8-exam',
+    id: 'movement-8-final',
     movement: 8,
     indexInMovement: 6,
     isFinal: true,
@@ -1037,7 +1038,7 @@ const ETUDE_DEFS: readonly EtudeDef[] = [
   // Level 9 — + irregular meter (5/4, 7/8), hemiola, compound regroup
   // ============================================================
   {
-    id: 'level-9-1',
+    id: 'movement-9-etude-1',
     movement: 9,
     indexInMovement: 1,
     name: 'Etude 9-1',
@@ -1056,7 +1057,7 @@ const ETUDE_DEFS: readonly EtudeDef[] = [
     ]),
   },
   {
-    id: 'level-9-2',
+    id: 'movement-9-etude-2',
     movement: 9,
     indexInMovement: 2,
     name: 'Etude 9-2',
@@ -1075,7 +1076,7 @@ const ETUDE_DEFS: readonly EtudeDef[] = [
     ]),
   },
   {
-    id: 'level-9-3',
+    id: 'movement-9-etude-3',
     movement: 9,
     indexInMovement: 3,
     name: 'Etude 9-3',
@@ -1095,7 +1096,7 @@ const ETUDE_DEFS: readonly EtudeDef[] = [
     ]),
   },
   {
-    id: 'level-9-4',
+    id: 'movement-9-etude-4',
     movement: 9,
     indexInMovement: 4,
     name: 'Etude 9-4',
@@ -1117,7 +1118,7 @@ const ETUDE_DEFS: readonly EtudeDef[] = [
     ]),
   },
   {
-    id: 'level-9-5',
+    id: 'movement-9-etude-5',
     movement: 9,
     indexInMovement: 5,
     name: 'Etude 9-5',
@@ -1138,7 +1139,7 @@ const ETUDE_DEFS: readonly EtudeDef[] = [
     ]),
   },
   {
-    id: 'level-9-exam',
+    id: 'movement-9-final',
     movement: 9,
     indexInMovement: 6,
     isFinal: true,
@@ -1167,7 +1168,7 @@ const ETUDE_DEFS: readonly EtudeDef[] = [
   // Level 10 — mixed meter / meter-change / cross-rhythm / tempo change
   // ============================================================
   {
-    id: 'level-10-1',
+    id: 'movement-10-etude-1',
     movement: 10,
     indexInMovement: 1,
     name: 'Etude 10-1',
@@ -1189,7 +1190,7 @@ const ETUDE_DEFS: readonly EtudeDef[] = [
     ]),
   },
   {
-    id: 'level-10-2',
+    id: 'movement-10-etude-2',
     movement: 10,
     indexInMovement: 2,
     name: 'Etude 10-2',
@@ -1220,7 +1221,7 @@ const ETUDE_DEFS: readonly EtudeDef[] = [
     ]),
   },
   {
-    id: 'level-10-3',
+    id: 'movement-10-etude-3',
     movement: 10,
     indexInMovement: 3,
     name: 'Etude 10-3',
@@ -1247,7 +1248,7 @@ const ETUDE_DEFS: readonly EtudeDef[] = [
     ]),
   },
   {
-    id: 'level-10-4',
+    id: 'movement-10-etude-4',
     movement: 10,
     indexInMovement: 4,
     name: 'Etude 10-4',
@@ -1272,7 +1273,7 @@ const ETUDE_DEFS: readonly EtudeDef[] = [
     ]),
   },
   {
-    id: 'level-10-5',
+    id: 'movement-10-etude-5',
     movement: 10,
     indexInMovement: 5,
     name: 'Etude 10-5',
@@ -1311,7 +1312,7 @@ const ETUDE_DEFS: readonly EtudeDef[] = [
     ]),
   },
   {
-    id: 'level-10-exam',
+    id: 'movement-10-final',
     movement: 10,
     indexInMovement: 6,
     isFinal: true,
@@ -1355,21 +1356,21 @@ function ensureDir(filepath: string): void {
   mkdirSync(dirname(filepath), { recursive: true });
 }
 
-function writeEtude(stage: EtudeDef): void {
-  const midi = scoreToMidi(stage.score);
-  const midiPath = join(OUT_DIR, stage.id, 'score.mid');
+function writeEtude(etude: EtudeDef): void {
+  const midi = scoreToMidi(etude.score);
+  const midiPath = join(OUT_DIR, etude.id, 'score.mid');
   ensureDir(midiPath);
   writeFileSync(midiPath, Buffer.from(midi.toArray()));
 
-  const { score: _score, ...meta } = stage;
-  const jsonPath = join(OUT_DIR, stage.id, 'stage.json');
+  const { score: _score, ...meta } = etude;
+  const jsonPath = join(OUT_DIR, etude.id, 'etude.json');
   writeFileSync(jsonPath, JSON.stringify(meta, null, 2));
 }
 
-function writeManifest(stages: readonly EtudeDef[]): void {
+function writeManifest(etudes: readonly EtudeDef[]): void {
   const manifest = {
     version: 1,
-    stages: stages.map((s) => s.id),
+    etudes: etudes.map((e) => e.id),
   };
   const manifestPath = join(OUT_DIR, 'manifest.json');
   ensureDir(manifestPath);
@@ -1377,12 +1378,12 @@ function writeManifest(stages: readonly EtudeDef[]): void {
 }
 
 function main(): void {
-  for (const stage of ETUDE_DEFS) {
-    writeEtude(stage);
-    console.log(`  ✓ ${stage.id}`);
+  for (const etude of ETUDE_DEFS) {
+    writeEtude(etude);
+    console.log(`  ✓ ${etude.id}`);
   }
   writeManifest(ETUDE_DEFS);
-  console.log(`Generated ${ETUDE_DEFS.length} stage(s) in ${OUT_DIR}/`);
+  console.log(`Generated ${ETUDE_DEFS.length} étude(s) in ${OUT_DIR}/`);
 }
 
 main();

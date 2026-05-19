@@ -1,11 +1,11 @@
 /**
- * Etude loader — pulls `public/stages/<id>/{stage.json, score.mid}`
- * over HTTP and parses them into the in-memory EtudeWithMovementMeta shape
- * that StageSelect and GameView consume.
+ * Etude loader — pulls `public/etudes/<id>/{etude.json, score.mid}`
+ * over HTTP and parses them into the in-memory EtudeWithMovementMeta
+ * shape that MovementSelect and GameView consume.
  *
- * Layout assumed under `public/stages/`:
- *   manifest.json                # { version: 1, stages: ['level-1', ...] }
- *   <id>/stage.json              # EtudeJson (metadata)
+ * Layout assumed under `public/etudes/`:
+ *   manifest.json                # { version: 1, etudes: ['movement-1-etude-1', ...] }
+ *   <id>/etude.json              # EtudeJson (metadata)
  *   <id>/score.mid               # MIDI bytes
  *
  * Bundled (offline) fallback is the caller's responsibility — this
@@ -19,7 +19,7 @@ import type { EtudeWithMovementMeta } from './etudes';
 
 export interface EtudeManifest {
   version: number;
-  stages: string[];
+  etudes: string[];
 }
 
 interface EtudeJson {
@@ -37,25 +37,25 @@ interface EtudeJson {
 function etudesUrl(path: string): string {
   const base = import.meta.env.BASE_URL ?? '/';
   // BASE_URL always has a trailing slash per Vite contract.
-  return `${base}stages/${path}`;
+  return `${base}etudes/${path}`;
 }
 
 export async function loadManifest(): Promise<EtudeManifest> {
   const res = await fetch(etudesUrl('manifest.json'));
   if (!res.ok) throw new Error(`manifest.json HTTP ${res.status}`);
   const data = (await res.json()) as Partial<EtudeManifest>;
-  if (!Array.isArray(data.stages)) {
-    throw new Error('manifest.json is missing a stages array');
+  if (!Array.isArray(data.etudes)) {
+    throw new Error('manifest.json is missing an etudes array');
   }
-  return { version: data.version ?? 1, stages: data.stages };
+  return { version: data.version ?? 1, etudes: data.etudes };
 }
 
 export async function loadEtude(id: string): Promise<EtudeWithMovementMeta> {
   const [metaRes, midiRes] = await Promise.all([
-    fetch(etudesUrl(`${id}/stage.json`)),
+    fetch(etudesUrl(`${id}/etude.json`)),
     fetch(etudesUrl(`${id}/score.mid`)),
   ]);
-  if (!metaRes.ok) throw new Error(`${id}/stage.json HTTP ${metaRes.status}`);
+  if (!metaRes.ok) throw new Error(`${id}/etude.json HTTP ${metaRes.status}`);
   if (!midiRes.ok) throw new Error(`${id}/score.mid HTTP ${midiRes.status}`);
 
   const meta = (await metaRes.json()) as EtudeJson;
@@ -77,16 +77,16 @@ export async function loadEtude(id: string): Promise<EtudeWithMovementMeta> {
 }
 
 /**
- * Load every stage referenced by the manifest in parallel. Order in
- * the returned array matches the manifest's `stages` list.
+ * Load every étude referenced by the manifest in parallel. Order in
+ * the returned array matches the manifest's `etudes` list.
  *
  * Throws if the manifest itself is unreachable or malformed. Throws
- * if ANY listed stage fails to load — partial loads are unsupported
- * by design (a half-loaded roster would confuse StageSelect's level
- * grouping later in #31). Callers wrap this in try/catch and decide
+ * if ANY listed étude fails to load — partial loads are unsupported
+ * by design (a half-loaded roster would confuse MovementSelect's
+ * Movement grouping). Callers wrap this in try/catch and decide
  * whether to fall back to a hardcoded roster.
  */
 export async function loadAllEtudes(): Promise<EtudeWithMovementMeta[]> {
   const manifest = await loadManifest();
-  return Promise.all(manifest.stages.map((id) => loadEtude(id)));
+  return Promise.all(manifest.etudes.map((id) => loadEtude(id)));
 }
