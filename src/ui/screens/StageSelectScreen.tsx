@@ -19,7 +19,7 @@ type Medal = 'gold' | 'silver' | 'bronze';
  * through some of a level (but not finished it) still gets visible
  * progress.
  */
-function levelMedal(stages: readonly StageWithMeta[], bests: Record<string, BestRecord>): Medal | null {
+function movementMedal(stages: readonly StageWithMeta[], bests: Record<string, BestRecord>): Medal | null {
   const total = stages.length;
   if (total === 0) return null;
   let cleared = 0;
@@ -36,7 +36,7 @@ function levelMedal(stages: readonly StageWithMeta[], bests: Record<string, Best
   return null;
 }
 
-interface LevelGroup {
+interface MovementGroup {
   level: number;
   themeColor: string;
   stages: readonly StageWithMeta[];
@@ -47,8 +47,8 @@ export function StageSelectScreen() {
   const selectStage = useAppStore((s) => s.selectStage);
   const loadedStages = useAppStore((s) => s.loadedStages);
   const stagesLoadState = useAppStore((s) => s.stagesLoadState);
-  const initialLevel = useAppStore((s) => s.selectInitialLevel);
-  const setInitialLevel = useAppStore((s) => s.setSelectInitialLevel);
+  const initialMovement = useAppStore((s) => s.selectInitialLevel);
+  const setInitialMovement = useAppStore((s) => s.setSelectInitialLevel);
 
   // Prefer the network-loaded roster once it's ready, otherwise fall
   // back to the bundled placeholder STAGES so a missing public/stages/
@@ -63,7 +63,7 @@ export function StageSelectScreen() {
 
   // Group stages by their level number, sorted ascending. Stages
   // within a group keep their original (manifest / hardcoded) order.
-  const levelGroups = useMemo<LevelGroup[]>(() => {
+  const levelGroups = useMemo<MovementGroup[]>(() => {
     const byLevel = new Map<number, StageWithMeta[]>();
     for (const stage of stages) {
       const list = byLevel.get(stage.level) ?? [];
@@ -82,9 +82,9 @@ export function StageSelectScreen() {
   // Pull the requested initial level from the store (set by Result's
   // "ステージ選択へ"). Snapshot once at mount; clear the store value
   // so the next entry from Title defaults back to the Level list.
-  const [openLevel, setOpenLevel] = useState<number | null>(initialLevel);
+  const [openMovement, setOpenMovement] = useState<number | null>(initialMovement);
   useEffect(() => {
-    if (initialLevel !== null) setInitialLevel(null);
+    if (initialMovement !== null) setInitialMovement(null);
     // We only want this on mount — the snapshot above is what counts.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -94,30 +94,30 @@ export function StageSelectScreen() {
     goto('game');
   };
 
-  if (openLevel !== null) {
-    const group = levelGroups.find((g) => g.level === openLevel);
+  if (openMovement !== null) {
+    const group = levelGroups.find((g) => g.level === openMovement);
     if (!group) {
       // Level disappeared (shouldn't happen, but guard anyway).
-      setOpenLevel(null);
+      setOpenMovement(null);
       return null;
     }
     return (
-      <StageListView
+      <EtudeListView
         group={group}
         bests={bests}
         onStart={start}
-        onBack={() => setOpenLevel(null)}
+        onBack={() => setOpenMovement(null)}
       />
     );
   }
 
   return (
-    <LevelListView
+    <MovementListView
       groups={levelGroups}
       bests={bests}
       loadingHint={stagesLoadState === 'loading' ? '譜面を読み込み中…' : null}
       fallbackHint={usingFallback ? '※ 譜面ファイル未配置のためデモ譜面で代替中' : null}
-      onOpenLevel={setOpenLevel}
+      onOpenMovement={setOpenMovement}
       onBack={() => goto('title')}
     />
   );
@@ -127,16 +127,16 @@ export function StageSelectScreen() {
 /*  Level list (top of the 2-tier hierarchy)                          */
 /* ================================================================== */
 
-interface LevelListProps {
-  groups: readonly LevelGroup[];
+interface MovementListProps {
+  groups: readonly MovementGroup[];
   bests: Record<string, BestRecord>;
   loadingHint: string | null;
   fallbackHint: string | null;
-  onOpenLevel: (level: number) => void;
+  onOpenMovement: (level: number) => void;
   onBack: () => void;
 }
 
-function LevelListView({ groups, bests, loadingHint, fallbackHint, onOpenLevel, onBack }: LevelListProps) {
+function MovementListView({ groups, bests, loadingHint, fallbackHint, onOpenMovement, onBack }: MovementListProps) {
   return (
     <main className="screen screen-select">
       <h1 className="select-title">Movement を選ぶ</h1>
@@ -149,12 +149,12 @@ function LevelListView({ groups, bests, loadingHint, fallbackHint, onOpenLevel, 
           ).length;
           return (
             <li key={group.level}>
-              <LevelCard
+              <MovementCard
                 group={group}
-                medal={levelMedal(group.stages, bests)}
+                medal={movementMedal(group.stages, bests)}
                 cleared={cleared}
                 total={group.stages.length}
-                onOpen={onOpenLevel}
+                onOpen={onOpenMovement}
               />
             </li>
           );
@@ -167,15 +167,15 @@ function LevelListView({ groups, bests, loadingHint, fallbackHint, onOpenLevel, 
   );
 }
 
-interface LevelCardProps {
-  group: LevelGroup;
+interface MovementCardProps {
+  group: MovementGroup;
   medal: Medal | null;
   cleared: number;
   total: number;
   onOpen: (level: number) => void;
 }
 
-function LevelCard({ group, medal, cleared, total, onOpen }: LevelCardProps) {
+function MovementCard({ group, medal, cleared, total, onOpen }: MovementCardProps) {
   return (
     <button
       className="etude-card"
@@ -183,7 +183,7 @@ function LevelCard({ group, medal, cleared, total, onOpen }: LevelCardProps) {
       style={{ borderColor: group.themeColor }}
     >
       <span className="etude-card-stripe" style={{ background: group.themeColor }} />
-      <span className="etude-card-glyph" aria-hidden="true">{levelGlyph(group.level)}</span>
+      <span className="etude-card-glyph" aria-hidden="true">{movementGlyph(group.level)}</span>
       <div className="etude-card-body">
         <div className="etude-card-head">
           <span className="etude-card-name">Movement {group.level}</span>
@@ -221,14 +221,14 @@ function MedalChip({ medal }: { medal: Medal }) {
 /*  Stage list (drilled into a level)                                 */
 /* ================================================================== */
 
-interface StageListProps {
-  group: LevelGroup;
+interface EtudeListProps {
+  group: MovementGroup;
   bests: Record<string, BestRecord>;
   onStart: (id: string) => void;
   onBack: () => void;
 }
 
-function StageListView({ group, bests, onStart, onBack }: StageListProps) {
+function EtudeListView({ group, bests, onStart, onBack }: EtudeListProps) {
   return (
     <main className="screen screen-select">
       <button className="secondary select-back" onClick={onBack}>
@@ -238,7 +238,7 @@ function StageListView({ group, bests, onStart, onBack }: StageListProps) {
       <ul className="etude-list">
         {group.stages.map((stage) => (
           <li key={stage.id}>
-            <StageCard stage={stage} best={bests[stage.id]} onStart={onStart} />
+            <EtudeCard stage={stage} best={bests[stage.id]} onStart={onStart} />
           </li>
         ))}
       </ul>
@@ -246,13 +246,13 @@ function StageListView({ group, bests, onStart, onBack }: StageListProps) {
   );
 }
 
-interface StageCardProps {
+interface EtudeCardProps {
   stage: StageWithMeta;
   best: BestRecord | undefined;
   onStart: (id: string) => void;
 }
 
-function StageCard({ stage, best, onStart }: StageCardProps) {
+function EtudeCard({ stage, best, onStart }: EtudeCardProps) {
   return (
     <button
       className="etude-card"
@@ -260,16 +260,16 @@ function StageCard({ stage, best, onStart }: StageCardProps) {
       style={{ borderColor: stage.themeColor }}
     >
       <span className="etude-card-stripe" style={{ background: stage.themeColor }} />
-      <span className="etude-card-glyph" aria-hidden="true">{stageGlyph(stage)}</span>
+      <span className="etude-card-glyph" aria-hidden="true">{etudeGlyph(stage)}</span>
       <div className="etude-card-body">
         <div className="etude-card-head">
           <span className="etude-card-name">{stage.name}</span>
         </div>
         <div className="etude-card-desc">{stage.description}</div>
         <div className="etude-card-meta">
-          <span className="etude-card-ts">{stageTimeSig(stage)}</span>
+          <span className="etude-card-ts">{etudeTimeSig(stage)}</span>
           <span className="etude-card-bpm">
-            ♩{isCompoundStage(stage) && <span className="bpm-dot">.</span>} = {stage.bpm}
+            ♩{isCompoundEtude(stage) && <span className="bpm-dot">.</span>} = {stage.bpm}
           </span>
           {best && (
             <span className="etude-card-best">
@@ -295,7 +295,7 @@ function RankMedal({ rank }: { rank: Rank }) {
  * Glyph for each level (1-10). Reads as a small "you're climbing the
  * music notation tree" indicator on top of the theme color.
  */
-function levelGlyph(level: number): string {
+function movementGlyph(level: number): string {
   switch (level) {
     case 1:  return '♩';
     case 2:  return '♪';
@@ -311,13 +311,13 @@ function levelGlyph(level: number): string {
   }
 }
 
-function stageGlyph(stage: StageWithMeta): string {
+function etudeGlyph(stage: StageWithMeta): string {
   if (stage.isExam) return '★';
-  return levelGlyph(stage.level);
+  return movementGlyph(stage.level);
 }
 
 /** Display the piece's opening time signature on the Etude card. */
-function stageTimeSig(stage: StageWithMeta): string {
+function etudeTimeSig(stage: StageWithMeta): string {
   const ts = stage.score.timeSigs[0];
   if (!ts) return '4/4';
   return `${ts.numerator}/${ts.denominator}`;
@@ -327,7 +327,7 @@ function stageTimeSig(stage: StageWithMeta): string {
  * True for compound primary meters (6/8 / 9/8 / 12/8) where the bpm
  * value is the dotted-quarter pulse and we render "♩." instead of "♩".
  */
-function isCompoundStage(stage: StageWithMeta): boolean {
+function isCompoundEtude(stage: StageWithMeta): boolean {
   const ts = stage.score.timeSigs[0];
   return ts != null && ts.denominator === 8 && ts.numerator % 3 === 0;
 }
