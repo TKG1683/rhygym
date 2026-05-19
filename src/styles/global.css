@@ -731,13 +731,20 @@ input[type='range']:disabled {
   border-radius: 999px;
   background: var(--surface);
   box-shadow: 0 0 0 0 rgba(232, 97, 46, 0.45);
-  animation: calib-tap-pulse 1.6s ease-out infinite;
+  /* Period is driven by --calib-beat-ms (set inline from CALIB_BPM)
+   * so the ring expands in lockstep with the metronome — without the
+   * sync, the pulse felt off-beat and uncomfortable. */
+  animation: calib-tap-pulse var(--calib-beat-ms, 600ms) ease-out infinite;
 }
 
 @keyframes calib-tap-pulse {
-  0%   { box-shadow: 0 0 0 0   rgba(232, 97, 46, 0.45); }
-  70%  { box-shadow: 0 0 0 22px rgba(232, 97, 46, 0);   }
-  100% { box-shadow: 0 0 0 0   rgba(232, 97, 46, 0);   }
+  /* Frame 0% is the "click happens NOW" moment. The ring expands
+   * outward across most of the beat (0→60%) so the pulse breathes
+   * gently instead of snapping — the remaining 40% is hold-and-rest
+   * before the next beat re-triggers the keyframe. */
+  0%   { box-shadow: 0 0 0 0    rgba(232, 97, 46, 0.55); }
+  60%  { box-shadow: 0 0 0 22px rgba(232, 97, 46, 0);    }
+  100% { box-shadow: 0 0 0 22px rgba(232, 97, 46, 0);    }
 }
 
 @media (prefers-reduced-motion: reduce) {
