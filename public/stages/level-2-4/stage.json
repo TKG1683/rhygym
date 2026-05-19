@@ -1,7 +1,7 @@
 {
   "id": "level-2-4",
-  "level": 2,
-  "indexInLevel": 4,
+  "movement": 2,
+  "indexInMovement": 4,
   "name": "Etude 2-4",
   "description": "3/4 + 4分休符",
   "bpm": 87,

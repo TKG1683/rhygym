@@ -76,7 +76,7 @@ export function GameView({ stage }: Props) {
   const goEtudeList = () => {
     const roster = loadedEtudes ?? ETUDES;
     const meta = roster.find((s) => s.id === stage.id);
-    if (meta) setSelectInitialMovement(meta.level);
+    if (meta) setSelectInitialMovement(meta.movement);
     schedulerRef.current?.stop();
     freeMetronomeRef.current?.stop();
     goto('select');

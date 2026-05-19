@@ -1,7 +1,7 @@
 {
   "id": "level-7-1",
-  "level": 7,
-  "indexInLevel": 1,
+  "movement": 7,
+  "indexInMovement": 1,
   "name": "Etude 7-1",
   "description": "3連符を流暢に",
   "bpm": 108,

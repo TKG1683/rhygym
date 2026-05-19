@@ -1,7 +1,7 @@
 {
   "id": "level-6-1",
-  "level": 6,
-  "indexInLevel": 1,
+  "movement": 6,
+  "indexInMovement": 1,
   "name": "Etude 6-1",
   "description": "シンコペーション入門",
   "bpm": 103,

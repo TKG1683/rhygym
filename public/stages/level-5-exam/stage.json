@@ -1,8 +1,8 @@
 {
   "id": "level-5-exam",
-  "level": 5,
-  "indexInLevel": 6,
-  "isExam": true,
+  "movement": 5,
+  "indexInMovement": 6,
+  "isFinal": true,
   "name": "Movement 5-Final",
   "description": "次レベルへ向け、シンコペーションの予告",
   "bpm": 98,

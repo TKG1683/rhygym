@@ -1,7 +1,7 @@
 {
   "id": "level-7-4",
-  "level": 7,
-  "indexInLevel": 4,
+  "movement": 7,
+  "indexInMovement": 4,
   "name": "Etude 7-4",
   "description": "9/8 拍子に親しむ",
   "bpm": 72,

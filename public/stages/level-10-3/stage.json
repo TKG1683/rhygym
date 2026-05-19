@@ -1,7 +1,7 @@
 {
   "id": "level-10-3",
-  "level": 10,
-  "indexInLevel": 3,
+  "movement": 10,
+  "indexInMovement": 3,
   "name": "Etude 10-3",
   "description": "クロスリズムを拍子切替で揺さぶる",
   "bpm": 126,

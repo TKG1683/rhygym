@@ -44,13 +44,13 @@ import { scoreToMidi } from './dsl/scoreToMidi';
 
 interface EtudeDef {
   id: string;
-  level: number;
+  movement: number;
   name: string;
   description: string;
   bpm: number;
   themeColor: string;
-  indexInLevel?: number;
-  isExam?: boolean;
+  indexInMovement?: number;
+  isFinal?: boolean;
   score: ReturnType<typeof buildScore>;
 }
 
@@ -77,8 +77,8 @@ const ETUDE_DEFS: readonly EtudeDef[] = [
   // ============================================================
   {
     id: 'level-1-1',
-    level: 1,
-    indexInLevel: 1,
+    movement: 1,
+    indexInMovement: 1,
     name: 'Etude 1-1',
     description: '4分音符を歩く',
     bpm: 80,
@@ -96,8 +96,8 @@ const ETUDE_DEFS: readonly EtudeDef[] = [
   },
   {
     id: 'level-1-2',
-    level: 1,
-    indexInLevel: 2,
+    movement: 1,
+    indexInMovement: 2,
     name: 'Etude 1-2',
     description: '2分音符の伸びを感じる',
     bpm: 80,
@@ -115,8 +115,8 @@ const ETUDE_DEFS: readonly EtudeDef[] = [
   },
   {
     id: 'level-1-3',
-    level: 1,
-    indexInLevel: 3,
+    movement: 1,
+    indexInMovement: 3,
     name: 'Etude 1-3',
     description: '全音符と2分音符の対話',
     bpm: 80,
@@ -134,8 +134,8 @@ const ETUDE_DEFS: readonly EtudeDef[] = [
   },
   {
     id: 'level-1-4',
-    level: 1,
-    indexInLevel: 4,
+    movement: 1,
+    indexInMovement: 4,
     name: 'Etude 1-4',
     description: '4分と2分のリレー',
     bpm: 80,
@@ -153,8 +153,8 @@ const ETUDE_DEFS: readonly EtudeDef[] = [
   },
   {
     id: 'level-1-5',
-    level: 1,
-    indexInLevel: 5,
+    movement: 1,
+    indexInMovement: 5,
     name: 'Etude 1-5',
     description: '基本値の総まとめ',
     bpm: 80,
@@ -172,9 +172,9 @@ const ETUDE_DEFS: readonly EtudeDef[] = [
   },
   {
     id: 'level-1-exam',
-    level: 1,
-    indexInLevel: 6,
-    isExam: true,
+    movement: 1,
+    indexInMovement: 6,
+    isFinal: true,
     name: 'Movement 1-Final',
     description: '次レベルへ向け、休符を一足先に',
     bpm: 80,
@@ -197,8 +197,8 @@ const ETUDE_DEFS: readonly EtudeDef[] = [
   // ============================================================
   {
     id: 'level-2-1',
-    level: 2,
-    indexInLevel: 1,
+    movement: 2,
+    indexInMovement: 1,
     name: 'Etude 2-1',
     description: '4分休符の間合い',
     bpm: 87,
@@ -216,8 +216,8 @@ const ETUDE_DEFS: readonly EtudeDef[] = [
   },
   {
     id: 'level-2-2',
-    level: 2,
-    indexInLevel: 2,
+    movement: 2,
+    indexInMovement: 2,
     name: 'Etude 2-2',
     description: '休符でひと呼吸',
     bpm: 87,
@@ -235,8 +235,8 @@ const ETUDE_DEFS: readonly EtudeDef[] = [
   },
   {
     id: 'level-2-3',
-    level: 2,
-    indexInLevel: 3,
+    movement: 2,
+    indexInMovement: 3,
     name: 'Etude 2-3',
     description: '3/4 ワルツに入門',
     bpm: 87,
@@ -254,8 +254,8 @@ const ETUDE_DEFS: readonly EtudeDef[] = [
   },
   {
     id: 'level-2-4',
-    level: 2,
-    indexInLevel: 4,
+    movement: 2,
+    indexInMovement: 4,
     name: 'Etude 2-4',
     description: '3/4 + 4分休符',
     bpm: 87,
@@ -273,8 +273,8 @@ const ETUDE_DEFS: readonly EtudeDef[] = [
   },
   {
     id: 'level-2-5',
-    level: 2,
-    indexInLevel: 5,
+    movement: 2,
+    indexInMovement: 5,
     name: 'Etude 2-5',
     description: '4/4 と 3/4 を弾むように',
     bpm: 87,
@@ -292,9 +292,9 @@ const ETUDE_DEFS: readonly EtudeDef[] = [
   },
   {
     id: 'level-2-exam',
-    level: 2,
-    indexInLevel: 6,
-    isExam: true,
+    movement: 2,
+    indexInMovement: 6,
+    isFinal: true,
     name: 'Movement 2-Final',
     description: '次レベルへ向け、8分の予告',
     bpm: 87,
@@ -317,8 +317,8 @@ const ETUDE_DEFS: readonly EtudeDef[] = [
   // ============================================================
   {
     id: 'level-3-1',
-    level: 3,
-    indexInLevel: 1,
+    movement: 3,
+    indexInMovement: 1,
     name: 'Etude 3-1',
     description: '8分音符を刻む',
     bpm: 90,
@@ -336,8 +336,8 @@ const ETUDE_DEFS: readonly EtudeDef[] = [
   },
   {
     id: 'level-3-2',
-    level: 3,
-    indexInLevel: 2,
+    movement: 3,
+    indexInMovement: 2,
     name: 'Etude 3-2',
     description: '8分休符の合いの手',
     bpm: 90,
@@ -355,8 +355,8 @@ const ETUDE_DEFS: readonly EtudeDef[] = [
   },
   {
     id: 'level-3-3',
-    level: 3,
-    indexInLevel: 3,
+    movement: 3,
+    indexInMovement: 3,
     name: 'Etude 3-3',
     description: '裏拍を踏みしめる',
     bpm: 90,
@@ -374,8 +374,8 @@ const ETUDE_DEFS: readonly EtudeDef[] = [
   },
   {
     id: 'level-3-4',
-    level: 3,
-    indexInLevel: 4,
+    movement: 3,
+    indexInMovement: 4,
     name: 'Etude 3-4',
     description: '3/4 拍子で8分音符',
     bpm: 90,
@@ -393,8 +393,8 @@ const ETUDE_DEFS: readonly EtudeDef[] = [
   },
   {
     id: 'level-3-5',
-    level: 3,
-    indexInLevel: 5,
+    movement: 3,
+    indexInMovement: 5,
     name: 'Etude 3-5',
     description: '8分の連続と休符の織り交ぜ',
     bpm: 90,
@@ -412,9 +412,9 @@ const ETUDE_DEFS: readonly EtudeDef[] = [
   },
   {
     id: 'level-3-exam',
-    level: 3,
-    indexInLevel: 6,
-    isExam: true,
+    movement: 3,
+    indexInMovement: 6,
+    isFinal: true,
     name: 'Movement 3-Final',
     description: '次レベルへ向け、付点4分の予告',
     bpm: 90,
@@ -437,8 +437,8 @@ const ETUDE_DEFS: readonly EtudeDef[] = [
   // ============================================================
   {
     id: 'level-4-1',
-    level: 4,
-    indexInLevel: 1,
+    movement: 4,
+    indexInMovement: 1,
     name: 'Etude 4-1',
     description: '付点4分音符の躍動',
     bpm: 92,
@@ -456,8 +456,8 @@ const ETUDE_DEFS: readonly EtudeDef[] = [
   },
   {
     id: 'level-4-2',
-    level: 4,
-    indexInLevel: 2,
+    movement: 4,
+    indexInMovement: 2,
     name: 'Etude 4-2',
     description: '付点8分 + 16分のスキップ',
     bpm: 92,
@@ -475,8 +475,8 @@ const ETUDE_DEFS: readonly EtudeDef[] = [
   },
   {
     id: 'level-4-3',
-    level: 4,
-    indexInLevel: 3,
+    movement: 4,
+    indexInMovement: 3,
     name: 'Etude 4-3',
     description: '6/8 拍子に入門',
     bpm: 61,
@@ -494,8 +494,8 @@ const ETUDE_DEFS: readonly EtudeDef[] = [
   },
   {
     id: 'level-4-4',
-    level: 4,
-    indexInLevel: 4,
+    movement: 4,
+    indexInMovement: 4,
     name: 'Etude 4-4',
     description: '6/8 + 付点4分の流れ',
     bpm: 61,
@@ -513,8 +513,8 @@ const ETUDE_DEFS: readonly EtudeDef[] = [
   },
   {
     id: 'level-4-5',
-    level: 4,
-    indexInLevel: 5,
+    movement: 4,
+    indexInMovement: 5,
     name: 'Etude 4-5',
     description: '4/4 と付点の総合演習',
     bpm: 92,
@@ -532,9 +532,9 @@ const ETUDE_DEFS: readonly EtudeDef[] = [
   },
   {
     id: 'level-4-exam',
-    level: 4,
-    indexInLevel: 6,
-    isExam: true,
+    movement: 4,
+    indexInMovement: 6,
+    isFinal: true,
     name: 'Movement 4-Final',
     description: '次レベルへ向け、16分音符の予告',
     bpm: 92,
@@ -557,8 +557,8 @@ const ETUDE_DEFS: readonly EtudeDef[] = [
   // ============================================================
   {
     id: 'level-5-1',
-    level: 5,
-    indexInLevel: 1,
+    movement: 5,
+    indexInMovement: 1,
     name: 'Etude 5-1',
     description: '16分音符を均等に',
     bpm: 98,
@@ -576,8 +576,8 @@ const ETUDE_DEFS: readonly EtudeDef[] = [
   },
   {
     id: 'level-5-2',
-    level: 5,
-    indexInLevel: 2,
+    movement: 5,
+    indexInMovement: 2,
     name: 'Etude 5-2',
     description: '16分休符でリズムを刻む',
     bpm: 98,
@@ -595,8 +595,8 @@ const ETUDE_DEFS: readonly EtudeDef[] = [
   },
   {
     id: 'level-5-3',
-    level: 5,
-    indexInLevel: 3,
+    movement: 5,
+    indexInMovement: 3,
     name: 'Etude 5-3',
     description: '6/8 で16分を散りばめる',
     bpm: 65,
@@ -614,8 +614,8 @@ const ETUDE_DEFS: readonly EtudeDef[] = [
   },
   {
     id: 'level-5-4',
-    level: 5,
-    indexInLevel: 4,
+    movement: 5,
+    indexInMovement: 4,
     name: 'Etude 5-4',
     description: '裏裏のリズムを掴む',
     bpm: 98,
@@ -633,8 +633,8 @@ const ETUDE_DEFS: readonly EtudeDef[] = [
   },
   {
     id: 'level-5-5',
-    level: 5,
-    indexInLevel: 5,
+    movement: 5,
+    indexInMovement: 5,
     name: 'Etude 5-5',
     description: '16分の総合演習',
     bpm: 98,
@@ -652,9 +652,9 @@ const ETUDE_DEFS: readonly EtudeDef[] = [
   },
   {
     id: 'level-5-exam',
-    level: 5,
-    indexInLevel: 6,
-    isExam: true,
+    movement: 5,
+    indexInMovement: 6,
+    isFinal: true,
     name: 'Movement 5-Final',
     description: '次レベルへ向け、シンコペーションの予告',
     bpm: 98,
@@ -677,8 +677,8 @@ const ETUDE_DEFS: readonly EtudeDef[] = [
   // ============================================================
   {
     id: 'level-6-1',
-    level: 6,
-    indexInLevel: 1,
+    movement: 6,
+    indexInMovement: 1,
     name: 'Etude 6-1',
     description: 'シンコペーション入門',
     bpm: 103,
@@ -696,8 +696,8 @@ const ETUDE_DEFS: readonly EtudeDef[] = [
   },
   {
     id: 'level-6-2',
-    level: 6,
-    indexInLevel: 2,
+    movement: 6,
+    indexInMovement: 2,
     name: 'Etude 6-2',
     description: '小節を跨ぐタイ',
     bpm: 103,
@@ -716,8 +716,8 @@ const ETUDE_DEFS: readonly EtudeDef[] = [
   },
   {
     id: 'level-6-3',
-    level: 6,
-    indexInLevel: 3,
+    movement: 6,
+    indexInMovement: 3,
     name: 'Etude 6-3',
     description: 'シンコペとタイの混合',
     bpm: 103,
@@ -735,8 +735,8 @@ const ETUDE_DEFS: readonly EtudeDef[] = [
   },
   {
     id: 'level-6-4',
-    level: 6,
-    indexInLevel: 4,
+    movement: 6,
+    indexInMovement: 4,
     name: 'Etude 6-4',
     description: 'アンチシペーションで先取り',
     bpm: 103,
@@ -754,8 +754,8 @@ const ETUDE_DEFS: readonly EtudeDef[] = [
   },
   {
     id: 'level-6-5',
-    level: 6,
-    indexInLevel: 5,
+    movement: 6,
+    indexInMovement: 5,
     name: 'Etude 6-5',
     description: '裏拍とタイで踊る',
     bpm: 103,
@@ -773,9 +773,9 @@ const ETUDE_DEFS: readonly EtudeDef[] = [
   },
   {
     id: 'level-6-exam',
-    level: 6,
-    indexInLevel: 6,
-    isExam: true,
+    movement: 6,
+    indexInMovement: 6,
+    isFinal: true,
     name: 'Movement 6-Final',
     description: '次レベルへ向け、3連符の予告',
     bpm: 103,
@@ -798,8 +798,8 @@ const ETUDE_DEFS: readonly EtudeDef[] = [
   // ============================================================
   {
     id: 'level-7-1',
-    level: 7,
-    indexInLevel: 1,
+    movement: 7,
+    indexInMovement: 1,
     name: 'Etude 7-1',
     description: '3連符を流暢に',
     bpm: 108,
@@ -817,8 +817,8 @@ const ETUDE_DEFS: readonly EtudeDef[] = [
   },
   {
     id: 'level-7-2',
-    level: 7,
-    indexInLevel: 2,
+    movement: 7,
+    indexInMovement: 2,
     name: 'Etude 7-2',
     description: '4 連 vs 3 連の対比',
     bpm: 108,
@@ -836,8 +836,8 @@ const ETUDE_DEFS: readonly EtudeDef[] = [
   },
   {
     id: 'level-7-3',
-    level: 7,
-    indexInLevel: 3,
+    movement: 7,
+    indexInMovement: 3,
     name: 'Etude 7-3',
     description: '6連符の旋回',
     bpm: 108,
@@ -855,8 +855,8 @@ const ETUDE_DEFS: readonly EtudeDef[] = [
   },
   {
     id: 'level-7-4',
-    level: 7,
-    indexInLevel: 4,
+    movement: 7,
+    indexInMovement: 4,
     name: 'Etude 7-4',
     description: '9/8 拍子に親しむ',
     bpm: 72,
@@ -874,8 +874,8 @@ const ETUDE_DEFS: readonly EtudeDef[] = [
   },
   {
     id: 'level-7-5',
-    level: 7,
-    indexInLevel: 5,
+    movement: 7,
+    indexInMovement: 5,
     name: 'Etude 7-5',
     description: '3連 + タイの華麗な技巧',
     bpm: 108,
@@ -893,9 +893,9 @@ const ETUDE_DEFS: readonly EtudeDef[] = [
   },
   {
     id: 'level-7-exam',
-    level: 7,
-    indexInLevel: 6,
-    isExam: true,
+    movement: 7,
+    indexInMovement: 6,
+    isFinal: true,
     name: 'Movement 7-Final',
     description: '次レベルへ向け、5連符の予告',
     bpm: 108,
@@ -918,8 +918,8 @@ const ETUDE_DEFS: readonly EtudeDef[] = [
   // ============================================================
   {
     id: 'level-8-1',
-    level: 8,
-    indexInLevel: 1,
+    movement: 8,
+    indexInMovement: 1,
     name: 'Etude 8-1',
     description: '5連符を四拍の中に',
     bpm: 113,
@@ -937,8 +937,8 @@ const ETUDE_DEFS: readonly EtudeDef[] = [
   },
   {
     id: 'level-8-2',
-    level: 8,
-    indexInLevel: 2,
+    movement: 8,
+    indexInMovement: 2,
     name: 'Etude 8-2',
     description: '7連符の挑戦',
     bpm: 113,
@@ -956,8 +956,8 @@ const ETUDE_DEFS: readonly EtudeDef[] = [
   },
   {
     id: 'level-8-3',
-    level: 8,
-    indexInLevel: 3,
+    movement: 8,
+    indexInMovement: 3,
     name: 'Etude 8-3',
     description: '5/8 拍子に飛び込む',
     bpm: 226,
@@ -975,8 +975,8 @@ const ETUDE_DEFS: readonly EtudeDef[] = [
   },
   {
     id: 'level-8-4',
-    level: 8,
-    indexInLevel: 4,
+    movement: 8,
+    indexInMovement: 4,
     name: 'Etude 8-4',
     description: '7/8 のうねり',
     bpm: 226,
@@ -994,8 +994,8 @@ const ETUDE_DEFS: readonly EtudeDef[] = [
   },
   {
     id: 'level-8-5',
-    level: 8,
-    indexInLevel: 5,
+    movement: 8,
+    indexInMovement: 5,
     name: 'Etude 8-5',
     description: '異拍子の総合演習',
     bpm: 113,
@@ -1013,9 +1013,9 @@ const ETUDE_DEFS: readonly EtudeDef[] = [
   },
   {
     id: 'level-8-exam',
-    level: 8,
-    indexInLevel: 6,
-    isExam: true,
+    movement: 8,
+    indexInMovement: 6,
+    isFinal: true,
     name: 'Movement 8-Final',
     description: '次レベルへ向け、5/4 拍子の予告',
     bpm: 113,
@@ -1038,8 +1038,8 @@ const ETUDE_DEFS: readonly EtudeDef[] = [
   // ============================================================
   {
     id: 'level-9-1',
-    level: 9,
-    indexInLevel: 1,
+    movement: 9,
+    indexInMovement: 1,
     name: 'Etude 9-1',
     description: '5/4 拍子で歩を進める',
     bpm: 118,
@@ -1057,8 +1057,8 @@ const ETUDE_DEFS: readonly EtudeDef[] = [
   },
   {
     id: 'level-9-2',
-    level: 9,
-    indexInLevel: 2,
+    movement: 9,
+    indexInMovement: 2,
     name: 'Etude 9-2',
     description: '7/8 拍子の躍動',
     bpm: 236,
@@ -1076,8 +1076,8 @@ const ETUDE_DEFS: readonly EtudeDef[] = [
   },
   {
     id: 'level-9-3',
-    level: 9,
-    indexInLevel: 3,
+    movement: 9,
+    indexInMovement: 3,
     name: 'Etude 9-3',
     description: 'ヘミオラ — 3 を 2 に組替',
     bpm: 118,
@@ -1096,8 +1096,8 @@ const ETUDE_DEFS: readonly EtudeDef[] = [
   },
   {
     id: 'level-9-4',
-    level: 9,
-    indexInLevel: 4,
+    movement: 9,
+    indexInMovement: 4,
     name: 'Etude 9-4',
     description: '複合拍子の組替え (9/8 ⇄ 6/8)',
     bpm: 79,
@@ -1118,8 +1118,8 @@ const ETUDE_DEFS: readonly EtudeDef[] = [
   },
   {
     id: 'level-9-5',
-    level: 9,
-    indexInLevel: 5,
+    movement: 9,
+    indexInMovement: 5,
     name: 'Etude 9-5',
     description: '変則拍子の総合演習',
     bpm: 118,
@@ -1139,9 +1139,9 @@ const ETUDE_DEFS: readonly EtudeDef[] = [
   },
   {
     id: 'level-9-exam',
-    level: 9,
-    indexInLevel: 6,
-    isExam: true,
+    movement: 9,
+    indexInMovement: 6,
+    isFinal: true,
     name: 'Movement 9-Final',
     description: '次レベルへ向け、拍子切替の予告',
     bpm: 118,
@@ -1168,8 +1168,8 @@ const ETUDE_DEFS: readonly EtudeDef[] = [
   // ============================================================
   {
     id: 'level-10-1',
-    level: 10,
-    indexInLevel: 1,
+    movement: 10,
+    indexInMovement: 1,
     name: 'Etude 10-1',
     description: '拍子切替に慣れる',
     bpm: 126,
@@ -1190,8 +1190,8 @@ const ETUDE_DEFS: readonly EtudeDef[] = [
   },
   {
     id: 'level-10-2',
-    level: 10,
-    indexInLevel: 2,
+    movement: 10,
+    indexInMovement: 2,
     name: 'Etude 10-2',
     description: 'テンポチェンジ + 6/8 への揺らぎ',
     bpm: 126,
@@ -1221,8 +1221,8 @@ const ETUDE_DEFS: readonly EtudeDef[] = [
   },
   {
     id: 'level-10-3',
-    level: 10,
-    indexInLevel: 3,
+    movement: 10,
+    indexInMovement: 3,
     name: 'Etude 10-3',
     description: 'クロスリズムを拍子切替で揺さぶる',
     bpm: 126,
@@ -1248,8 +1248,8 @@ const ETUDE_DEFS: readonly EtudeDef[] = [
   },
   {
     id: 'level-10-4',
-    level: 10,
-    indexInLevel: 4,
+    movement: 10,
+    indexInMovement: 4,
     name: 'Etude 10-4',
     description: '混合拍子の連結',
     bpm: 252,
@@ -1273,8 +1273,8 @@ const ETUDE_DEFS: readonly EtudeDef[] = [
   },
   {
     id: 'level-10-5',
-    level: 10,
-    indexInLevel: 5,
+    movement: 10,
+    indexInMovement: 5,
     name: 'Etude 10-5',
     description: '拍子変化のグランドツアー',
     bpm: 126,
@@ -1312,9 +1312,9 @@ const ETUDE_DEFS: readonly EtudeDef[] = [
   },
   {
     id: 'level-10-exam',
-    level: 10,
-    indexInLevel: 6,
-    isExam: true,
+    movement: 10,
+    indexInMovement: 6,
+    isFinal: true,
     name: 'Movement 10-Final',
     description: '卒業試験 — Rhygym の最終形',
     bpm: 126,

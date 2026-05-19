@@ -1,7 +1,7 @@
 {
   "id": "level-10-1",
-  "level": 10,
-  "indexInLevel": 1,
+  "movement": 10,
+  "indexInMovement": 1,
   "name": "Etude 10-1",
   "description": "拍子切替に慣れる",
   "bpm": 126,

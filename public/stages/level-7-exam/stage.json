@@ -1,8 +1,8 @@
 {
   "id": "level-7-exam",
-  "level": 7,
-  "indexInLevel": 6,
-  "isExam": true,
+  "movement": 7,
+  "indexInMovement": 6,
+  "isFinal": true,
   "name": "Movement 7-Final",
   "description": "次レベルへ向け、5連符の予告",
   "bpm": 108,

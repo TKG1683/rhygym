@@ -27,10 +27,10 @@ interface EtudeJson {
   name: string;
   description: string;
   bpm: number;
-  level: number;
+  movement: number;
   themeColor: string;
-  indexInLevel?: number;
-  isExam?: boolean;
+  indexInMovement?: number;
+  isFinal?: boolean;
 }
 
 /** Build a URL relative to Vite's BASE_URL so GitHub Pages's /rhygym/ prefix is honored. */
@@ -68,10 +68,10 @@ export async function loadEtude(id: string): Promise<EtudeWithMovementMeta> {
     name: meta.name,
     description: meta.description,
     bpm: meta.bpm,
-    level: meta.level,
+    movement: meta.movement,
     themeColor: meta.themeColor,
-    indexInLevel: meta.indexInLevel,
-    isExam: meta.isExam,
+    indexInMovement: meta.indexInMovement,
+    isFinal: meta.isFinal,
     score,
   };
 }

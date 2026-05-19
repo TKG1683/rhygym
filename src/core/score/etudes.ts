@@ -22,13 +22,13 @@ interface EtudeMeta {
   description: string;
   bpm: number;
   /** Difficulty rank, 1 = easiest, 10 = hardest. */
-  level: number;
+  movement: number;
   /** Accent color used on the card. Difficulty rises → hue shifts warmer/darker. */
   themeColor: string;
   /** 1-based position within a Level's stage list. */
-  indexInLevel: number;
+  indexInMovement: number;
   /** True for the Level's skip-test stage. */
-  isExam?: boolean;
+  isFinal?: boolean;
 }
 
 // Same palette as scripts/generate-stages.ts so the fallback and the
@@ -131,35 +131,35 @@ const ETUDE_DESCRIPTIONS: Record<string, string> = {
   'level-10-exam': '卒業試験 — Rhygym の最終形',
 };
 
-function buildMovementMetas(level: number): EtudeMeta[] {
-  const bpm = MOVEMENT_BPM[level]!;
-  const color = COLOR[level]!;
-  const indices: Array<{ key: string; indexInLevel: number; isExam?: boolean; minor: string }> = [
-    { key: '1', indexInLevel: 1, minor: '1' },
-    { key: '2', indexInLevel: 2, minor: '2' },
-    { key: '3', indexInLevel: 3, minor: '3' },
-    { key: '4', indexInLevel: 4, minor: '4' },
-    { key: '5', indexInLevel: 5, minor: '5' },
-    { key: 'exam', indexInLevel: 6, isExam: true, minor: 'F' },
+function buildMovementMetas(movement: number): EtudeMeta[] {
+  const bpm = MOVEMENT_BPM[movement]!;
+  const color = COLOR[movement]!;
+  const indices: Array<{ key: string; indexInMovement: number; isFinal?: boolean; minor: string }> = [
+    { key: '1', indexInMovement: 1, minor: '1' },
+    { key: '2', indexInMovement: 2, minor: '2' },
+    { key: '3', indexInMovement: 3, minor: '3' },
+    { key: '4', indexInMovement: 4, minor: '4' },
+    { key: '5', indexInMovement: 5, minor: '5' },
+    { key: 'exam', indexInMovement: 6, isFinal: true, minor: 'F' },
   ];
   return indices.map((it) => {
-    const id = `level-${level}-${it.key}`;
+    const id = `level-${movement}-${it.key}`;
     // Exam is no longer an étude — it's the Movement's Final, so it
     // gets its own label rather than an "Etude N-F" suffix. Hyphen
     // separators across the board for visual consistency.
-    const name = it.isExam
-      ? `Movement ${level}-Final`
-      : `Etude ${level}-${it.minor}`;
+    const name = it.isFinal
+      ? `Movement ${movement}-Final`
+      : `Etude ${movement}-${it.minor}`;
     const meta: EtudeMeta = {
       id,
       name,
       description: ETUDE_DESCRIPTIONS[id] ?? name,
       bpm,
-      level,
+      movement,
       themeColor: color,
-      indexInLevel: it.indexInLevel,
+      indexInMovement: it.indexInMovement,
     };
-    if (it.isExam) meta.isExam = true;
+    if (it.isFinal) meta.isFinal = true;
     return meta;
   });
 }
@@ -169,10 +169,10 @@ const ETUDE_METAS: readonly EtudeMeta[] = Array.from({ length: 10 }, (_, i) =>
 ).flat();
 
 // Kept as a re-export for callers that imported the old EtudeWithMovementMeta
-// type; structurally identical to Etude now that indexInLevel/isExam +
+// type; structurally identical to Etude now that indexInMovement/isFinal +
 // level/themeColor live on the base type / are added here.
 export interface EtudeWithMovementMeta extends Etude {
-  level: number;
+  movement: number;
   themeColor: string;
 }
 
@@ -182,9 +182,9 @@ export const ETUDES: readonly EtudeWithMovementMeta[] = ETUDE_METAS.map((m) => {
     name: m.name,
     description: m.description,
     bpm: m.bpm,
-    level: m.level,
+    movement: m.movement,
     themeColor: m.themeColor,
-    indexInLevel: m.indexInLevel,
+    indexInMovement: m.indexInMovement,
     // Offline fallback uses DEMO_ETUDE's note pattern but overrides the
     // tempo with this Level's authored BPM so metronome and playhead
     // stay in sync. Real per-stage scores load from public/stages/.
@@ -193,7 +193,7 @@ export const ETUDES: readonly EtudeWithMovementMeta[] = ETUDE_METAS.map((m) => {
       tempos: [{ tick: 0, bpm: m.bpm }],
     },
   };
-  if (m.isExam) stage.isExam = true;
+  if (m.isFinal) stage.isFinal = true;
   return stage;
 });
 
@@ -203,5 +203,5 @@ export function getEtudeById(id: string): EtudeWithMovementMeta | null {
 
 export function getEtudeMovement(id: string): number | null {
   const meta = ETUDE_METAS.find((m) => m.id === id);
-  return meta?.level ?? null;
+  return meta?.movement ?? null;
 }

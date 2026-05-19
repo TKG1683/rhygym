@@ -1,7 +1,7 @@
 {
   "id": "level-1-5",
-  "level": 1,
-  "indexInLevel": 5,
+  "movement": 1,
+  "indexInMovement": 5,
   "name": "Etude 1-5",
   "description": "基本値の総まとめ",
   "bpm": 80,
