@@ -1,5 +1,5 @@
 /**
- * Stage build script: writes every stage in STAGE_DEFS as a
+ * Stage build script: writes every stage in ETUDE_DEFS as a
  * `score.mid` + `stage.json` pair under public/stages/<id>/, and
  * regenerates manifest.json so the loader picks them up.
  *
@@ -42,7 +42,7 @@ import {
 } from './dsl/notes';
 import { scoreToMidi } from './dsl/scoreToMidi';
 
-interface StageDef {
+interface EtudeDef {
   id: string;
   level: number;
   name: string;
@@ -71,7 +71,7 @@ const COLOR = {
   10: '#E8612E',
 } as const;
 
-const STAGE_DEFS: readonly StageDef[] = [
+const ETUDE_DEFS: readonly EtudeDef[] = [
   // ============================================================
   // Level 1 — quarter / half / whole notes (4/4)
   // ============================================================
@@ -1355,7 +1355,7 @@ function ensureDir(filepath: string): void {
   mkdirSync(dirname(filepath), { recursive: true });
 }
 
-function writeStage(stage: StageDef): void {
+function writeEtude(stage: EtudeDef): void {
   const midi = scoreToMidi(stage.score);
   const midiPath = join(OUT_DIR, stage.id, 'score.mid');
   ensureDir(midiPath);
@@ -1366,7 +1366,7 @@ function writeStage(stage: StageDef): void {
   writeFileSync(jsonPath, JSON.stringify(meta, null, 2));
 }
 
-function writeManifest(stages: readonly StageDef[]): void {
+function writeManifest(stages: readonly EtudeDef[]): void {
   const manifest = {
     version: 1,
     stages: stages.map((s) => s.id),
@@ -1377,12 +1377,12 @@ function writeManifest(stages: readonly StageDef[]): void {
 }
 
 function main(): void {
-  for (const stage of STAGE_DEFS) {
-    writeStage(stage);
+  for (const stage of ETUDE_DEFS) {
+    writeEtude(stage);
     console.log(`  ✓ ${stage.id}`);
   }
-  writeManifest(STAGE_DEFS);
-  console.log(`Generated ${STAGE_DEFS.length} stage(s) in ${OUT_DIR}/`);
+  writeManifest(ETUDE_DEFS);
+  console.log(`Generated ${ETUDE_DEFS.length} stage(s) in ${OUT_DIR}/`);
 }
 
 main();

@@ -30,12 +30,12 @@ function rankAtLeast(rank: string, min: string): boolean {
  * Exam stages count as the end of their level, so "next" from an exam
  * is the next level's stage 1.
  */
-function findNextStage(
+function findNextEtude(
   roster: readonly StageWithMeta[],
   current: StageWithMeta,
 ): StageWithMeta | null {
   if (current.isExam) {
-    return firstStageOfLevel(roster, current.level + 1);
+    return firstEtudeOfMovement(roster, current.level + 1);
   }
   if (current.indexInLevel != null) {
     const sameLevelNext = roster.find(
@@ -49,10 +49,10 @@ function findNextStage(
     const idx = sameLevel.findIndex((s) => s.id === current.id);
     if (idx >= 0 && idx + 1 < sameLevel.length) return sameLevel[idx + 1]!;
   }
-  return firstStageOfLevel(roster, current.level + 1);
+  return firstEtudeOfMovement(roster, current.level + 1);
 }
 
-function firstStageOfLevel(
+function firstEtudeOfMovement(
   roster: readonly StageWithMeta[],
   level: number,
 ): StageWithMeta | null {
@@ -86,7 +86,7 @@ export function ResultScreen() {
   // level they just played, not the top-level Level list. Looks up the
   // stage's level from the roster (network or fallback) and asks
   // StageSelect to open it on mount.
-  const goStageSelect = () => {
+  const goEtudeSelect = () => {
     if (stage) {
       const roster = loadedStages ?? STAGES;
       const meta = roster.find((s) => s.id === stage.id);
@@ -181,24 +181,24 @@ export function ResultScreen() {
   // "Next stage" lookup — only relevant once we know the player cleared
   // (rank A or higher). Resolved against the loaded roster (with the
   // bundled STAGES as a fallback for the same reasons GameScreen does).
-  const nextStage = useMemo<StageWithMeta | null>(() => {
+  const nextEtude = useMemo<StageWithMeta | null>(() => {
     if (!stage || !result) return null;
     if (!rankAtLeast(result.rank, PASS_RANK_THRESHOLD)) return null;
     const roster = loadedStages ?? STAGES;
     const currentMeta = roster.find((s) => s.id === stage.id);
     if (!currentMeta) return null;
-    return findNextStage(roster, currentMeta);
+    return findNextEtude(roster, currentMeta);
   }, [stage, result, loadedStages]);
 
   const passed =
     result != null && rankAtLeast(result.rank, PASS_RANK_THRESHOLD);
   // If the player cleared the very last stage there's no "next" to go
   // to — the level-list itself becomes the celebration target.
-  const endOfRoster = passed && nextStage === null;
+  const endOfRoster = passed && nextEtude === null;
 
   const goNext = () => {
-    if (!nextStage) return;
-    selectStage(nextStage.id);
+    if (!nextEtude) return;
+    selectStage(nextEtude.id);
     goto('game');
   };
 
@@ -288,12 +288,12 @@ export function ResultScreen() {
 
       {passed ? (
         <>
-          {nextStage ? (
-            <button className="primary next-stage-cta" onClick={goNext}>
+          {nextEtude ? (
+            <button className="primary next-etude-cta" onClick={goNext}>
               次の Etude へ →
             </button>
           ) : (
-            <button className="primary next-stage-cta" onClick={goStageSelect}>
+            <button className="primary next-etude-cta" onClick={goEtudeSelect}>
               Movement 一覧へ
             </button>
           )}
@@ -302,7 +302,7 @@ export function ResultScreen() {
               リトライ
             </button>
             {!endOfRoster && (
-              <button className="secondary result-secondary-btn" onClick={goStageSelect}>
+              <button className="secondary result-secondary-btn" onClick={goEtudeSelect}>
                 Etude 一覧へ
               </button>
             )}
@@ -313,7 +313,7 @@ export function ResultScreen() {
           <button className="primary" onClick={() => goto('game')}>
             リトライ
           </button>
-          <button className="secondary" onClick={goStageSelect}>
+          <button className="secondary" onClick={goEtudeSelect}>
             Etude 一覧へ
           </button>
         </div>
