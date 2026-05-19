@@ -80,7 +80,7 @@ const ETUDE_DEFS: readonly EtudeDef[] = [
     level: 1,
     indexInLevel: 1,
     name: 'Etude 1-1',
-    description: '四分音符を歩く',
+    description: '4分音符を歩く',
     bpm: 80,
     themeColor: COLOR[1],
     score: buildScore({ ts: [4, 4], bpm: 80 }, [
@@ -99,7 +99,7 @@ const ETUDE_DEFS: readonly EtudeDef[] = [
     level: 1,
     indexInLevel: 2,
     name: 'Etude 1-2',
-    description: '二分音符の伸びを感じる',
+    description: '2分音符の伸びを感じる',
     bpm: 80,
     themeColor: COLOR[1],
     score: buildScore({ ts: [4, 4], bpm: 80 }, [
@@ -118,7 +118,7 @@ const ETUDE_DEFS: readonly EtudeDef[] = [
     level: 1,
     indexInLevel: 3,
     name: 'Etude 1-3',
-    description: '全音符と二分音符の対話',
+    description: '全音符と2分音符の対話',
     bpm: 80,
     themeColor: COLOR[1],
     score: buildScore({ ts: [4, 4], bpm: 80 }, [
@@ -137,7 +137,7 @@ const ETUDE_DEFS: readonly EtudeDef[] = [
     level: 1,
     indexInLevel: 4,
     name: 'Etude 1-4',
-    description: '四分と二分のリレー',
+    description: '4分と2分のリレー',
     bpm: 80,
     themeColor: COLOR[1],
     score: buildScore({ ts: [4, 4], bpm: 80 }, [
@@ -200,7 +200,7 @@ const ETUDE_DEFS: readonly EtudeDef[] = [
     level: 2,
     indexInLevel: 1,
     name: 'Etude 2-1',
-    description: '四分休符の間合い',
+    description: '4分休符の間合い',
     bpm: 90,
     themeColor: COLOR[2],
     score: buildScore({ ts: [4, 4], bpm: 90 }, [
@@ -257,7 +257,7 @@ const ETUDE_DEFS: readonly EtudeDef[] = [
     level: 2,
     indexInLevel: 4,
     name: 'Etude 2-4',
-    description: '3/4 + 四分休符',
+    description: '3/4 + 4分休符',
     bpm: 90,
     themeColor: COLOR[2],
     score: buildScore({ ts: [3, 4], bpm: 90 }, [
@@ -296,7 +296,7 @@ const ETUDE_DEFS: readonly EtudeDef[] = [
     indexInLevel: 6,
     isExam: true,
     name: 'Movement 2-Final',
-    description: '次レベルへ向け、八分の予告',
+    description: '次レベルへ向け、8分の予告',
     bpm: 90,
     themeColor: COLOR[2],
     // Bridge to Level 3: sneak in eighth notes.
@@ -320,7 +320,7 @@ const ETUDE_DEFS: readonly EtudeDef[] = [
     level: 3,
     indexInLevel: 1,
     name: 'Etude 3-1',
-    description: '八分音符を刻む',
+    description: '8分音符を刻む',
     bpm: 95,
     themeColor: COLOR[3],
     score: buildScore({ ts: [4, 4], bpm: 95 }, [
@@ -339,7 +339,7 @@ const ETUDE_DEFS: readonly EtudeDef[] = [
     level: 3,
     indexInLevel: 2,
     name: 'Etude 3-2',
-    description: '八分休符の合いの手',
+    description: '8分休符の合いの手',
     bpm: 95,
     themeColor: COLOR[3],
     score: buildScore({ ts: [4, 4], bpm: 95 }, [
@@ -377,7 +377,7 @@ const ETUDE_DEFS: readonly EtudeDef[] = [
     level: 3,
     indexInLevel: 4,
     name: 'Etude 3-4',
-    description: '3/4 拍子で八分音符',
+    description: '3/4 拍子で8分音符',
     bpm: 95,
     themeColor: COLOR[3],
     score: buildScore({ ts: [3, 4], bpm: 95 }, [
@@ -396,7 +396,7 @@ const ETUDE_DEFS: readonly EtudeDef[] = [
     level: 3,
     indexInLevel: 5,
     name: 'Etude 3-5',
-    description: '八分の連続と休符の織り交ぜ',
+    description: '8分の連続と休符の織り交ぜ',
     bpm: 95,
     themeColor: COLOR[3],
     score: buildScore({ ts: [4, 4], bpm: 95 }, [
@@ -416,7 +416,7 @@ const ETUDE_DEFS: readonly EtudeDef[] = [
     indexInLevel: 6,
     isExam: true,
     name: 'Movement 3-Final',
-    description: '次レベルへ向け、付点四分の予告',
+    description: '次レベルへ向け、付点4分の予告',
     bpm: 95,
     themeColor: COLOR[3],
     // Bridge to Level 4: introduce dotted quarter.
@@ -440,7 +440,7 @@ const ETUDE_DEFS: readonly EtudeDef[] = [
     level: 4,
     indexInLevel: 1,
     name: 'Etude 4-1',
-    description: '付点四分音符の躍動',
+    description: '付点4分音符の躍動',
     bpm: 100,
     themeColor: COLOR[4],
     score: buildScore({ ts: [4, 4], bpm: 100 }, [
@@ -459,7 +459,7 @@ const ETUDE_DEFS: readonly EtudeDef[] = [
     level: 4,
     indexInLevel: 2,
     name: 'Etude 4-2',
-    description: '付点八分 + 十六分のスキップ',
+    description: '付点8分 + 16分のスキップ',
     bpm: 100,
     themeColor: COLOR[4],
     score: buildScore({ ts: [4, 4], bpm: 100 }, [
@@ -497,7 +497,7 @@ const ETUDE_DEFS: readonly EtudeDef[] = [
     level: 4,
     indexInLevel: 4,
     name: 'Etude 4-4',
-    description: '6/8 + 付点四分の流れ',
+    description: '6/8 + 付点4分の流れ',
     bpm: 67,
     themeColor: COLOR[4],
     score: buildScore({ ts: [6, 8], bpm: 67 }, [
@@ -536,7 +536,7 @@ const ETUDE_DEFS: readonly EtudeDef[] = [
     indexInLevel: 6,
     isExam: true,
     name: 'Movement 4-Final',
-    description: '次レベルへ向け、十六分音符の予告',
+    description: '次レベルへ向け、16分音符の予告',
     bpm: 100,
     themeColor: COLOR[4],
     // Bridge to Level 5: heavier sixteenth-note usage.
@@ -560,7 +560,7 @@ const ETUDE_DEFS: readonly EtudeDef[] = [
     level: 5,
     indexInLevel: 1,
     name: 'Etude 5-1',
-    description: '十六分音符を均等に',
+    description: '16分音符を均等に',
     bpm: 110,
     themeColor: COLOR[5],
     score: buildScore({ ts: [4, 4], bpm: 110 }, [
@@ -579,7 +579,7 @@ const ETUDE_DEFS: readonly EtudeDef[] = [
     level: 5,
     indexInLevel: 2,
     name: 'Etude 5-2',
-    description: '十六分休符でリズムを刻む',
+    description: '16分休符でリズムを刻む',
     bpm: 110,
     themeColor: COLOR[5],
     score: buildScore({ ts: [4, 4], bpm: 110 }, [
@@ -598,7 +598,7 @@ const ETUDE_DEFS: readonly EtudeDef[] = [
     level: 5,
     indexInLevel: 3,
     name: 'Etude 5-3',
-    description: '6/8 で十六分を散りばめる',
+    description: '6/8 で16分を散りばめる',
     bpm: 73,
     themeColor: COLOR[5],
     score: buildScore({ ts: [6, 8], bpm: 73 }, [
@@ -636,7 +636,7 @@ const ETUDE_DEFS: readonly EtudeDef[] = [
     level: 5,
     indexInLevel: 5,
     name: 'Etude 5-5',
-    description: '十六分の総合演習',
+    description: '16分の総合演習',
     bpm: 110,
     themeColor: COLOR[5],
     score: buildScore({ ts: [4, 4], bpm: 110 }, [
@@ -777,7 +777,7 @@ const ETUDE_DEFS: readonly EtudeDef[] = [
     indexInLevel: 6,
     isExam: true,
     name: 'Movement 6-Final',
-    description: '次レベルへ向け、三連符の予告',
+    description: '次レベルへ向け、3連符の予告',
     bpm: 120,
     themeColor: COLOR[6],
     // Bridge to Level 7: introduce triplets.
@@ -801,7 +801,7 @@ const ETUDE_DEFS: readonly EtudeDef[] = [
     level: 7,
     indexInLevel: 1,
     name: 'Etude 7-1',
-    description: '三連符を流暢に',
+    description: '3連符を流暢に',
     bpm: 130,
     themeColor: COLOR[7],
     score: buildScore({ ts: [4, 4], bpm: 130 }, [
@@ -839,7 +839,7 @@ const ETUDE_DEFS: readonly EtudeDef[] = [
     level: 7,
     indexInLevel: 3,
     name: 'Etude 7-3',
-    description: '六連符の旋回',
+    description: '6連符の旋回',
     bpm: 130,
     themeColor: COLOR[7],
     score: buildScore({ ts: [4, 4], bpm: 130 }, [
@@ -877,7 +877,7 @@ const ETUDE_DEFS: readonly EtudeDef[] = [
     level: 7,
     indexInLevel: 5,
     name: 'Etude 7-5',
-    description: '三連 + タイの華麗な技巧',
+    description: '3連 + タイの華麗な技巧',
     bpm: 130,
     themeColor: COLOR[7],
     score: buildScore({ ts: [4, 4], bpm: 130 }, [
@@ -897,7 +897,7 @@ const ETUDE_DEFS: readonly EtudeDef[] = [
     indexInLevel: 6,
     isExam: true,
     name: 'Movement 7-Final',
-    description: '次レベルへ向け、五連符の予告',
+    description: '次レベルへ向け、5連符の予告',
     bpm: 130,
     themeColor: COLOR[7],
     // Bridge to Level 8: introduce quintuplets.
@@ -921,7 +921,7 @@ const ETUDE_DEFS: readonly EtudeDef[] = [
     level: 8,
     indexInLevel: 1,
     name: 'Etude 8-1',
-    description: '五連符を四拍の中に',
+    description: '5連符を四拍の中に',
     bpm: 140,
     themeColor: COLOR[8],
     score: buildScore({ ts: [4, 4], bpm: 140 }, [
@@ -940,7 +940,7 @@ const ETUDE_DEFS: readonly EtudeDef[] = [
     level: 8,
     indexInLevel: 2,
     name: 'Etude 8-2',
-    description: '七連符の挑戦',
+    description: '7連符の挑戦',
     bpm: 140,
     themeColor: COLOR[8],
     score: buildScore({ ts: [4, 4], bpm: 140 }, [
