@@ -10,7 +10,7 @@ import {
   QUARTER_NOTE_TICKS,
   WHOLE_NOTE_TICKS,
   type RhythmNote,
-  type Stage,
+  type Etude,
 } from '../model';
 
 const PATTERN: ReadonlyArray<{ tick: number; dur: number }> = [
@@ -41,9 +41,9 @@ const notes: RhythmNote[] = PATTERN.map((p, i) => ({
   isRest: false,
 }));
 
-export const DEMO_STAGE: Stage = {
+export const DEMO_ETUDE: Etude = {
   id: 'demo',
-  name: 'Demo Stage',
+  name: 'Demo Etude',
   description: '4/4 × 4 小節 — 動作確認用',
   bpm: 100,
   score: {

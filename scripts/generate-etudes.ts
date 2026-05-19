@@ -1,5 +1,5 @@
 /**
- * Stage build script: writes every stage in ETUDE_DEFS as a
+ * Etude build script: writes every stage in ETUDE_DEFS as a
  * `score.mid` + `stage.json` pair under public/stages/<id>/, and
  * regenerates manifest.json so the loader picks them up.
  *

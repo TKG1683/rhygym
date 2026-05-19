@@ -26,8 +26,8 @@ import {
   type JudgementRecord,
   type NoteCandidate,
 } from '../../core/judgement';
-import type { Score, Stage } from '../../core/model';
-import { STAGES } from '../../core/score/stages';
+import type { Score, Etude } from '../../core/model';
+import { ETUDES } from '../../core/score/etudes';
 import { TickTimeConverter } from '../../core/timing/tickTime';
 import { defaultAccentPattern, tsKey } from '../../core/audio/metronome';
 import type { NoteCoords } from '../vexflow/ScoreRenderer';
@@ -45,13 +45,13 @@ const BPM_MAX_MULTIPLIER = 1.5;
 const BPM_STEP = 0.05;
 
 interface Props {
-  stage: Stage;
+  stage: Etude;
 }
 
 export function GameView({ stage }: Props) {
   const audioContext = useAppStore((s) => s.audioContext);
   const setLastResult = useAppStore((s) => s.setLastResult);
-  const setLastStage = useAppStore((s) => s.setLastStage);
+  const setLastEtude = useAppStore((s) => s.setLastEtude);
   const setLastRecords = useAppStore((s) => s.setLastRecords);
   const calibrationOffsetSec = useAppStore((s) => s.calibrationOffsetSec);
   const goto = useAppStore((s) => s.goto);
@@ -63,8 +63,8 @@ export function GameView({ stage }: Props) {
    */
   const bpmMultiplier = useAppStore((s) => s.bpmMultiplier);
   const setBpmMultiplier = useAppStore((s) => s.setBpmMultiplier);
-  const loadedStages = useAppStore((s) => s.loadedStages);
-  const setSelectInitialLevel = useAppStore((s) => s.setSelectInitialLevel);
+  const loadedEtudes = useAppStore((s) => s.loadedEtudes);
+  const setSelectInitialMovement = useAppStore((s) => s.setSelectInitialMovement);
   const metronomeAccents = useAppStore((s) => s.metronomeAccents);
   const setMetronomeAccentForTs = useAppStore((s) => s.setMetronomeAccentForTs);
   const resetMetronomeAccentForTs = useAppStore((s) => s.resetMetronomeAccentForTs);
@@ -74,9 +74,9 @@ export function GameView({ stage }: Props) {
   // "Etude 一覧へ" — leaving in the middle should still leave them
   // inside the level they just abandoned so retrying is one tap.
   const goEtudeList = () => {
-    const roster = loadedStages ?? STAGES;
+    const roster = loadedEtudes ?? ETUDES;
     const meta = roster.find((s) => s.id === stage.id);
-    if (meta) setSelectInitialLevel(meta.level);
+    if (meta) setSelectInitialMovement(meta.level);
     schedulerRef.current?.stop();
     freeMetronomeRef.current?.stop();
     goto('select');
@@ -366,7 +366,7 @@ export function GameView({ stage }: Props) {
 
           const finalRecords = [...verdictsRef.current];
           setLastResult(computeResult(finalRecords));
-          setLastStage(stage);
+          setLastEtude(stage);
           setLastRecords(finalRecords);
           setPhase('done');
           // 1.5 s breathing room so the last judgement effect, the
@@ -376,7 +376,7 @@ export function GameView({ stage }: Props) {
         }
       },
     });
-  }, [phase, candidates, audioContext, setLastResult, setLastStage, setLastRecords, goto, stage, adjustedScore, converter]);
+  }, [phase, candidates, audioContext, setLastResult, setLastEtude, setLastRecords, goto, stage, adjustedScore, converter]);
 
   if (!audioContext) {
     return (

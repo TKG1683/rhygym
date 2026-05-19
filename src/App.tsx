@@ -1,8 +1,8 @@
 import { useEffect } from 'react';
-import { loadAllStages } from './core/score/stageLoader';
+import { loadAllEtudes } from './core/score/etudeLoader';
 import { useAppStore, type Screen } from './ui/store/appStore';
 import { TitleScreen } from './ui/screens/TitleScreen';
-import { StageSelectScreen } from './ui/screens/StageSelectScreen';
+import { StageSelectScreen } from './ui/screens/MovementSelectScreen';
 import { GameScreen } from './ui/screens/GameScreen';
 import { ResultScreen } from './ui/screens/ResultScreen';
 import { CalibrationScreen } from './ui/screens/CalibrationScreen';
@@ -12,35 +12,35 @@ const VALID_SCREENS: readonly Screen[] = ['title', 'select', 'game', 'result', '
 export default function App() {
   const screen = useAppStore((s) => s.screen);
   const setScreen = useAppStore((s) => s.setScreen);
-  const setLoadedStages = useAppStore((s) => s.setLoadedStages);
-  const setStagesLoadState = useAppStore((s) => s.setStagesLoadState);
-  const setStagesLoadError = useAppStore((s) => s.setStagesLoadError);
+  const setLoadedEtudes = useAppStore((s) => s.setLoadedEtudes);
+  const setEtudesLoadState = useAppStore((s) => s.setEtudesLoadState);
+  const setEtudesLoadError = useAppStore((s) => s.setEtudesLoadError);
 
   // Pull the real stage roster from public/stages/ once on mount.
   // While this is running (and on failure) StageSelect falls back to
-  // the hardcoded placeholder STAGES so the app stays playable even
+  // the hardcoded placeholder ETUDES so the app stays playable even
   // before any MIDI files exist on disk.
   useEffect(() => {
     let cancelled = false;
-    setStagesLoadState('loading');
-    setStagesLoadError(null);
-    loadAllStages().then(
+    setEtudesLoadState('loading');
+    setEtudesLoadError(null);
+    loadAllEtudes().then(
       (stages) => {
         if (cancelled) return;
-        setLoadedStages(stages);
-        setStagesLoadState('ready');
+        setLoadedEtudes(stages);
+        setEtudesLoadState('ready');
       },
       (err: unknown) => {
         if (cancelled) return;
         const message = err instanceof Error ? err.message : String(err);
-        setStagesLoadError(message);
-        setStagesLoadState('error');
+        setEtudesLoadError(message);
+        setEtudesLoadState('error');
       },
     );
     return () => {
       cancelled = true;
     };
-  }, [setLoadedStages, setStagesLoadState, setStagesLoadError]);
+  }, [setLoadedEtudes, setEtudesLoadState, setEtudesLoadError]);
 
   // Hook the in-app screen switch into the browser's history stack.
   // Without this, the OS back button always exits the site even after

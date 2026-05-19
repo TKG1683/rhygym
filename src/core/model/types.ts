@@ -36,7 +36,7 @@ export interface Score {
 }
 
 /** A 級 (difficulty tier) — one playable challenge. */
-export interface Stage {
+export interface Etude {
   id: string;
   name: string;
   description: string;
