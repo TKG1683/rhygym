@@ -12,8 +12,8 @@
    * --brand-accent   : dumbbell-weight orange — slider thumbs, focus ring,
    *                    "new best!" badge, drift-banner border
    * --surface        : cream — staff/score panel background
-   * --surface-elevated: slightly warmer cream — stage-card body
-   * --surface-hover  : warmer still — stage-card hover tint
+   * --surface-elevated: slightly warmer cream — etude-card body
+   * --surface-hover  : warmer still — etude-card hover tint
    * --highlight-band : pale yellow accent band (icon highlight)
    * --text-strong    : same as brand-primary, named for contrast intent
    * --text-muted     : same ink at reduced opacity (set via rgba)
@@ -97,7 +97,7 @@ body {
   touch-action: manipulation;
 }
 
-h1, h2, h3, h4, .title-logo-name, .stage-card-name, .result-rank {
+h1, h2, h3, h4, .title-logo-name, .etude-card-name, .result-rank {
   font-family: var(--font-display);
 }
 
@@ -780,7 +780,7 @@ input[type='range']:disabled {
   margin-bottom: var(--space-1);
 }
 
-.stage-list {
+.etude-list {
   list-style: none;
   padding: 0;
   margin: 0 0 var(--space-2);
@@ -791,7 +791,7 @@ input[type='range']:disabled {
   max-width: 480px;
 }
 
-.stage-card {
+.etude-card {
   position: relative;
   width: 100%;
   text-align: left;
@@ -808,13 +808,13 @@ input[type='range']:disabled {
   transition: transform 0.12s ease, box-shadow 0.12s ease, background 0.15s;
 }
 
-.stage-card:hover {
+.etude-card:hover {
   background: var(--surface-hover);
   transform: translateY(-2px);
   box-shadow: 0 6px 12px var(--shadow-hover);
 }
 
-.stage-card:active {
+.etude-card:active {
   transform: translateY(0);
   box-shadow: 0 2px 0 var(--shadow-soft);
 }
@@ -822,7 +822,7 @@ input[type='range']:disabled {
 /* Vertical color stripe down the left edge — the only place each
  * tier's theme color speaks for itself. Keeps the card body neutral
  * so the type stays readable. */
-.stage-card-stripe {
+.etude-card-stripe {
   position: absolute;
   top: 0;
   left: 0;
@@ -832,7 +832,7 @@ input[type='range']:disabled {
 
 /* Decorative music glyph in the top-right corner. Big, low opacity,
  * pointer-events:none so taps on it still register on the card. */
-.stage-card-glyph {
+.etude-card-glyph {
   position: absolute;
   top: 4px;
   right: 14px;
@@ -844,7 +844,7 @@ input[type='range']:disabled {
   font-family: serif;
 }
 
-.stage-card-body {
+.etude-card-body {
   flex: 1;
   display: flex;
   flex-direction: column;
@@ -852,28 +852,28 @@ input[type='range']:disabled {
   z-index: 1;
 }
 
-.stage-card-head {
+.etude-card-head {
   display: flex;
   align-items: baseline;
   gap: 10px;
 }
 
-.stage-card-name {
+.etude-card-name {
   font-size: var(--fs-lg);
   font-weight: 700;
   letter-spacing: 0.04em;
 }
 
-.stage-card-desc {
+.etude-card-desc {
   font-size: var(--fs-sm);
   opacity: 0.8;
 }
 
-.stage-card-meta {
+.etude-card-meta {
   display: flex;
   align-items: center;
   /* flex-start so ts + bpm stay anchored together on the left
-   * regardless of whether a best record is present. .stage-card-best
+   * regardless of whether a best record is present. .etude-card-best
    * uses margin-left:auto to push itself to the right edge. With
    * space-between the bpm would drift right whenever best was hidden. */
   justify-content: flex-start;
@@ -881,26 +881,26 @@ input[type='range']:disabled {
   margin-top: var(--space-1);
 }
 
-.stage-card-best {
+.etude-card-best {
   /* Push the medal+score block hard to the right edge so the medal
-   * column lines up across cards. The .stage-card-meta is already
+   * column lines up across cards. The .etude-card-meta is already
    * space-between, so margin-left:auto is belt-and-braces for cases
    * where the left cell happens to be empty (Level cards w/ no bpm). */
   margin-left: auto;
 }
 
-.stage-card-bpm {
+.etude-card-bpm {
   font-size: var(--fs-sm);
   opacity: 0.75;
 }
 
-.stage-card-best {
+.etude-card-best {
   display: inline-flex;
   align-items: center;
   gap: 6px;
 }
 
-.stage-card-score {
+.etude-card-score {
   font-weight: 700;
   font-size: var(--fs-sm);
   opacity: 0.85;
@@ -1012,7 +1012,7 @@ input[type='range']:disabled {
 
 /* Pass-rank "next stage" CTA — visually loud and tall so it reads as
  * the obvious next move once the player has cleared a stage. */
-.next-stage-cta {
+.next-etude-cta {
   font-size: var(--fs-md);
   font-weight: 700;
   padding: 14px 32px;
@@ -1071,7 +1071,7 @@ input[type='range']:disabled {
 
 /* Time-signature badge on Etude cards — sits next to the BPM mark so
  * the player can see the meter without opening the piece. */
-.stage-card-ts {
+.etude-card-ts {
   font-weight: 700;
   font-variant-numeric: tabular-nums;
   font-size: var(--fs-sm);

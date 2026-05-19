@@ -289,11 +289,11 @@ export function ResultScreen() {
       {passed ? (
         <>
           {nextStage ? (
-            <button className="primary next-stage-cta" onClick={goNext}>
+            <button className="primary next-etude-cta" onClick={goNext}>
               次の Etude へ →
             </button>
           ) : (
-            <button className="primary next-stage-cta" onClick={goStageSelect}>
+            <button className="primary next-etude-cta" onClick={goStageSelect}>
               Movement 一覧へ
             </button>
           )}

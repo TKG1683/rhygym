@@ -142,7 +142,7 @@ function LevelListView({ groups, bests, loadingHint, fallbackHint, onOpenLevel, 
       <h1 className="select-title">Movement を選ぶ</h1>
       {loadingHint && <p className="muted select-hint">{loadingHint}</p>}
       {fallbackHint && <p className="muted select-hint">{fallbackHint}</p>}
-      <ul className="stage-list">
+      <ul className="etude-list">
         {groups.map((group) => {
           const cleared = group.stages.filter((s) =>
             CLEAR_RANKS.has(bests[s.id]?.rank ?? 'D'),
@@ -178,21 +178,21 @@ interface LevelCardProps {
 function LevelCard({ group, medal, cleared, total, onOpen }: LevelCardProps) {
   return (
     <button
-      className="stage-card"
+      className="etude-card"
       onClick={() => onOpen(group.level)}
       style={{ borderColor: group.themeColor }}
     >
-      <span className="stage-card-stripe" style={{ background: group.themeColor }} />
-      <span className="stage-card-glyph" aria-hidden="true">{levelGlyph(group.level)}</span>
-      <div className="stage-card-body">
-        <div className="stage-card-head">
-          <span className="stage-card-name">Movement {group.level}</span>
+      <span className="etude-card-stripe" style={{ background: group.themeColor }} />
+      <span className="etude-card-glyph" aria-hidden="true">{levelGlyph(group.level)}</span>
+      <div className="etude-card-body">
+        <div className="etude-card-head">
+          <span className="etude-card-name">Movement {group.level}</span>
         </div>
-        <div className="stage-card-desc">
+        <div className="etude-card-desc">
           {cleared}/{total} クリア (A以上)
         </div>
-        <div className="stage-card-meta">
-          <span className="stage-card-bpm">▶ 開く</span>
+        <div className="etude-card-meta">
+          <span className="etude-card-bpm">▶ 開く</span>
           {medal && <MedalChip medal={medal} />}
         </div>
       </div>
@@ -235,7 +235,7 @@ function StageListView({ group, bests, onStart, onBack }: StageListProps) {
         ← Movement 一覧へ
       </button>
       <h1 className="select-title">Movement {group.level}</h1>
-      <ul className="stage-list">
+      <ul className="etude-list">
         {group.stages.map((stage) => (
           <li key={stage.id}>
             <StageCard stage={stage} best={bests[stage.id]} onStart={onStart} />
@@ -255,26 +255,26 @@ interface StageCardProps {
 function StageCard({ stage, best, onStart }: StageCardProps) {
   return (
     <button
-      className="stage-card"
+      className="etude-card"
       onClick={() => onStart(stage.id)}
       style={{ borderColor: stage.themeColor }}
     >
-      <span className="stage-card-stripe" style={{ background: stage.themeColor }} />
-      <span className="stage-card-glyph" aria-hidden="true">{stageGlyph(stage)}</span>
-      <div className="stage-card-body">
-        <div className="stage-card-head">
-          <span className="stage-card-name">{stage.name}</span>
+      <span className="etude-card-stripe" style={{ background: stage.themeColor }} />
+      <span className="etude-card-glyph" aria-hidden="true">{stageGlyph(stage)}</span>
+      <div className="etude-card-body">
+        <div className="etude-card-head">
+          <span className="etude-card-name">{stage.name}</span>
         </div>
-        <div className="stage-card-desc">{stage.description}</div>
-        <div className="stage-card-meta">
-          <span className="stage-card-ts">{stageTimeSig(stage)}</span>
-          <span className="stage-card-bpm">
+        <div className="etude-card-desc">{stage.description}</div>
+        <div className="etude-card-meta">
+          <span className="etude-card-ts">{stageTimeSig(stage)}</span>
+          <span className="etude-card-bpm">
             ♩{isCompoundStage(stage) && <span className="bpm-dot">.</span>} = {stage.bpm}
           </span>
           {best && (
-            <span className="stage-card-best">
+            <span className="etude-card-best">
               <RankMedal rank={best.rank} />
-              <span className="stage-card-score">{best.score}</span>
+              <span className="etude-card-score">{best.score}</span>
             </span>
           )}
         </div>
