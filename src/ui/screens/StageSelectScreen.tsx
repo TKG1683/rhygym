@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { STAGES, type StageWithMeta } from '../../core/score/stages';
 import { getAllBests, type BestRecord } from '../../core/storage/localStore';
 import type { Rank } from '../../core/judgement';
@@ -47,6 +47,8 @@ export function StageSelectScreen() {
   const selectStage = useAppStore((s) => s.selectStage);
   const loadedStages = useAppStore((s) => s.loadedStages);
   const stagesLoadState = useAppStore((s) => s.stagesLoadState);
+  const initialLevel = useAppStore((s) => s.selectInitialLevel);
+  const setInitialLevel = useAppStore((s) => s.setSelectInitialLevel);
 
   // Prefer the network-loaded roster once it's ready, otherwise fall
   // back to the bundled placeholder STAGES so a missing public/stages/
@@ -77,7 +79,15 @@ export function StageSelectScreen() {
       }));
   }, [stages]);
 
-  const [openLevel, setOpenLevel] = useState<number | null>(null);
+  // Pull the requested initial level from the store (set by Result's
+  // "ステージ選択へ"). Snapshot once at mount; clear the store value
+  // so the next entry from Title defaults back to the Level list.
+  const [openLevel, setOpenLevel] = useState<number | null>(initialLevel);
+  useEffect(() => {
+    if (initialLevel !== null) setInitialLevel(null);
+    // We only want this on mount — the snapshot above is what counts.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const start = (id: string) => {
     selectStage(id);

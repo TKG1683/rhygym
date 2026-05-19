@@ -11,6 +11,14 @@ interface Props {
    * (e.g. always render 4-measure scores as 2 rows of 2 on mobile).
    */
   measuresPerLine?: number;
+  /**
+   * Per-measure widths in px. When supplied, every bar takes its width
+   * from this array (entry `i` → measure `i`), and the staff renders at
+   * that natural size. Used by Result so note-dense bars get room and
+   * sparse bars don't waste it; combine with a horizontal-scroll wrapper
+   * since the total can exceed the viewport.
+   */
+  measureWidths?: readonly number[];
 }
 
 /**
@@ -18,7 +26,7 @@ interface Props {
  * inside a ResizeObserver so the staff re-wraps as the container width
  * changes (orientation change, browser resize, etc.).
  */
-export function ScoreView({ score, onRender, measuresPerLine }: Props) {
+export function ScoreView({ score, onRender, measuresPerLine, measureWidths }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const onRenderRef = useRef(onRender);
 
@@ -38,6 +46,7 @@ export function ScoreView({ score, onRender, measuresPerLine }: Props) {
           container,
           viewportWidth: width,
           measuresPerLine,
+          measureWidths,
         });
         onRenderRef.current?.(result.noteCoords);
       } catch (err) {
@@ -49,7 +58,7 @@ export function ScoreView({ score, onRender, measuresPerLine }: Props) {
     const observer = new ResizeObserver(() => render());
     observer.observe(container);
     return () => observer.disconnect();
-  }, [score, measuresPerLine]);
+  }, [score, measuresPerLine, measureWidths]);
 
   return <div ref={containerRef} className="score-view" />;
 }

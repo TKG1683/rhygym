@@ -52,6 +52,13 @@ interface AppState {
    */
   calibrationReturnScreen: Screen | null;
   /**
+   * Level to open by default the next time StageSelect mounts. Set by
+   * Result's "ステージ選択へ" so the player lands back inside the
+   * level they just played instead of the top-level Level list.
+   * Cleared on StageSelect mount.
+   */
+  selectInitialLevel: number | null;
+  /**
    * Navigate to a screen AND push that destination onto the browser
    * history. This is what UI buttons should call — it keeps the OS
    * back button in sync with in-app navigation.
@@ -73,6 +80,7 @@ interface AppState {
   setStagesLoadState: (state: StagesLoadState) => void;
   setStagesLoadError: (error: string | null) => void;
   setCalibrationReturnScreen: (screen: Screen | null) => void;
+  setSelectInitialLevel: (level: number | null) => void;
 }
 
 export const useAppStore = create<AppState>((set) => ({
@@ -91,6 +99,7 @@ export const useAppStore = create<AppState>((set) => ({
   stagesLoadState: 'idle',
   stagesLoadError: null,
   calibrationReturnScreen: null,
+  selectInitialLevel: null,
   goto: (screen) => {
     // Push the destination so the OS back button steps backwards
     // through the app rather than leaving it.
@@ -111,4 +120,5 @@ export const useAppStore = create<AppState>((set) => ({
   setStagesLoadState: (state) => set({ stagesLoadState: state }),
   setStagesLoadError: (error) => set({ stagesLoadError: error }),
   setCalibrationReturnScreen: (screen) => set({ calibrationReturnScreen: screen }),
+  setSelectInitialLevel: (level) => set({ selectInitialLevel: level }),
 }));

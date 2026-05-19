@@ -121,11 +121,16 @@ function renderRecord(
           strokeOpacity="0.4"
           strokeWidth="1"
         />
+        {/* Target marker on the 0 line — the "perfect" position for
+         *  this note. The filled dot below sits at the player's actual
+         *  tap; the gap between this ring and that dot IS the error. */}
+        <circle cx={x} cy={yOfMs(0)} r={3.5} fill="#fffaef" stroke="#2A1B06" strokeWidth="1.2" />
         <circle cx={x} cy={yOfMs(clamped)} r={4} fill={color} />
       </g>
     );
   }
-  // Auto-MISS — × on the 0 line at the note's x.
+  // Auto-MISS — × on the 0 line at the note's x. The × itself sits at
+  // the target, so no extra target marker is needed.
   const y = yOfMs(0);
   return (
     <g key={`miss-${i}`} stroke={COLOR_MISS} strokeWidth="1.8">

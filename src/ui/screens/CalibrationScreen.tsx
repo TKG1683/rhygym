@@ -47,30 +47,80 @@ export function CalibrationScreen() {
   const beatTimesRef = useRef<number[]>([]);
   const acceptFromTimeRef = useRef(0);
   const scheduledOscsRef = useRef<OscillatorNode[]>([]);
+  const pulseRef = useRef<HTMLDivElement>(null);
 
-  // Spin up the click grid on mount and tear it down on unmount.
+  // Spin up the click grid while measuring; tear it down the moment
+  // the player finishes (or restarts via reset, which flips phase back
+  // to 'measuring' and re-runs this effect to rebuild a fresh grid).
   useEffect(() => {
     if (!audioContext) return;
+    if (phase !== 'measuring') return;
     const ctx = audioContext;
     const beatSec = 60 / CALIB_BPM;
     const start = ctx.currentTime + 0.4; // brief lead so the player isn't startled by an instant click
     const times: number[] = [];
     const oscs: OscillatorNode[] = [];
-    for (let i = 0; i < TOTAL_BEATS_TO_SCHEDULE; i++) {
-      const t = start + i * beatSec;
-      times.push(t);
-      const osc = scheduleClick(ctx, t, false, 0.7);
-      oscs.push(osc);
-    }
-    beatTimesRef.current = times;
+    const pulseTimers: number[] = [];
+
+    // Restart the CSS pulse animation precisely on a given audio-clock
+    // time. CSS animation clock and AudioContext clock drift apart
+    // over a long session, so re-syncing on every beat is what keeps
+    // the ring visibly on-beat instead of slowly going off.
+    const schedulePulseAt = (audioT: number) => {
+      const delayMs = Math.max(0, (audioT - ctx.currentTime) * 1000);
+      const id = window.setTimeout(() => {
+        const el = pulseRef.current;
+        if (!el) return;
+        el.style.animation = 'none';
+        void el.offsetWidth; // force reflow so the next assignment restarts it
+        el.style.animation = '';
+      }, delayMs);
+      pulseTimers.push(id);
+    };
+
+    // Schedule a block of `count` beats starting at `blockStart`.
+    // Both the click and its paired pulse-restart timer go in together
+    // so the visual and audio stay locked.
+    const scheduleBlock = (blockStart: number, count: number) => {
+      for (let i = 0; i < count; i++) {
+        const t = blockStart + i * beatSec;
+        times.push(t);
+        const osc = scheduleClick(ctx, t, false, 0.7);
+        oscs.push(osc);
+        schedulePulseAt(t);
+      }
+      beatTimesRef.current = times;
+      scheduledOscsRef.current = oscs;
+    };
+
+    scheduleBlock(start, TOTAL_BEATS_TO_SCHEDULE);
     // Ignore the first PRE_ROLL_BEATS clicks so the player has a chance
     // to lock onto the pulse before we start counting samples.
     acceptFromTimeRef.current = start + PRE_ROLL_BEATS * beatSec;
-    scheduledOscsRef.current = oscs;
+
+    // Auto-refill: if the player lingers, top the click grid up so it
+    // never falls silent. 32 beats only covers ~19 s at 100 BPM.
+    const refillInterval = window.setInterval(() => {
+      const last = times[times.length - 1];
+      if (last === undefined) return;
+      const lookahead = last - ctx.currentTime;
+      if (lookahead < 8 * beatSec) {
+        scheduleBlock(last + beatSec, 16);
+      }
+    }, 2000);
 
     return () => {
-      // Silence anything still pending in the audio graph.
+      clearInterval(refillInterval);
+      for (const id of pulseTimers) clearTimeout(id);
+      // Silence anything still pending in the audio graph. Future-
+      // scheduled clicks need an explicit stop() — disconnect() alone
+      // doesn't cancel a not-yet-played start(t).
       for (const osc of oscs) {
+        try {
+          osc.stop();
+        } catch {
+          // already stopped, or stop()ing a node that hasn't started
+        }
         try {
           osc.disconnect();
         } catch {
@@ -78,8 +128,9 @@ export function CalibrationScreen() {
         }
       }
       scheduledOscsRef.current = [];
+      beatTimesRef.current = [];
     };
-  }, [audioContext]);
+  }, [audioContext, phase]);
 
   const handleTap = (tapAudioTime: number) => {
     if (phase !== 'measuring') return;
@@ -155,7 +206,12 @@ export function CalibrationScreen() {
           {/* Pulsing ring around the progress counter signals "tap to
            * begin" — first-timers don't know the entire screen is a
            * TapArea until something visually invites the tap. */}
-          <div className="calib-tap-cue no-tap" aria-hidden="true">
+          <div
+            ref={pulseRef}
+            className="calib-tap-cue no-tap"
+            aria-hidden="true"
+            style={{ ['--calib-beat-ms' as string]: `${60000 / CALIB_BPM}ms` }}
+          >
             <p className="calib-progress" style={{ margin: 0 }}>
               {samples.length} / {TARGET_SAMPLES}
             </p>
