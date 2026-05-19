@@ -436,6 +436,12 @@ export function GameView({ stage }: Props) {
           />
         )}
       </div>
+      {/* Dedicated verdict band — sits directly under the staff and
+       * above every control row so PERFECT/GOOD/MISS can never overlap
+       * the BPM slider or accent editor (issue #67). The band always
+       * occupies its slot so the layout doesn't jump when a verdict
+       * appears/disappears. */}
+      <JudgementLayer verdict={verdict} triggerId={triggerId} />
       <label className="debug-toggle no-tap">
         <input
           type="checkbox"
@@ -500,7 +506,6 @@ export function GameView({ stage }: Props) {
         </div>
       </details>
       <p className="status-text">{status}</p>
-      <JudgementLayer verdict={verdict} triggerId={triggerId} />
     </TapArea>
   );
 }
