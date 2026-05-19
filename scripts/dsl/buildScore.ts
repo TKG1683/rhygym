@@ -22,16 +22,19 @@ export function buildScore(opts: BuildOptions, items: ReadonlyArray<DslItem>): S
   let tick = 0;
   const notes: RhythmNote[] = [];
 
-  // Tempo semantic: opts.bpm is what the *author* feels — for compound
-  // primary meters (6/8, 9/8, 12/8) that's the dotted-quarter pulse
-  // (♩.=N), so the internal MIDI tempo (quarter per minute) needs a
-  // ×1.5 scale to play back at the same audible speed the author
-  // expected. Simple primary meters interpret opts.bpm as ♩=N (the
-  // MIDI default), so no scale. tempoChange events use the same scale,
-  // so a mid-piece "tempoChange(120)" in a 6/8 piece still means
-  // ♩.=120 to the author.
-  const isCompoundPrimary = opts.ts[1] === 8 && opts.ts[0] % 3 === 0;
-  const tempoScale = isCompoundPrimary ? 1.5 : 1.0;
+  // Tempo semantic: opts.bpm is what the *author* feels.
+  //   - simple 4/ (4/4, 3/4, …)       → ♩=N, scale 1.0  (= MIDI default)
+  //   - compound 8/ (6/8, 9/8, 12/8) → ♩.=N, scale 1.5  (dotted-quarter pulse)
+  //   - asymmetric 8/ (5/8, 7/8)      → ♪=N,  scale 0.5  (eighth pulse)
+  // The internal MIDI tempo is always quarter-per-minute, so we apply
+  // the scale here. tempoChange events use the same scale so a mid-
+  // piece "tempoChange(120)" in a 6/8 piece still means ♩.=120 to
+  // the author.
+  const num = opts.ts[0];
+  const denom = opts.ts[1];
+  const isCompoundPrimary = denom === 8 && num % 3 === 0;
+  const isAsymmetricPrimary = denom === 8 && (num === 5 || num === 7);
+  const tempoScale = isCompoundPrimary ? 1.5 : isAsymmetricPrimary ? 0.5 : 1.0;
   const tempos: TempoEvent[] = [{ tick: 0, bpm: opts.bpm * tempoScale }];
   const timeSigs: TimeSignatureEvent[] = [
     { tick: 0, numerator: opts.ts[0], denominator: opts.ts[1] },

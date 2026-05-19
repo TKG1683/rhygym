@@ -960,9 +960,9 @@ const ETUDE_DEFS: readonly EtudeDef[] = [
     indexInLevel: 3,
     name: 'Etude 8-3',
     description: '5/8 拍子に飛び込む',
-    bpm: 140,
+    bpm: 280,
     themeColor: COLOR[8],
-    score: buildScore({ ts: [5, 8], bpm: 140 }, [
+    score: buildScore({ ts: [5, 8], bpm: 280 }, [
       q(), qd(),
       eighth(), eighth(), eighth(), q(),
       qd(), eighth(), eighth(),
@@ -979,9 +979,9 @@ const ETUDE_DEFS: readonly EtudeDef[] = [
     indexInLevel: 4,
     name: 'Etude 8-4',
     description: '7/8 のうねり',
-    bpm: 140,
+    bpm: 280,
     themeColor: COLOR[8],
-    score: buildScore({ ts: [7, 8], bpm: 140 }, [
+    score: buildScore({ ts: [7, 8], bpm: 280 }, [
       qd(), q(), q(),
       q(), q(), qd(),
       eighth(), eighth(), eighth(), eighth(), eighth(), eighth(), eighth(),
@@ -1061,9 +1061,9 @@ const ETUDE_DEFS: readonly EtudeDef[] = [
     indexInLevel: 2,
     name: 'Etude 9-2',
     description: '7/8 拍子の躍動',
-    bpm: 152,
+    bpm: 304,
     themeColor: COLOR[9],
-    score: buildScore({ ts: [7, 8], bpm: 152 }, [
+    score: buildScore({ ts: [7, 8], bpm: 304 }, [
       qd(), q(), q(),
       q(), qd(), q(),
       q(), q(), qd(),
@@ -1252,9 +1252,9 @@ const ETUDE_DEFS: readonly EtudeDef[] = [
     indexInLevel: 4,
     name: 'Etude 10-4',
     description: '混合拍子の連結',
-    bpm: 168,
+    bpm: 336,
     themeColor: COLOR[10],
-    score: buildScore({ ts: [5, 8], bpm: 168 }, [
+    score: buildScore({ ts: [5, 8], bpm: 336 }, [
       qd(), q(),
       eighth(), eighth(), eighth(), q(),
       tsChange(7, 8),

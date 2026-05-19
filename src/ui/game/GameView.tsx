@@ -86,13 +86,16 @@ export function GameView({ stage }: Props) {
   const [verdict, setVerdict] = useState<Judgement | null>(null);
   const [triggerId, setTriggerId] = useState(0);
   const effectiveBpm = Math.round(stage.bpm * bpmMultiplier);
-  // BPM symbol — compound meters (6/8 / 9/8 / 12/8) use the
-  // dotted-quarter (♩.) as the felt pulse rather than the quarter,
-  // so the displayed "BPM N" should be read as ♩.=N. Everything else
-  // stays on the regular quarter mark.
+  // BPM symbol — depends on what unit the bpm value represents:
+  //  - simple 4/ → ♩=N (quarter per minute, MIDI default)
+  //  - compound 8/ (6/8/9/8/12/8) → ♩.=N (dotted-quarter pulse)
+  //  - asymmetric 8/ (5/8/7/8) → ♪=N (eighth pulse — that's how
+  //    these meters are typically counted)
   const tsFirst = stage.score.timeSigs[0];
   const isCompoundPiece =
     tsFirst != null && tsFirst.denominator === 8 && tsFirst.numerator % 3 === 0;
+  const isAsymmetricPiece =
+    tsFirst != null && tsFirst.denominator === 8 && (tsFirst.numerator === 5 || tsFirst.numerator === 7);
 
   // Unique time signatures the piece visits, in score order. Drives
   // the accent-config UI — one row per distinct meter, in the order
@@ -401,7 +404,7 @@ export function GameView({ stage }: Props) {
         <div>
           <h1 className="game-title">{stage.name}</h1>
           <p className="muted">
-            ♩{isCompoundPiece && <span className="bpm-dot">.</span>} = {effectiveBpm}
+            {isAsymmetricPiece ? '♪' : '♩'}{isCompoundPiece && <span className="bpm-dot">.</span>} = {effectiveBpm}
           </p>
         </div>
         <div className="row">
