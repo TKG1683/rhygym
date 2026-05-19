@@ -16,18 +16,18 @@ export default function App() {
   const setEtudesLoadState = useAppStore((s) => s.setEtudesLoadState);
   const setEtudesLoadError = useAppStore((s) => s.setEtudesLoadError);
 
-  // Pull the real stage roster from public/stages/ once on mount.
-  // While this is running (and on failure) StageSelect falls back to
-  // the hardcoded placeholder ETUDES so the app stays playable even
+  // Pull the real étude roster from public/etudes/ once on mount.
+  // While this is running (and on failure) MovementSelect falls back
+  // to the hardcoded placeholder ETUDES so the app stays playable even
   // before any MIDI files exist on disk.
   useEffect(() => {
     let cancelled = false;
     setEtudesLoadState('loading');
     setEtudesLoadError(null);
     loadAllEtudes().then(
-      (stages) => {
+      (etudes) => {
         if (cancelled) return;
-        setLoadedEtudes(stages);
+        setLoadedEtudes(etudes);
         setEtudesLoadState('ready');
       },
       (err: unknown) => {

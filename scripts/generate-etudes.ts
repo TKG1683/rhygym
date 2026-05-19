@@ -1,15 +1,15 @@
 /**
- * Etude build script: writes every stage in ETUDE_DEFS as a
- * `score.mid` + `stage.json` pair under public/stages/<id>/, and
+ * Etude build script: writes every étude in ETUDE_DEFS as a
+ * `score.mid` + `etude.json` pair under public/etudes/<id>/, and
  * regenerates manifest.json so the loader picks them up.
  *
- * Run via `npm run gen:stages`.
+ * Run via `npm run gen:etudes`.
  *
- * Roster: 10 Levels × 6 stages (5 graded + 1 exam) = 60 stages.
- * Each Level introduces ONE new rhythmic concept on top of the
- * previous one. Within a Level the five graded stages climb in
- * density / syncopation / subdivision; the `exam` stage previews an
- * element from the next Level so it feels like a bridge.
+ * Roster: 10 Movements × 6 études (5 graded + 1 Final) = 60 études.
+ * Each Movement introduces ONE new rhythmic concept on top of the
+ * previous one. Within a Movement the five graded études climb in
+ * density / syncopation / subdivision; the Final étude previews an
+ * element from the next Movement so it feels like a bridge.
  */
 
 import { mkdirSync, writeFileSync } from 'node:fs';
@@ -54,10 +54,11 @@ interface EtudeDef {
   score: ReturnType<typeof buildScore>;
 }
 
-const OUT_DIR = 'public/stages';
+const OUT_DIR = 'public/etudes';
 
-// Per-level theme color — same palette as src/core/score/stages.ts so the
-// authored stages and the offline fallback agree on Level coloring.
+// Per-Movement theme color — same palette as src/core/score/etudes.ts
+// so the authored études and the offline fallback agree on Movement
+// coloring.
 const COLOR = {
   1: '#9bd4a2',
   2: '#7cc8b3',
@@ -1355,21 +1356,21 @@ function ensureDir(filepath: string): void {
   mkdirSync(dirname(filepath), { recursive: true });
 }
 
-function writeEtude(stage: EtudeDef): void {
-  const midi = scoreToMidi(stage.score);
-  const midiPath = join(OUT_DIR, stage.id, 'score.mid');
+function writeEtude(etude: EtudeDef): void {
+  const midi = scoreToMidi(etude.score);
+  const midiPath = join(OUT_DIR, etude.id, 'score.mid');
   ensureDir(midiPath);
   writeFileSync(midiPath, Buffer.from(midi.toArray()));
 
-  const { score: _score, ...meta } = stage;
-  const jsonPath = join(OUT_DIR, stage.id, 'stage.json');
+  const { score: _score, ...meta } = etude;
+  const jsonPath = join(OUT_DIR, etude.id, 'etude.json');
   writeFileSync(jsonPath, JSON.stringify(meta, null, 2));
 }
 
-function writeManifest(stages: readonly EtudeDef[]): void {
+function writeManifest(etudes: readonly EtudeDef[]): void {
   const manifest = {
     version: 1,
-    stages: stages.map((s) => s.id),
+    etudes: etudes.map((e) => e.id),
   };
   const manifestPath = join(OUT_DIR, 'manifest.json');
   ensureDir(manifestPath);
@@ -1377,12 +1378,12 @@ function writeManifest(stages: readonly EtudeDef[]): void {
 }
 
 function main(): void {
-  for (const stage of ETUDE_DEFS) {
-    writeEtude(stage);
-    console.log(`  ✓ ${stage.id}`);
+  for (const etude of ETUDE_DEFS) {
+    writeEtude(etude);
+    console.log(`  ✓ ${etude.id}`);
   }
   writeManifest(ETUDE_DEFS);
-  console.log(`Generated ${ETUDE_DEFS.length} stage(s) in ${OUT_DIR}/`);
+  console.log(`Generated ${ETUDE_DEFS.length} étude(s) in ${OUT_DIR}/`);
 }
 
 main();
