@@ -40,6 +40,13 @@ export interface GameSchedulerOptions {
   onComplete?: () => void;
   metronomeEnabled?: boolean;
   metronomeVolume?: number;
+  /**
+   * Per-time-sig accent overrides. Key = "<numerator>/<denominator>"
+   * (e.g. "6/8"); value = boolean[] of length numerator. When a time
+   * signature isn't in the map, the metronome's built-in defaults
+   * apply.
+   */
+  accentOverrides?: Readonly<Record<string, readonly boolean[]>>;
 }
 
 export class GameScheduler {
@@ -65,6 +72,7 @@ export class GameScheduler {
 
   private metronomeEnabled: boolean;
   private metronomeVolume: number;
+  private accentOverrides: Readonly<Record<string, readonly boolean[]>> | undefined;
 
   private onTickCb: ((tick: number) => void) | null;
   private onCompleteCb: (() => void) | null;
@@ -76,6 +84,7 @@ export class GameScheduler {
     this.timeSigs = normaliseTimeSigs(opts.score.timeSigs);
     this.metronomeEnabled = opts.metronomeEnabled ?? true;
     this.metronomeVolume = clampVolume(opts.metronomeVolume ?? DEFAULT_METRONOME_VOLUME);
+    this.accentOverrides = opts.accentOverrides;
     this.onTickCb = opts.onTick ?? null;
     this.onCompleteCb = opts.onComplete ?? null;
   }
@@ -195,7 +204,7 @@ export class GameScheduler {
     const ctx = this.ctx!;
     const fromTick = Math.max(0, this.converter.secToTick(this.scheduledUpTo));
     const toTick = this.converter.secToTick(horizonSec);
-    const beats = collectBeats(this.timeSigs, fromTick, toTick);
+    const beats = collectBeats(this.timeSigs, fromTick, toTick, this.accentOverrides);
 
     for (const beat of beats) {
       const beatSec = this.converter.tickToSec(beat.tick);

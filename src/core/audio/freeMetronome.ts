@@ -27,6 +27,11 @@ export interface FreeMetronomeOptions {
   numerator: number;
   denominator: number;
   volume?: number;
+  /**
+   * Custom accent pattern of length `numerator`. When supplied, this
+   * wins over the built-in default rule for this time signature.
+   */
+  accentPattern?: readonly boolean[];
 }
 
 export class FreeMetronome {
@@ -35,6 +40,7 @@ export class FreeMetronome {
   private readonly numerator: number;
   private readonly denominator: number;
   private volume: number;
+  private accentPattern: readonly boolean[] | undefined;
 
   private startTime = 0;
   private scheduledUpTo = 0; // sec since startTime
@@ -58,6 +64,7 @@ export class FreeMetronome {
     this.numerator = opts.numerator;
     this.denominator = opts.denominator;
     this.volume = opts.volume ?? DEFAULT_METRONOME_VOLUME;
+    this.accentPattern = opts.accentPattern;
   }
 
   get running(): boolean {
@@ -125,6 +132,16 @@ export class FreeMetronome {
   }
 
   /**
+   * Swap in a new accent pattern for the running metronome. Takes
+   * effect on the next click that gets scheduled — already-queued
+   * clicks within the 100 ms look-ahead keep whatever accent they
+   * were emitted with, but the change is audible within one beat.
+   */
+  setAccentPattern(pattern: readonly boolean[] | undefined): void {
+    this.accentPattern = pattern;
+  }
+
+  /**
    * AudioContext time of the next downbeat (the next "1" of a measure)
    * after `now`. GameView aligns the song start to this so that the
    * score's beat 1 coincides with one of the metronome's downbeats —
@@ -171,7 +188,12 @@ export class FreeMetronome {
       const beatTime = this.startTime + i * beatSec;
       if (beatTime < now - SCHEDULE_PAST_TOLERANCE_SEC) continue;
       const beatInMeasure = i % this.numerator;
-      const isAccent = isAccentBeat(this.numerator, this.denominator, beatInMeasure);
+      const isAccent = isAccentBeat(
+        this.numerator,
+        this.denominator,
+        beatInMeasure,
+        this.accentPattern,
+      );
       const osc = scheduleClick(this.ctx, beatTime, isAccent, this.volume);
       const entry = { osc, startAt: beatTime };
       this.scheduledOscs.push(entry);
