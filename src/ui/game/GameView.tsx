@@ -27,6 +27,7 @@ import {
   type NoteCandidate,
 } from '../../core/judgement';
 import type { Score, Stage } from '../../core/model';
+import { STAGES } from '../../core/score/stages';
 import { TickTimeConverter } from '../../core/timing/tickTime';
 import type { NoteCoords } from '../vexflow/ScoreRenderer';
 import { useAppStore } from '../store/appStore';
@@ -61,11 +62,34 @@ export function GameView({ stage }: Props) {
    */
   const bpmMultiplier = useAppStore((s) => s.bpmMultiplier);
   const setBpmMultiplier = useAppStore((s) => s.setBpmMultiplier);
+  const loadedStages = useAppStore((s) => s.loadedStages);
+  const setSelectInitialLevel = useAppStore((s) => s.setSelectInitialLevel);
+
+  // Abort the run and drop the player back into the Movement's Etude
+  // list (NOT the top-level Movement grid). Same idea as Result's
+  // "Etude 一覧へ" — leaving in the middle should still leave them
+  // inside the level they just abandoned so retrying is one tap.
+  const goEtudeList = () => {
+    const roster = loadedStages ?? STAGES;
+    const meta = roster.find((s) => s.id === stage.id);
+    if (meta) setSelectInitialLevel(meta.level);
+    schedulerRef.current?.stop();
+    freeMetronomeRef.current?.stop();
+    goto('select');
+  };
 
   const [phase, setPhase] = useState<Phase>('waiting');
   const [verdict, setVerdict] = useState<Judgement | null>(null);
   const [triggerId, setTriggerId] = useState(0);
   const effectiveBpm = Math.round(stage.bpm * bpmMultiplier);
+  // BPM symbol — compound meters (6/8 / 9/8 / 12/8) use the
+  // dotted-quarter (♩.) as the felt pulse rather than the quarter,
+  // so the displayed "BPM N" should be read as ♩.=N. Everything else
+  // stays on the regular quarter mark.
+  const tsFirst = stage.score.timeSigs[0];
+  const isCompoundPiece =
+    tsFirst != null && tsFirst.denominator === 8 && tsFirst.numerator % 3 === 0;
+  const beatSymbol = isCompoundPiece ? '♩.' : '♩';
   /** Debug: draw a moving playhead over the staff so we can eyeball timing. */
   const [showPlayhead, setShowPlayhead] = useState(false);
   const [noteCoords, setNoteCoords] = useState<Map<string, NoteCoords> | null>(null);
@@ -112,7 +136,8 @@ export function GameView({ stage }: Props) {
     const ts = adjustedScore.timeSigs[0] ?? { tick: 0, numerator: 4, denominator: 4 };
     const fm = new FreeMetronome(audioContext, {
       bpm: effectiveBpm,
-      beatsPerMeasure: ts.numerator,
+      numerator: ts.numerator,
+      denominator: ts.denominator,
     });
     // Push beat 1 100 ms into the future so the audio thread has time
     // to fully warm up before it has to render the first real click.
@@ -324,20 +349,13 @@ export function GameView({ stage }: Props) {
       <div className="game-header no-tap">
         <div>
           <h1 className="game-title">{stage.name}</h1>
-          <p className="muted">BPM {effectiveBpm}</p>
+          <p className="muted">{beatSymbol} = {effectiveBpm}</p>
         </div>
         <div className="row">
           <button className="secondary" onClick={resetGame}>
             リトライ
           </button>
-          <button
-            className="secondary"
-            onClick={() => {
-              schedulerRef.current?.stop();
-              freeMetronomeRef.current?.stop();
-              goto('select');
-            }}
-          >
+          <button className="secondary" onClick={goEtudeList}>
             中断
           </button>
         </div>

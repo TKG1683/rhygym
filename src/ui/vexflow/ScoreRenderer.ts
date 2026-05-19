@@ -127,7 +127,16 @@ export function renderScore(score: Score, opts: RenderOptions): RenderResult {
       { visible: false },
       { visible: false },
     ]);
-    if (idx === 0) {
+    // Draw the time signature on bar 1 AND on any bar where the meter
+    // changes from the previous bar — without this, a meter switch
+    // (e.g. Lv9-5 / Lv10) is silent on the staff and the player has
+    // no way to know they're now in 5/8 / 7/8 / etc.
+    const prevMeasure = idx > 0 ? vex.measures[idx - 1]! : null;
+    const tsChanged =
+      prevMeasure === null ||
+      prevMeasure.numerator !== m.numerator ||
+      prevMeasure.denominator !== m.denominator;
+    if (tsChanged) {
       stave.addTimeSignature(`${m.numerator}/${m.denominator}`);
     }
     stave.setEndBarType(Barline.type.SINGLE);
