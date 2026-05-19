@@ -80,7 +80,7 @@ const ETUDE_DEFS: readonly EtudeDef[] = [
     level: 1,
     indexInLevel: 1,
     name: 'Etude 1-1',
-    description: '四分音符を歩く',
+    description: '4分音符を歩く',
     bpm: 80,
     themeColor: COLOR[1],
     score: buildScore({ ts: [4, 4], bpm: 80 }, [
@@ -99,7 +99,7 @@ const ETUDE_DEFS: readonly EtudeDef[] = [
     level: 1,
     indexInLevel: 2,
     name: 'Etude 1-2',
-    description: '二分音符の伸びを感じる',
+    description: '2分音符の伸びを感じる',
     bpm: 80,
     themeColor: COLOR[1],
     score: buildScore({ ts: [4, 4], bpm: 80 }, [
@@ -118,7 +118,7 @@ const ETUDE_DEFS: readonly EtudeDef[] = [
     level: 1,
     indexInLevel: 3,
     name: 'Etude 1-3',
-    description: '全音符と二分音符の対話',
+    description: '全音符と2分音符の対話',
     bpm: 80,
     themeColor: COLOR[1],
     score: buildScore({ ts: [4, 4], bpm: 80 }, [
@@ -137,7 +137,7 @@ const ETUDE_DEFS: readonly EtudeDef[] = [
     level: 1,
     indexInLevel: 4,
     name: 'Etude 1-4',
-    description: '四分と二分のリレー',
+    description: '4分と2分のリレー',
     bpm: 80,
     themeColor: COLOR[1],
     score: buildScore({ ts: [4, 4], bpm: 80 }, [
@@ -200,10 +200,10 @@ const ETUDE_DEFS: readonly EtudeDef[] = [
     level: 2,
     indexInLevel: 1,
     name: 'Etude 2-1',
-    description: '四分休符の間合い',
-    bpm: 90,
+    description: '4分休符の間合い',
+    bpm: 87,
     themeColor: COLOR[2],
-    score: buildScore({ ts: [4, 4], bpm: 90 }, [
+    score: buildScore({ ts: [4, 4], bpm: 87 }, [
       q(), qr(), q(), q(),
       h(), q(), qr(),
       q(), qr(), q(), q(),
@@ -220,9 +220,9 @@ const ETUDE_DEFS: readonly EtudeDef[] = [
     indexInLevel: 2,
     name: 'Etude 2-2',
     description: '休符でひと呼吸',
-    bpm: 90,
+    bpm: 87,
     themeColor: COLOR[2],
-    score: buildScore({ ts: [4, 4], bpm: 90 }, [
+    score: buildScore({ ts: [4, 4], bpm: 87 }, [
       q(), q(), qr(), q(),
       qr(), q(), h(),
       q(), q(), q(), qr(),
@@ -239,9 +239,9 @@ const ETUDE_DEFS: readonly EtudeDef[] = [
     indexInLevel: 3,
     name: 'Etude 2-3',
     description: '3/4 ワルツに入門',
-    bpm: 90,
+    bpm: 87,
     themeColor: COLOR[2],
-    score: buildScore({ ts: [3, 4], bpm: 90 }, [
+    score: buildScore({ ts: [3, 4], bpm: 87 }, [
       q(), q(), q(),
       h(), q(),
       q(), q(), q(),
@@ -257,10 +257,10 @@ const ETUDE_DEFS: readonly EtudeDef[] = [
     level: 2,
     indexInLevel: 4,
     name: 'Etude 2-4',
-    description: '3/4 + 四分休符',
-    bpm: 90,
+    description: '3/4 + 4分休符',
+    bpm: 87,
     themeColor: COLOR[2],
-    score: buildScore({ ts: [3, 4], bpm: 90 }, [
+    score: buildScore({ ts: [3, 4], bpm: 87 }, [
       q(), qr(), q(),
       h(), q(),
       q(), q(), qr(),
@@ -277,9 +277,9 @@ const ETUDE_DEFS: readonly EtudeDef[] = [
     indexInLevel: 5,
     name: 'Etude 2-5',
     description: '4/4 と 3/4 を弾むように',
-    bpm: 90,
+    bpm: 87,
     themeColor: COLOR[2],
-    score: buildScore({ ts: [3, 4], bpm: 90 }, [
+    score: buildScore({ ts: [3, 4], bpm: 87 }, [
       q(), q(), q(),
       qr(), h(),
       h(), q(),
@@ -296,11 +296,11 @@ const ETUDE_DEFS: readonly EtudeDef[] = [
     indexInLevel: 6,
     isExam: true,
     name: 'Movement 2-Final',
-    description: '次レベルへ向け、八分の予告',
-    bpm: 90,
+    description: '次レベルへ向け、8分の予告',
+    bpm: 87,
     themeColor: COLOR[2],
     // Bridge to Level 3: sneak in eighth notes.
-    score: buildScore({ ts: [4, 4], bpm: 90 }, [
+    score: buildScore({ ts: [4, 4], bpm: 87 }, [
       q(), qr(), q(), q(),
       eighth(), eighth(), q(), h(),
       q(), q(), qr(), q(),
@@ -320,10 +320,10 @@ const ETUDE_DEFS: readonly EtudeDef[] = [
     level: 3,
     indexInLevel: 1,
     name: 'Etude 3-1',
-    description: '八分音符を刻む',
-    bpm: 95,
+    description: '8分音符を刻む',
+    bpm: 90,
     themeColor: COLOR[3],
-    score: buildScore({ ts: [4, 4], bpm: 95 }, [
+    score: buildScore({ ts: [4, 4], bpm: 90 }, [
       eighth(), eighth(), eighth(), eighth(), q(), q(),
       q(), eighth(), eighth(), h(),
       eighth(), eighth(), q(), eighth(), eighth(), q(),
@@ -339,10 +339,10 @@ const ETUDE_DEFS: readonly EtudeDef[] = [
     level: 3,
     indexInLevel: 2,
     name: 'Etude 3-2',
-    description: '八分休符の合いの手',
-    bpm: 95,
+    description: '8分休符の合いの手',
+    bpm: 90,
     themeColor: COLOR[3],
-    score: buildScore({ ts: [4, 4], bpm: 95 }, [
+    score: buildScore({ ts: [4, 4], bpm: 90 }, [
       eighth(), eighthRest(), eighth(), eighth(), q(), q(),
       q(), eighth(), eighthRest(), h(),
       q(), q(), eighth(), eighth(), q(),
@@ -359,9 +359,9 @@ const ETUDE_DEFS: readonly EtudeDef[] = [
     indexInLevel: 3,
     name: 'Etude 3-3',
     description: '裏拍を踏みしめる',
-    bpm: 95,
+    bpm: 90,
     themeColor: COLOR[3],
-    score: buildScore({ ts: [4, 4], bpm: 95 }, [
+    score: buildScore({ ts: [4, 4], bpm: 90 }, [
       eighthRest(), eighth(), eighth(), eighth(), q(), q(),
       q(), eighthRest(), eighth(), h(),
       eighthRest(), eighth(), q(), eighth(), eighth(), q(),
@@ -377,10 +377,10 @@ const ETUDE_DEFS: readonly EtudeDef[] = [
     level: 3,
     indexInLevel: 4,
     name: 'Etude 3-4',
-    description: '3/4 拍子で八分音符',
-    bpm: 95,
+    description: '3/4 拍子で8分音符',
+    bpm: 90,
     themeColor: COLOR[3],
-    score: buildScore({ ts: [3, 4], bpm: 95 }, [
+    score: buildScore({ ts: [3, 4], bpm: 90 }, [
       q(), eighth(), eighth(), q(),
       eighth(), eighth(), q(), q(),
       eighth(), eighth(), eighth(), eighth(), q(),
@@ -396,10 +396,10 @@ const ETUDE_DEFS: readonly EtudeDef[] = [
     level: 3,
     indexInLevel: 5,
     name: 'Etude 3-5',
-    description: '八分の連続と休符の織り交ぜ',
-    bpm: 95,
+    description: '8分の連続と休符の織り交ぜ',
+    bpm: 90,
     themeColor: COLOR[3],
-    score: buildScore({ ts: [4, 4], bpm: 95 }, [
+    score: buildScore({ ts: [4, 4], bpm: 90 }, [
       eighth(), eighth(), eighth(), eighth(), eighth(), eighth(), eighth(), eighth(),
       q(), eighth(), eighthRest(), q(), q(),
       eighthRest(), eighth(), eighth(), eighth(), h(),
@@ -416,11 +416,11 @@ const ETUDE_DEFS: readonly EtudeDef[] = [
     indexInLevel: 6,
     isExam: true,
     name: 'Movement 3-Final',
-    description: '次レベルへ向け、付点四分の予告',
-    bpm: 95,
+    description: '次レベルへ向け、付点4分の予告',
+    bpm: 90,
     themeColor: COLOR[3],
     // Bridge to Level 4: introduce dotted quarter.
-    score: buildScore({ ts: [4, 4], bpm: 95 }, [
+    score: buildScore({ ts: [4, 4], bpm: 90 }, [
       eighth(), eighth(), eighth(), eighth(), q(), q(),
       qd(), eighth(), h(),
       q(), eighthRest(), eighth(), eighth(), eighth(), q(),
@@ -440,10 +440,10 @@ const ETUDE_DEFS: readonly EtudeDef[] = [
     level: 4,
     indexInLevel: 1,
     name: 'Etude 4-1',
-    description: '付点四分音符の躍動',
-    bpm: 100,
+    description: '付点4分音符の躍動',
+    bpm: 92,
     themeColor: COLOR[4],
-    score: buildScore({ ts: [4, 4], bpm: 100 }, [
+    score: buildScore({ ts: [4, 4], bpm: 92 }, [
       qd(), eighth(), q(), q(),
       qd(), eighth(), h(),
       q(), qd(), eighth(), q(),
@@ -459,10 +459,10 @@ const ETUDE_DEFS: readonly EtudeDef[] = [
     level: 4,
     indexInLevel: 2,
     name: 'Etude 4-2',
-    description: '付点八分 + 十六分のスキップ',
-    bpm: 100,
+    description: '付点8分 + 16分のスキップ',
+    bpm: 92,
     themeColor: COLOR[4],
-    score: buildScore({ ts: [4, 4], bpm: 100 }, [
+    score: buildScore({ ts: [4, 4], bpm: 92 }, [
       eighthDotted(), sixteenth(), q(), q(), q(),
       eighthDotted(), sixteenth(), eighthDotted(), sixteenth(), h(),
       q(), eighthDotted(), sixteenth(), h(),
@@ -479,9 +479,9 @@ const ETUDE_DEFS: readonly EtudeDef[] = [
     indexInLevel: 3,
     name: 'Etude 4-3',
     description: '6/8 拍子に入門',
-    bpm: 67,
+    bpm: 61,
     themeColor: COLOR[4],
-    score: buildScore({ ts: [6, 8], bpm: 67 }, [
+    score: buildScore({ ts: [6, 8], bpm: 61 }, [
       qd(), qd(),
       q(), eighth(), qd(),
       eighth(), eighth(), eighth(), qd(),
@@ -497,10 +497,10 @@ const ETUDE_DEFS: readonly EtudeDef[] = [
     level: 4,
     indexInLevel: 4,
     name: 'Etude 4-4',
-    description: '6/8 + 付点四分の流れ',
-    bpm: 67,
+    description: '6/8 + 付点4分の流れ',
+    bpm: 61,
     themeColor: COLOR[4],
-    score: buildScore({ ts: [6, 8], bpm: 67 }, [
+    score: buildScore({ ts: [6, 8], bpm: 61 }, [
       qd(), qd(),
       eighth(), eighth(), eighth(), qd(),
       q(), eighth(), q(), eighth(),
@@ -517,9 +517,9 @@ const ETUDE_DEFS: readonly EtudeDef[] = [
     indexInLevel: 5,
     name: 'Etude 4-5',
     description: '4/4 と付点の総合演習',
-    bpm: 100,
+    bpm: 92,
     themeColor: COLOR[4],
-    score: buildScore({ ts: [4, 4], bpm: 100 }, [
+    score: buildScore({ ts: [4, 4], bpm: 92 }, [
       qd(), eighth(), eighthDotted(), sixteenth(), q(),
       q(), qd(), eighth(), q(),
       eighthDotted(), sixteenth(), eighth(), eighth(), h(),
@@ -536,11 +536,11 @@ const ETUDE_DEFS: readonly EtudeDef[] = [
     indexInLevel: 6,
     isExam: true,
     name: 'Movement 4-Final',
-    description: '次レベルへ向け、十六分音符の予告',
-    bpm: 100,
+    description: '次レベルへ向け、16分音符の予告',
+    bpm: 92,
     themeColor: COLOR[4],
     // Bridge to Level 5: heavier sixteenth-note usage.
-    score: buildScore({ ts: [4, 4], bpm: 100 }, [
+    score: buildScore({ ts: [4, 4], bpm: 92 }, [
       qd(), eighth(), sixteenth(), sixteenth(), sixteenth(), sixteenth(), q(),
       eighthDotted(), sixteenth(), h(), q(),
       sixteenth(), sixteenth(), sixteenth(), sixteenth(), q(), h(),
@@ -560,10 +560,10 @@ const ETUDE_DEFS: readonly EtudeDef[] = [
     level: 5,
     indexInLevel: 1,
     name: 'Etude 5-1',
-    description: '十六分音符を均等に',
-    bpm: 110,
+    description: '16分音符を均等に',
+    bpm: 98,
     themeColor: COLOR[5],
-    score: buildScore({ ts: [4, 4], bpm: 110 }, [
+    score: buildScore({ ts: [4, 4], bpm: 98 }, [
       sixteenth(), sixteenth(), sixteenth(), sixteenth(), q(), q(), q(),
       q(), sixteenth(), sixteenth(), sixteenth(), sixteenth(), h(),
       sixteenth(), sixteenth(), sixteenth(), sixteenth(), sixteenth(), sixteenth(), sixteenth(), sixteenth(), h(),
@@ -579,17 +579,17 @@ const ETUDE_DEFS: readonly EtudeDef[] = [
     level: 5,
     indexInLevel: 2,
     name: 'Etude 5-2',
-    description: '十六分休符でリズムを刻む',
-    bpm: 110,
+    description: '16分休符でリズムを刻む',
+    bpm: 98,
     themeColor: COLOR[5],
-    score: buildScore({ ts: [4, 4], bpm: 110 }, [
+    score: buildScore({ ts: [4, 4], bpm: 98 }, [
       sixteenth(), sixteenthRest(), sixteenth(), sixteenth(), q(), h(),
       eighth(), sixteenth(), sixteenthRest(), q(), h(),
       sixteenthRest(), sixteenth(), sixteenth(), sixteenth(), q(), q(), q(),
       w(),
       sixteenth(), sixteenth(), sixteenthRest(), sixteenth(), q(), q(), q(),
       q(), sixteenthRest(), sixteenth(), eighth(), h(),
-      eighthDotted(), sixteenth(), sixteenth(), sixteenthRest(), eighth(), q(),
+      eighthDotted(), sixteenth(), sixteenth(), sixteenthRest(), eighth(), q(), q(),
       w(),
     ]),
   },
@@ -598,10 +598,10 @@ const ETUDE_DEFS: readonly EtudeDef[] = [
     level: 5,
     indexInLevel: 3,
     name: 'Etude 5-3',
-    description: '6/8 で十六分を散りばめる',
-    bpm: 73,
+    description: '6/8 で16分を散りばめる',
+    bpm: 65,
     themeColor: COLOR[5],
-    score: buildScore({ ts: [6, 8], bpm: 73 }, [
+    score: buildScore({ ts: [6, 8], bpm: 65 }, [
       qd(), eighth(), sixteenth(), sixteenth(), eighth(),
       eighth(), sixteenth(), sixteenth(), eighth(), qd(),
       qd(), eighth(), eighth(), eighth(),
@@ -618,9 +618,9 @@ const ETUDE_DEFS: readonly EtudeDef[] = [
     indexInLevel: 4,
     name: 'Etude 5-4',
     description: '裏裏のリズムを掴む',
-    bpm: 110,
+    bpm: 98,
     themeColor: COLOR[5],
-    score: buildScore({ ts: [4, 4], bpm: 110 }, [
+    score: buildScore({ ts: [4, 4], bpm: 98 }, [
       sixteenth(), sixteenthRest(), sixteenth(), sixteenthRest(), sixteenth(), sixteenthRest(), sixteenth(), sixteenthRest(), h(),
       eighthDotted(), sixteenth(), eighthDotted(), sixteenth(), h(),
       sixteenth(), sixteenth(), sixteenth(), sixteenth(), eighth(), eighth(), h(),
@@ -636,10 +636,10 @@ const ETUDE_DEFS: readonly EtudeDef[] = [
     level: 5,
     indexInLevel: 5,
     name: 'Etude 5-5',
-    description: '十六分の総合演習',
-    bpm: 110,
+    description: '16分の総合演習',
+    bpm: 98,
     themeColor: COLOR[5],
-    score: buildScore({ ts: [4, 4], bpm: 110 }, [
+    score: buildScore({ ts: [4, 4], bpm: 98 }, [
       sixteenth(), sixteenth(), sixteenth(), sixteenth(), eighthDotted(), sixteenth(), q(), q(),
       eighth(), sixteenth(), sixteenth(), q(), eighth(), sixteenth(), sixteenth(), q(),
       sixteenthRest(), sixteenth(), eighth(), q(), eighthDotted(), sixteenth(), q(),
@@ -657,10 +657,10 @@ const ETUDE_DEFS: readonly EtudeDef[] = [
     isExam: true,
     name: 'Movement 5-Final',
     description: '次レベルへ向け、シンコペーションの予告',
-    bpm: 110,
+    bpm: 98,
     themeColor: COLOR[5],
     // Bridge to Level 6: early syncopation (eighth-quarter-eighth).
-    score: buildScore({ ts: [4, 4], bpm: 110 }, [
+    score: buildScore({ ts: [4, 4], bpm: 98 }, [
       eighth(), q(), q(), q(), eighth(),
       sixteenth(), sixteenth(), eighth(), q(), eighth(), q(), eighth(),
       q(), eighth(), q(), eighth(), q(),
@@ -681,9 +681,9 @@ const ETUDE_DEFS: readonly EtudeDef[] = [
     indexInLevel: 1,
     name: 'Etude 6-1',
     description: 'シンコペーション入門',
-    bpm: 120,
+    bpm: 103,
     themeColor: COLOR[6],
-    score: buildScore({ ts: [4, 4], bpm: 120 }, [
+    score: buildScore({ ts: [4, 4], bpm: 103 }, [
       eighth(), q(), q(), q(), eighth(),
       q(), eighth(), q(), eighth(), q(),
       eighth(), q(), eighth(), eighth(), q(), eighth(),
@@ -700,17 +700,17 @@ const ETUDE_DEFS: readonly EtudeDef[] = [
     indexInLevel: 2,
     name: 'Etude 6-2',
     description: '小節を跨ぐタイ',
-    bpm: 120,
+    bpm: 103,
     themeColor: COLOR[6],
-    score: buildScore({ ts: [4, 4], bpm: 120 }, [
-      // measure 1-2: dotted half tied across to a quarter
-      h(), tie(q(), w()), h(),
+    score: buildScore({ ts: [4, 4], bpm: 103 }, [
+      // measure 1-2: half + dotted-half-tied-across-the-barline + half (3840 = 2 bars)
+      h(), tie(q(), hd()), h(),
       q(), q(), h(),
       w(),
       // measure 5-6: half tied to half (sustained whole across the bar)
       h(), tie(h(), h()), h(),
       eighth(), eighth(), q(), h(),
-      tie(q(), h()), q(), q(),
+      tie(q(), h()), q(),
       w(),
     ]),
   },
@@ -720,9 +720,9 @@ const ETUDE_DEFS: readonly EtudeDef[] = [
     indexInLevel: 3,
     name: 'Etude 6-3',
     description: 'シンコペとタイの混合',
-    bpm: 120,
+    bpm: 103,
     themeColor: COLOR[6],
-    score: buildScore({ ts: [4, 4], bpm: 120 }, [
+    score: buildScore({ ts: [4, 4], bpm: 103 }, [
       eighth(), q(), q(), q(), eighth(),
       tie(eighth(), q()), eighth(), eighth(), q(), eighth(),
       q(), eighth(), eighth(), h(),
@@ -739,9 +739,9 @@ const ETUDE_DEFS: readonly EtudeDef[] = [
     indexInLevel: 4,
     name: 'Etude 6-4',
     description: 'アンチシペーションで先取り',
-    bpm: 120,
+    bpm: 103,
     themeColor: COLOR[6],
-    score: buildScore({ ts: [4, 4], bpm: 120 }, [
+    score: buildScore({ ts: [4, 4], bpm: 103 }, [
       eighth(), q(), eighth(), eighth(), q(), eighth(),
       tie(eighth(), h()), eighth(), q(),
       q(), eighth(), q(), eighth(), q(),
@@ -758,15 +758,15 @@ const ETUDE_DEFS: readonly EtudeDef[] = [
     indexInLevel: 5,
     name: 'Etude 6-5',
     description: '裏拍とタイで踊る',
-    bpm: 120,
+    bpm: 103,
     themeColor: COLOR[6],
-    score: buildScore({ ts: [4, 4], bpm: 120 }, [
+    score: buildScore({ ts: [4, 4], bpm: 103 }, [
       sixteenth(), sixteenth(), eighth(), q(), eighth(), q(), eighth(),
       tie(eighth(), q()), eighth(), eighth(), q(), eighth(),
       q(), tie(eighth(), q()), eighth(), q(),
       w(),
       eighth(), q(), eighth(), eighth(), eighth(), eighth(), eighth(),
-      tie(q(), h()), q(), q(),
+      tie(q(), h()), q(),
       eighth(), q(), eighth(), q(), q(),
       w(),
     ]),
@@ -777,11 +777,11 @@ const ETUDE_DEFS: readonly EtudeDef[] = [
     indexInLevel: 6,
     isExam: true,
     name: 'Movement 6-Final',
-    description: '次レベルへ向け、三連符の予告',
-    bpm: 120,
+    description: '次レベルへ向け、3連符の予告',
+    bpm: 103,
     themeColor: COLOR[6],
     // Bridge to Level 7: introduce triplets.
-    score: buildScore({ ts: [4, 4], bpm: 120 }, [
+    score: buildScore({ ts: [4, 4], bpm: 103 }, [
       eighthTriplet(), eighthTriplet(), eighthTriplet(), q(), h(),
       eighth(), q(), q(), q(), eighth(),
       eighthTriplet(), eighthTriplet(), eighthTriplet(), eighthTriplet(), eighthTriplet(), eighthTriplet(), h(),
@@ -801,10 +801,10 @@ const ETUDE_DEFS: readonly EtudeDef[] = [
     level: 7,
     indexInLevel: 1,
     name: 'Etude 7-1',
-    description: '三連符を流暢に',
-    bpm: 130,
+    description: '3連符を流暢に',
+    bpm: 108,
     themeColor: COLOR[7],
-    score: buildScore({ ts: [4, 4], bpm: 130 }, [
+    score: buildScore({ ts: [4, 4], bpm: 108 }, [
       eighthTriplet(), eighthTriplet(), eighthTriplet(), q(), h(),
       eighthTriplet(), eighthTriplet(), eighthTriplet(), eighthTriplet(), eighthTriplet(), eighthTriplet(), h(),
       q(), eighthTriplet(), eighthTriplet(), eighthTriplet(), h(),
@@ -821,9 +821,9 @@ const ETUDE_DEFS: readonly EtudeDef[] = [
     indexInLevel: 2,
     name: 'Etude 7-2',
     description: '4 連 vs 3 連の対比',
-    bpm: 130,
+    bpm: 108,
     themeColor: COLOR[7],
-    score: buildScore({ ts: [4, 4], bpm: 130 }, [
+    score: buildScore({ ts: [4, 4], bpm: 108 }, [
       sixteenth(), sixteenth(), sixteenth(), sixteenth(), eighthTriplet(), eighthTriplet(), eighthTriplet(), h(),
       eighthTriplet(), eighthTriplet(), eighthTriplet(), sixteenth(), sixteenth(), sixteenth(), sixteenth(), h(),
       q(), eighthTriplet(), eighthTriplet(), eighthTriplet(), q(), q(),
@@ -839,10 +839,10 @@ const ETUDE_DEFS: readonly EtudeDef[] = [
     level: 7,
     indexInLevel: 3,
     name: 'Etude 7-3',
-    description: '六連符の旋回',
-    bpm: 130,
+    description: '6連符の旋回',
+    bpm: 108,
     themeColor: COLOR[7],
-    score: buildScore({ ts: [4, 4], bpm: 130 }, [
+    score: buildScore({ ts: [4, 4], bpm: 108 }, [
       sixTuplet(), sixTuplet(), sixTuplet(), sixTuplet(), sixTuplet(), sixTuplet(), q(), h(),
       q(), sixTuplet(), sixTuplet(), sixTuplet(), sixTuplet(), sixTuplet(), sixTuplet(), h(),
       sixTuplet(), sixTuplet(), sixTuplet(), sixTuplet(), sixTuplet(), sixTuplet(), q(), h(),
@@ -859,9 +859,9 @@ const ETUDE_DEFS: readonly EtudeDef[] = [
     indexInLevel: 4,
     name: 'Etude 7-4',
     description: '9/8 拍子に親しむ',
-    bpm: 87,
+    bpm: 72,
     themeColor: COLOR[7],
-    score: buildScore({ ts: [9, 8], bpm: 87 }, [
+    score: buildScore({ ts: [9, 8], bpm: 72 }, [
       qd(), qd(), qd(),
       eighth(), eighth(), eighth(), qd(), qd(),
       qd(), eighth(), eighth(), eighth(), eighth(), eighth(), eighth(),
@@ -877,16 +877,16 @@ const ETUDE_DEFS: readonly EtudeDef[] = [
     level: 7,
     indexInLevel: 5,
     name: 'Etude 7-5',
-    description: '三連 + タイの華麗な技巧',
-    bpm: 130,
+    description: '3連 + タイの華麗な技巧',
+    bpm: 108,
     themeColor: COLOR[7],
-    score: buildScore({ ts: [4, 4], bpm: 130 }, [
+    score: buildScore({ ts: [4, 4], bpm: 108 }, [
       eighthTriplet(), eighthTriplet(), eighthTriplet(), q(), q(), q(),
-      tie(eighthTriplet(), quarterTriplet()), eighthTriplet(), eighthTriplet(), h(),
+      tie(eighthTriplet(), quarterTriplet()), eighthTriplet(), eighthTriplet(), eighthTriplet(), h(),
       quarterTriplet(), quarterTriplet(), quarterTriplet(), h(),
       w(),
       eighth(), q(), eighth(), eighthTriplet(), eighthTriplet(), eighthTriplet(), q(),
-      sixTuplet(), sixTuplet(), sixTuplet(), sixTuplet(), sixTuplet(), sixTuplet(), q(), q(),
+      sixTuplet(), sixTuplet(), sixTuplet(), sixTuplet(), sixTuplet(), sixTuplet(), q(), q(), q(),
       eighthTriplet(), eighthTriplet(), eighthTriplet(), eighthTriplet(), eighthTriplet(), eighthTriplet(), h(),
       w(),
     ]),
@@ -897,11 +897,11 @@ const ETUDE_DEFS: readonly EtudeDef[] = [
     indexInLevel: 6,
     isExam: true,
     name: 'Movement 7-Final',
-    description: '次レベルへ向け、五連符の予告',
-    bpm: 130,
+    description: '次レベルへ向け、5連符の予告',
+    bpm: 108,
     themeColor: COLOR[7],
     // Bridge to Level 8: introduce quintuplets.
-    score: buildScore({ ts: [4, 4], bpm: 130 }, [
+    score: buildScore({ ts: [4, 4], bpm: 108 }, [
       fiveTuplet(), fiveTuplet(), fiveTuplet(), fiveTuplet(), fiveTuplet(), q(), h(),
       eighthTriplet(), eighthTriplet(), eighthTriplet(), q(), h(),
       fiveTuplet(), fiveTuplet(), fiveTuplet(), fiveTuplet(), fiveTuplet(), eighthTriplet(), eighthTriplet(), eighthTriplet(), h(),
@@ -921,16 +921,16 @@ const ETUDE_DEFS: readonly EtudeDef[] = [
     level: 8,
     indexInLevel: 1,
     name: 'Etude 8-1',
-    description: '五連符を四拍の中に',
-    bpm: 140,
+    description: '5連符を四拍の中に',
+    bpm: 113,
     themeColor: COLOR[8],
-    score: buildScore({ ts: [4, 4], bpm: 140 }, [
+    score: buildScore({ ts: [4, 4], bpm: 113 }, [
       fiveTuplet(), fiveTuplet(), fiveTuplet(), fiveTuplet(), fiveTuplet(), q(), h(),
       q(), fiveTuplet(), fiveTuplet(), fiveTuplet(), fiveTuplet(), fiveTuplet(), h(),
       fiveTuplet(), fiveTuplet(), fiveTuplet(), fiveTuplet(), fiveTuplet(), fiveTuplet(), fiveTuplet(), fiveTuplet(), fiveTuplet(), fiveTuplet(), h(),
       w(),
       eighth(), eighth(), fiveTuplet(), fiveTuplet(), fiveTuplet(), fiveTuplet(), fiveTuplet(), h(),
-      q(), q(), fiveTuplet(), fiveTuplet(), fiveTuplet(), fiveTuplet(), fiveTuplet(),
+      q(), q(), fiveTuplet(), fiveTuplet(), fiveTuplet(), fiveTuplet(), fiveTuplet(), q(),
       h(), fiveTuplet(), fiveTuplet(), fiveTuplet(), fiveTuplet(), fiveTuplet(), q(),
       w(),
     ]),
@@ -940,10 +940,10 @@ const ETUDE_DEFS: readonly EtudeDef[] = [
     level: 8,
     indexInLevel: 2,
     name: 'Etude 8-2',
-    description: '七連符の挑戦',
-    bpm: 140,
+    description: '7連符の挑戦',
+    bpm: 113,
     themeColor: COLOR[8],
-    score: buildScore({ ts: [4, 4], bpm: 140 }, [
+    score: buildScore({ ts: [4, 4], bpm: 113 }, [
       ...septuplet(), q(), h(),
       q(), ...septuplet(), h(),
       ...septuplet(), ...septuplet(), h(),
@@ -960,17 +960,17 @@ const ETUDE_DEFS: readonly EtudeDef[] = [
     indexInLevel: 3,
     name: 'Etude 8-3',
     description: '5/8 拍子に飛び込む',
-    bpm: 280,
+    bpm: 226,
     themeColor: COLOR[8],
-    score: buildScore({ ts: [5, 8], bpm: 280 }, [
+    score: buildScore({ ts: [5, 8], bpm: 226 }, [
       q(), qd(),
       eighth(), eighth(), eighth(), q(),
       qd(), eighth(), eighth(),
       eighth(), eighth(), eighth(), eighth(), eighth(),
       q(), q(), eighth(),
-      eighth(), eighth(), eighth(), qd(),
+      eighth(), eighth(), eighth(), q(),
       qd(), q(),
-      eighth(), eighth(), eighth(), eighth(), eighth(),
+      q(), q(), eighthRest(),
     ]),
   },
   {
@@ -979,9 +979,9 @@ const ETUDE_DEFS: readonly EtudeDef[] = [
     indexInLevel: 4,
     name: 'Etude 8-4',
     description: '7/8 のうねり',
-    bpm: 280,
+    bpm: 226,
     themeColor: COLOR[8],
-    score: buildScore({ ts: [7, 8], bpm: 280 }, [
+    score: buildScore({ ts: [7, 8], bpm: 226 }, [
       qd(), q(), q(),
       q(), q(), qd(),
       eighth(), eighth(), eighth(), eighth(), eighth(), eighth(), eighth(),
@@ -998,9 +998,9 @@ const ETUDE_DEFS: readonly EtudeDef[] = [
     indexInLevel: 5,
     name: 'Etude 8-5',
     description: '異拍子の総合演習',
-    bpm: 140,
+    bpm: 113,
     themeColor: COLOR[8],
-    score: buildScore({ ts: [4, 4], bpm: 140 }, [
+    score: buildScore({ ts: [4, 4], bpm: 113 }, [
       fiveTuplet(), fiveTuplet(), fiveTuplet(), fiveTuplet(), fiveTuplet(), ...septuplet(), h(),
       eighthTriplet(), eighthTriplet(), eighthTriplet(), sixTuplet(), sixTuplet(), sixTuplet(), sixTuplet(), sixTuplet(), sixTuplet(), h(),
       ...septuplet(), fiveTuplet(), fiveTuplet(), fiveTuplet(), fiveTuplet(), fiveTuplet(), h(),
@@ -1018,10 +1018,10 @@ const ETUDE_DEFS: readonly EtudeDef[] = [
     isExam: true,
     name: 'Movement 8-Final',
     description: '次レベルへ向け、5/4 拍子の予告',
-    bpm: 140,
+    bpm: 113,
     themeColor: COLOR[8],
     // Bridge to Level 9: 5/4 irregular meter.
-    score: buildScore({ ts: [5, 4], bpm: 140 }, [
+    score: buildScore({ ts: [5, 4], bpm: 113 }, [
       q(), q(), q(), q(), q(),
       h(), q(), h(),
       eighth(), eighth(), q(), eighth(), eighth(), q(), q(),
@@ -1042,9 +1042,9 @@ const ETUDE_DEFS: readonly EtudeDef[] = [
     indexInLevel: 1,
     name: 'Etude 9-1',
     description: '5/4 拍子で歩を進める',
-    bpm: 152,
+    bpm: 118,
     themeColor: COLOR[9],
-    score: buildScore({ ts: [5, 4], bpm: 152 }, [
+    score: buildScore({ ts: [5, 4], bpm: 118 }, [
       q(), q(), q(), q(), q(),
       h(), q(), q(), q(),
       q(), h(), eighth(), eighth(), eighth(), eighth(),
@@ -1061,9 +1061,9 @@ const ETUDE_DEFS: readonly EtudeDef[] = [
     indexInLevel: 2,
     name: 'Etude 9-2',
     description: '7/8 拍子の躍動',
-    bpm: 304,
+    bpm: 236,
     themeColor: COLOR[9],
-    score: buildScore({ ts: [7, 8], bpm: 304 }, [
+    score: buildScore({ ts: [7, 8], bpm: 236 }, [
       qd(), q(), q(),
       q(), qd(), q(),
       q(), q(), qd(),
@@ -1080,10 +1080,10 @@ const ETUDE_DEFS: readonly EtudeDef[] = [
     indexInLevel: 3,
     name: 'Etude 9-3',
     description: 'ヘミオラ — 3 を 2 に組替',
-    bpm: 152,
+    bpm: 118,
     themeColor: COLOR[9],
     // 6/4 measures grouped as 3+3 vs 2+2+2 to evoke a hemiola feel.
-    score: buildScore({ ts: [6, 4], bpm: 152 }, [
+    score: buildScore({ ts: [6, 4], bpm: 118 }, [
       qd(), qd(), qd(), qd(),
       q(), q(), q(), q(), q(), q(),
       qd(), qd(), q(), q(), q(),
@@ -1100,9 +1100,9 @@ const ETUDE_DEFS: readonly EtudeDef[] = [
     indexInLevel: 4,
     name: 'Etude 9-4',
     description: '複合拍子の組替え (9/8 ⇄ 6/8)',
-    bpm: 101,
+    bpm: 79,
     themeColor: COLOR[9],
-    score: buildScore({ ts: [9, 8], bpm: 101 }, [
+    score: buildScore({ ts: [9, 8], bpm: 79 }, [
       qd(), qd(), qd(),
       eighth(), eighth(), eighth(), eighth(), eighth(), eighth(), eighth(), eighth(), eighth(),
       tsChange(6, 8),
@@ -1122,15 +1122,15 @@ const ETUDE_DEFS: readonly EtudeDef[] = [
     indexInLevel: 5,
     name: 'Etude 9-5',
     description: '変則拍子の総合演習',
-    bpm: 152,
+    bpm: 118,
     themeColor: COLOR[9],
-    score: buildScore({ ts: [5, 4], bpm: 152 }, [
+    score: buildScore({ ts: [5, 4], bpm: 118 }, [
       q(), q(), q(), h(),
       h(), q(), eighth(), eighth(), q(),
-      eighthTriplet(), eighthTriplet(), eighthTriplet(), q(), q(), q(),
+      eighthTriplet(), eighthTriplet(), eighthTriplet(), q(), q(), q(), q(),
       tsChange(7, 8),
       qd(), q(), q(),
-      eighth(), eighth(), eighth(), qd(), q(),
+      eighth(), eighth(), eighth(), qd(), eighth(),
       tsChange(5, 4),
       h(), q(), h(),
       q(), q(), eighth(), eighth(), q(), q(),
@@ -1144,10 +1144,10 @@ const ETUDE_DEFS: readonly EtudeDef[] = [
     isExam: true,
     name: 'Movement 9-Final',
     description: '次レベルへ向け、拍子切替の予告',
-    bpm: 152,
+    bpm: 118,
     themeColor: COLOR[9],
     // Bridge to Level 10: meter changes mid-piece + tempo bump.
-    score: buildScore({ ts: [4, 4], bpm: 152 }, [
+    score: buildScore({ ts: [4, 4], bpm: 118 }, [
       q(), q(), eighth(), eighth(), q(),
       eighthTriplet(), eighthTriplet(), eighthTriplet(), h(), q(),
       tsChange(5, 8),
@@ -1172,9 +1172,9 @@ const ETUDE_DEFS: readonly EtudeDef[] = [
     indexInLevel: 1,
     name: 'Etude 10-1',
     description: '拍子切替に慣れる',
-    bpm: 168,
+    bpm: 126,
     themeColor: COLOR[10],
-    score: buildScore({ ts: [4, 4], bpm: 168 }, [
+    score: buildScore({ ts: [4, 4], bpm: 126 }, [
       q(), q(), q(), q(),
       h(), eighth(), eighth(), eighth(), eighth(),
       tsChange(3, 4),
@@ -1194,11 +1194,11 @@ const ETUDE_DEFS: readonly EtudeDef[] = [
     indexInLevel: 2,
     name: 'Etude 10-2',
     description: 'テンポチェンジ + 6/8 への揺らぎ',
-    bpm: 168,
+    bpm: 126,
     themeColor: COLOR[10],
     // Combine tempo dips with a mid-piece swing to 6/8 so the
     // "tempo change" theme also exercises a meter shift.
-    score: buildScore({ ts: [4, 4], bpm: 168 }, [
+    score: buildScore({ ts: [4, 4], bpm: 126 }, [
       // 4/4 opening at full tempo
       q(), q(), q(), q(),
       h(), q(), q(),
@@ -1225,12 +1225,12 @@ const ETUDE_DEFS: readonly EtudeDef[] = [
     indexInLevel: 3,
     name: 'Etude 10-3',
     description: 'クロスリズムを拍子切替で揺さぶる',
-    bpm: 168,
+    bpm: 126,
     themeColor: COLOR[10],
     // Cross-rhythm theme that also travels across a meter change:
     // quarter-triplet runs straddle the 4/4 → 3/4 → 4/4 shift so the
     // 3-against-2 feel keeps reorienting against a new bar length.
-    score: buildScore({ ts: [4, 4], bpm: 168 }, [
+    score: buildScore({ ts: [4, 4], bpm: 126 }, [
       // 4/4: establish the 3-against-2 cross-rhythm.
       quarterTriplet(), quarterTriplet(), quarterTriplet(), h(),
       eighthTriplet(), eighthTriplet(), eighthTriplet(), eighth(), eighth(), h(),
@@ -1252,9 +1252,9 @@ const ETUDE_DEFS: readonly EtudeDef[] = [
     indexInLevel: 4,
     name: 'Etude 10-4',
     description: '混合拍子の連結',
-    bpm: 336,
+    bpm: 252,
     themeColor: COLOR[10],
-    score: buildScore({ ts: [5, 8], bpm: 336 }, [
+    score: buildScore({ ts: [5, 8], bpm: 252 }, [
       qd(), q(),
       eighth(), eighth(), eighth(), q(),
       tsChange(7, 8),
@@ -1277,14 +1277,14 @@ const ETUDE_DEFS: readonly EtudeDef[] = [
     indexInLevel: 5,
     name: 'Etude 10-5',
     description: '拍子変化のグランドツアー',
-    bpm: 168,
+    bpm: 126,
     themeColor: COLOR[10],
     // Meter-change grand finale: 4/4 → 5/8 → 7/8 → 3/4 → 6/8 → 4/4.
     // The journey starts on solid 4/4 ground, lurches into asymmetric
     // 5/8 and 7/8, breathes in a 3/4 waltz with a quarter-triplet
     // hemiola, swings into a 6/8 jig with sixteenth subdivisions, and
     // returns home to 4/4 for a quintuplet flourish and a tied cadence.
-    score: buildScore({ ts: [4, 4], bpm: 168 }, [
+    score: buildScore({ ts: [4, 4], bpm: 126 }, [
       // 1. 4/4 — opening statement.
       eighthDotted(), sixteenth(), eighth(), eighth(), q(), q(),
       quarterTriplet(), quarterTriplet(), quarterTriplet(), tie(eighth(), q()), eighth(),
@@ -1317,13 +1317,13 @@ const ETUDE_DEFS: readonly EtudeDef[] = [
     isExam: true,
     name: 'Movement 10-Final',
     description: '卒業試験 — Rhygym の最終形',
-    bpm: 168,
+    bpm: 126,
     themeColor: COLOR[10],
     // Level 10 final: there's no Level 11 to preview, so this stage
     // pushes every Level-10 element to its limit — meter changes per
     // measure, tempo ramps, cross-rhythms, ties across barlines, and
     // every tuplet family in rotation.
-    score: buildScore({ ts: [4, 4], bpm: 168 }, [
+    score: buildScore({ ts: [4, 4], bpm: 126 }, [
       // 1. statement in 4/4
       eighthDotted(), sixteenth(), eighth(), eighth(), q(), q(),
       quarterTriplet(), quarterTriplet(), quarterTriplet(), h(),
@@ -1340,9 +1340,9 @@ const ETUDE_DEFS: readonly EtudeDef[] = [
       tsChange(4, 4),
       tempoChange(168),
       fiveTuplet(), fiveTuplet(), fiveTuplet(), fiveTuplet(), fiveTuplet(), ...septuplet(), h(),
-      sixTuplet(), sixTuplet(), sixTuplet(), sixTuplet(), sixTuplet(), sixTuplet(), eighthTriplet(), eighthTriplet(), eighthTriplet(), q(),
+      sixTuplet(), sixTuplet(), sixTuplet(), sixTuplet(), sixTuplet(), sixTuplet(), eighthTriplet(), eighthTriplet(), eighthTriplet(), q(), q(),
       // 5. cross-rhythm + tie + accel into the close
-      quarterTriplet(), quarterTriplet(), quarterTriplet(), tie(eighth(), q()), eighth(), q(),
+      quarterTriplet(), quarterTriplet(), quarterTriplet(), tie(eighth(), q()), eighth(),
       tempoChange(184),
       sixteenth(), sixteenth(), sixteenth(), sixteenth(), eighth(), eighth(), q(), q(),
       // 6. final cadence — sustained
