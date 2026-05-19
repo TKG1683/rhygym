@@ -42,6 +42,14 @@ export interface RenderOptions {
    * row count drift with viewport size.
    */
   measuresPerLine?: number;
+  /**
+   * Per-measure width overrides. When provided, this wins over
+   * `measureWidth` / `measuresPerLine` for sizing each bar — the
+   * renderer uses entry `i` for measure `i`. Use this from Result to
+   * give note-dense bars more room than sparse ones. Length must match
+   * the score's measure count.
+   */
+  measureWidths?: readonly number[];
 }
 
 const DEFAULT_MEASURE_WIDTH = 220;
@@ -54,26 +62,56 @@ const FIRST_MEASURE_LEFT_PAD = 5;
 export function renderScore(score: Score, opts: RenderOptions): RenderResult {
   opts.container.innerHTML = '';
   const vex = scoreToVex(score);
-  // Caller-pinned measures-per-line wins: divide the viewport evenly
-  // (clamped to MIN_MEASURE_WIDTH to keep notes readable on tiny screens).
-  // Otherwise fall back to whatever fits at the requested measureWidth.
-  const measureWidth = opts.measuresPerLine
+
+  // Resolve per-measure widths. Per-measure overrides (Result's
+  // note-density-driven sizing) win; otherwise fall back to the
+  // measuresPerLine / measureWidth scheme.
+  const fallbackWidth = opts.measuresPerLine
     ? Math.max(MIN_MEASURE_WIDTH, Math.floor(opts.viewportWidth / opts.measuresPerLine))
     : (opts.measureWidth ?? DEFAULT_MEASURE_WIDTH);
-  const measuresPerLine = opts.measuresPerLine
-    ?? Math.max(1, Math.floor(opts.viewportWidth / measureWidth));
-  const lineCount = Math.max(1, Math.ceil(vex.measures.length / measuresPerLine));
+  const widths: number[] = opts.measureWidths
+    ? vex.measures.map((_, i) => opts.measureWidths![i] ?? fallbackWidth)
+    : vex.measures.map(() => fallbackWidth);
+
+  // measuresPerLine: explicit caller value wins; if per-measure widths
+  // are supplied and no explicit cap is given, fit as many as the
+  // running cumulative width allows.
+  const measuresPerLine =
+    opts.measuresPerLine ??
+    (opts.measureWidths
+      ? vex.measures.length // assume the caller will scroll horizontally
+      : Math.max(1, Math.floor(opts.viewportWidth / fallbackWidth)));
+
+  // Pre-compute x offsets per measure, restarting at each new line.
+  const xOffsets: number[] = new Array(vex.measures.length);
+  let lineCount = 0;
+  let runX = 0;
+  for (let i = 0; i < vex.measures.length; i++) {
+    if (i % measuresPerLine === 0) {
+      runX = 0;
+      lineCount++;
+    }
+    xOffsets[i] = runX + FIRST_MEASURE_LEFT_PAD;
+    runX += widths[i]!;
+  }
+  if (lineCount === 0) lineCount = 1;
   const height = lineCount * LINE_HEIGHT + BOTTOM_PADDING;
 
+  // SVG width: pin to whichever is wider, the caller-supplied viewport
+  // or the widest line we just laid out. Otherwise note tails on long
+  // bars get clipped.
+  const maxLineWidth = computeMaxLineWidth(widths, measuresPerLine);
+  const svgWidth = Math.max(opts.viewportWidth, maxLineWidth + FIRST_MEASURE_LEFT_PAD * 2);
+
   const renderer = new Renderer(opts.container, Renderer.Backends.SVG);
-  renderer.resize(opts.viewportWidth, height);
+  renderer.resize(svgWidth, height);
   const ctx = renderer.getContext();
   const noteCoords = new Map<string, NoteCoords>();
 
   vex.measures.forEach((m, idx) => {
     const lineIdx = Math.floor(idx / measuresPerLine);
-    const colIdx = idx % measuresPerLine;
-    const x = colIdx * measureWidth + FIRST_MEASURE_LEFT_PAD;
+    const measureWidth = widths[idx]!;
+    const x = xOffsets[idx]!;
     const y = lineIdx * LINE_HEIGHT + STAVE_TOP_OFFSET;
 
     const stave = new Stave(x, y, measureWidth);
@@ -146,6 +184,17 @@ export function renderScore(score: Score, opts: RenderOptions): RenderResult {
   });
 
   return { noteCoords, height };
+}
+
+function computeMaxLineWidth(widths: readonly number[], measuresPerLine: number): number {
+  let maxW = 0;
+  let lineW = 0;
+  for (let i = 0; i < widths.length; i++) {
+    if (i % measuresPerLine === 0) lineW = 0;
+    lineW += widths[i]!;
+    if (lineW > maxW) maxW = lineW;
+  }
+  return maxW;
 }
 
 /**

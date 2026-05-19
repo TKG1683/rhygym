@@ -10,6 +10,7 @@ import { getBest, isNewBest, setBest } from '../../core/storage/localStore';
 import { TimingPlot } from '../game/TimingPlot';
 import { ScoreView } from '../vexflow/ScoreView';
 import type { NoteCoords } from '../vexflow/ScoreRenderer';
+import { adaptiveMeasureWidth, scoreToVex } from '../vexflow/scoreToVex';
 import { useAppStore } from '../store/appStore';
 
 /** Rank ordering for "is this rank at least PASS_RANK_THRESHOLD?". */
@@ -70,6 +71,7 @@ export function ResultScreen() {
   const calibrationOffsetSec = useAppStore((s) => s.calibrationOffsetSec);
   const loadedStages = useAppStore((s) => s.loadedStages);
   const setCalibrationReturnScreen = useAppStore((s) => s.setCalibrationReturnScreen);
+  const setSelectInitialLevel = useAppStore((s) => s.setSelectInitialLevel);
   const calibrated = calibrationOffsetSec !== 0;
 
   // Mark this screen as the return target so calibration can bring the
@@ -78,6 +80,19 @@ export function ResultScreen() {
   const goCalibration = () => {
     setCalibrationReturnScreen('result');
     goto('calibration');
+  };
+
+  // "ステージ選択へ" — drop the player back into the stage list for the
+  // level they just played, not the top-level Level list. Looks up the
+  // stage's level from the roster (network or fallback) and asks
+  // StageSelect to open it on mount.
+  const goStageSelect = () => {
+    if (stage) {
+      const roster = loadedStages ?? STAGES;
+      const meta = roster.find((s) => s.id === stage.id);
+      if (meta) setSelectInitialLevel(meta.level);
+    }
+    goto('select');
   };
 
   const [noteCoords, setNoteCoords] = useState<Map<string, NoteCoords> | null>(null);
@@ -105,12 +120,18 @@ export function ResultScreen() {
     return Math.max(1, Math.ceil(stage.score.totalTicks / ticksPerMeasure));
   }, [stage]);
 
-  // Reserve at least this much width per measure inside the horizontal
-  // scroll area. A long score (e.g. Lv9-5, 16 measures) needs ~2000px
-  // to read clearly; shorter scores still get a comfortable layout via
-  // the wrapper's natural viewport width.
-  const SCORE_MEASURE_WIDTH_RESULT = 140;
-  const scoreMinWidth = totalMeasures * SCORE_MEASURE_WIDTH_RESULT;
+  // Per-measure widths driven by note density: a bar of sixteenths
+  // gets more room than a bar of two halves. The wrapper is scrollable
+  // so overflow is fine; min-width = the sum guarantees the staff
+  // never gets squeezed below the natural per-bar widths.
+  const measureWidths = useMemo<number[]>(() => {
+    if (!stage) return [];
+    return scoreToVex(stage.score).measures.map(adaptiveMeasureWidth);
+  }, [stage]);
+  const scoreMinWidth = useMemo(
+    () => measureWidths.reduce((s, w) => s + w, 0) + 40,
+    [measureWidths],
+  );
 
   const stats = useMemo(
     () => (records ? computeTimingStats(records) : null),
@@ -207,6 +228,7 @@ export function ResultScreen() {
               score={stage.score}
               onRender={setNoteCoords}
               measuresPerLine={totalMeasures}
+              measureWidths={measureWidths}
             />
             {records && noteCoords && wrapperWidth > 0 && (
               <TimingPlot
@@ -271,8 +293,8 @@ export function ResultScreen() {
               次のステージへ →
             </button>
           ) : (
-            <button className="primary next-stage-cta" onClick={() => goto('select')}>
-              Level 一覧へ
+            <button className="primary next-stage-cta" onClick={goStageSelect}>
+              ステージ選択へ
             </button>
           )}
           <div className="row result-secondary-row">
@@ -280,8 +302,8 @@ export function ResultScreen() {
               リトライ
             </button>
             {!endOfRoster && (
-              <button className="secondary result-secondary-btn" onClick={() => goto('select')}>
-                Level 一覧へ
+              <button className="secondary result-secondary-btn" onClick={goStageSelect}>
+                ステージ選択へ
               </button>
             )}
           </div>
@@ -291,8 +313,8 @@ export function ResultScreen() {
           <button className="primary" onClick={() => goto('game')}>
             リトライ
           </button>
-          <button className="secondary" onClick={() => goto('select')}>
-            級選択へ
+          <button className="secondary" onClick={goStageSelect}>
+            ステージ選択へ
           </button>
         </div>
       )}

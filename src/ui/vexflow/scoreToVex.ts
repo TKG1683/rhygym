@@ -220,6 +220,19 @@ function findTimeSigAt(timeSigs: TimeSignatureEvent[], tick: number): TimeSignat
   return cur;
 }
 
+/**
+ * Pick a comfortable render width for a single measure based on how
+ * many noteheads + rests it contains. A 4-note quarter bar reads fine
+ * narrow; a bar packed with sixteenth subdivisions needs room.
+ * Clamped so a near-empty bar still gets a sensible minimum and a
+ * tuplet-stuffed bar doesn't run off the page.
+ */
+export function adaptiveMeasureWidth(m: VexMeasure): number {
+  const tokenCount = m.notes.length;
+  const w = 100 + tokenCount * 22;
+  return Math.max(140, Math.min(360, w));
+}
+
 export function scoreToVex(score: Score): VexScore {
   const sortedTimeSigs = [...score.timeSigs].sort((a, b) => a.tick - b.tick);
   if (sortedTimeSigs.length === 0 || sortedTimeSigs[0]!.tick > 0) {
