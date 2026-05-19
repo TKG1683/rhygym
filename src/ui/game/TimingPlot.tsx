@@ -1,12 +1,10 @@
 /**
- * TimingPlot — paired with a ScoreView so every dot sits directly under
- * the notehead it belongs to. Without that alignment the user can read
- * "beat 5 was -50 ms" but can't tell *which* note that is.
- *
- * The parent should render a ScoreView with measuresPerLine matching
- * the score's full bar count (i.e. a single row) and feed its
- * noteCoords map plus its rendered width into this component. The plot
- * SVG then uses the same x coordinates as the staff.
+ * TimingPlot — a time-axis dot plot of how the player's taps landed
+ * relative to each target note. Sits below the Result-screen staff
+ * (which uses VexFlow's measure-based even spacing) and provides the
+ * timing layer the staff can't: the dot's horizontal position is
+ * derived from real seconds, so the same ±50ms drift always renders
+ * at the same visual distance no matter where in the piece it occurs.
  *
  * Marker semantics:
  *   - Filled dot       : a successful hit (color = verdict tier)
@@ -17,13 +15,19 @@
  */
 
 import type { JudgementRecord } from '../../core/judgement';
-import type { NoteCoords } from '../vexflow/ScoreRenderer';
 
 interface Props {
   records: readonly JudgementRecord[];
-  noteCoords: Map<string, NoteCoords>;
   /** Same pixel width the companion ScoreView is rendered at. */
   width: number;
+  /**
+   * Total song duration in seconds. Used to map each record's
+   * `noteSec` to a horizontal pixel position so timing distances on
+   * the plot are perceptually consistent (1 second of music = N
+   * pixels everywhere). When `totalSec <= 0` the plot still renders
+   * the frame/axes but skips data points.
+   */
+  totalSec: number;
 }
 
 const HEIGHT = 200;
@@ -40,9 +44,33 @@ const PERFECT_BG = 'rgba(120, 200, 120, 0.18)';
 const GOOD_BG = 'rgba(255, 180, 90, 0.18)';
 const MISS_BG = 'rgba(232, 97, 46, 0.18)';
 
-const LABEL_AREA_X = 40;
+export const LABEL_AREA_X = 40;
+/**
+ * Right-edge breathing room — without this, a tap at exactly t=totalSec
+ * would land flush against the frame and visually disappear under it.
+ */
+export const RIGHT_EDGE_PAD = 8;
 
-export function TimingPlot({ records, noteCoords, width }: Props) {
+/**
+ * Map a note-onset time (seconds) to a horizontal pixel position
+ * inside the plot frame. Time is clamped to [0, totalSec] so a
+ * stray-but-attributed record can't render outside the frame. When
+ * the song has no duration (totalSec <= 0) or the frame is collapsed
+ * (innerW <= 0) every note falls back to the left edge — the plot
+ * still renders its axes but data dots stack at x=xLeft, which is
+ * the same defensive behavior the screen wrapper guards against
+ * (it only mounts TimingPlot once totalScoreSec > 0).
+ */
+export function timeToX(sec: number, totalSec: number, width: number): number {
+  const xLeft = LABEL_AREA_X;
+  const xRight = Math.max(xLeft, width - RIGHT_EDGE_PAD);
+  const innerW = Math.max(0, xRight - xLeft);
+  if (totalSec <= 0 || innerW <= 0) return xLeft;
+  const t = Math.max(0, Math.min(totalSec, sec));
+  return xLeft + (t / totalSec) * innerW;
+}
+
+export function TimingPlot({ records, width, totalSec }: Props) {
   const innerH = HEIGHT - PADDING_TOP - PADDING_BOTTOM;
   const yOfMs = (ms: number) =>
     PADDING_TOP + ((Y_RANGE_MS - ms) / (2 * Y_RANGE_MS)) * innerH;
@@ -51,8 +79,10 @@ export function TimingPlot({ records, noteCoords, width }: Props) {
   // Inner plot area starts after the left-side label gutter so the
   // axis numbers don't crash into the first note's column.
   const xLeft = LABEL_AREA_X;
-  const xRight = width;
+  const xRight = Math.max(xLeft, width - RIGHT_EDGE_PAD);
   const innerW = Math.max(0, xRight - xLeft);
+
+  const xOfSec = (sec: number): number => timeToX(sec, totalSec, width);
 
   return (
     <svg
@@ -82,8 +112,8 @@ export function TimingPlot({ records, noteCoords, width }: Props) {
       <text x={xLeft - 6} y={yTop + 10} textAnchor="end" fontSize="9" fill="#2A1B06" opacity="0.6">早</text>
       <text x={xLeft - 6} y={yBottom + 8} textAnchor="end" fontSize="9" fill="#2A1B06" opacity="0.6">遅</text>
 
-      {/* Data points — anchored to each note's x position from ScoreView. */}
-      {records.map((r, i) => renderRecord(r, i, noteCoords, yOfMs))}
+      {/* Data points — x derived from each note's onset time. */}
+      {records.map((r, i) => renderRecord(r, i, xOfSec, yOfMs))}
     </svg>
   );
 }
@@ -91,14 +121,12 @@ export function TimingPlot({ records, noteCoords, width }: Props) {
 function renderRecord(
   r: JudgementRecord,
   i: number,
-  noteCoords: Map<string, NoteCoords>,
+  xOfSec: (sec: number) => number,
   yOfMs: (ms: number) => number,
 ): JSX.Element | null {
   // Hits and auto-MISSes both target a note; stray taps don't.
-  if (!r.noteId) return null;
-  const coords = noteCoords.get(r.noteId);
-  if (!coords) return null;
-  const x = coords.x;
+  if (!r.noteId || r.noteSec === null) return null;
+  const x = xOfSec(r.noteSec);
 
   if (r.diffSec !== null) {
     // Real hit — plot the error.

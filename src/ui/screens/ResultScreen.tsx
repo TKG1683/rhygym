@@ -7,10 +7,9 @@ import {
 import { PPQ } from '../../core/model';
 import { ETUDES, type EtudeWithMovementMeta } from '../../core/score/etudes';
 import { getBest, isNewBest, setBest } from '../../core/storage/localStore';
+import { TickTimeConverter } from '../../core/timing/tickTime';
 import { TimingPlot } from '../game/TimingPlot';
 import { ScoreView } from '../vexflow/ScoreView';
-import type { NoteCoords } from '../vexflow/ScoreRenderer';
-import { adaptiveMeasureWidth, scoreToVex } from '../vexflow/scoreToVex';
 import { useAppStore } from '../store/appStore';
 
 /** Rank ordering for "is this rank at least PASS_RANK_THRESHOLD?". */
@@ -95,12 +94,12 @@ export function ResultScreen() {
     goto('select');
   };
 
-  const [noteCoords, setNoteCoords] = useState<Map<string, NoteCoords> | null>(null);
   const wrapperRef = useRef<HTMLDivElement>(null);
   const [wrapperWidth, setWrapperWidth] = useState(0);
 
-  // Track the wrapper width so the timing plot sits at exactly the same
-  // pixel width as the ScoreView and the x coordinates line up.
+  // Track the wrapper width so the timing plot sits at exactly the
+  // same pixel width as the ScoreView above it; the plot's internal
+  // x-axis is then mapped from song time onto that width.
   useEffect(() => {
     const el = wrapperRef.current;
     if (!el) return;
@@ -120,18 +119,30 @@ export function ResultScreen() {
     return Math.max(1, Math.ceil(stage.score.totalTicks / ticksPerMeasure));
   }, [stage]);
 
-  // Per-measure widths driven by note density: a bar of sixteenths
-  // gets more room than a bar of two halves. The wrapper is scrollable
-  // so overflow is fine; min-width = the sum guarantees the staff
-  // never gets squeezed below the natural per-bar widths.
+  // Every measure gets the same generous width so notes always have
+  // room to breathe — sparse bars don't waste space, dense bars don't
+  // get squeezed. The horizontal scroll wrapper lets long pieces
+  // overflow the viewport. This uniform spacing also means the staff
+  // and the time-axis TimingPlot beneath stay in approximate visual
+  // alignment (an even bar = an even slice of total time).
+  const FIXED_MEASURE_WIDTH = 240;
   const measureWidths = useMemo<number[]>(() => {
     if (!stage) return [];
-    return scoreToVex(stage.score).measures.map(adaptiveMeasureWidth);
-  }, [stage]);
+    return new Array(totalMeasures).fill(FIXED_MEASURE_WIDTH);
+  }, [stage, totalMeasures]);
   const scoreMinWidth = useMemo(
     () => measureWidths.reduce((s, w) => s + w, 0) + 40,
     [measureWidths],
   );
+
+  // Total song duration in seconds — drives the TimingPlot's x axis
+  // so a given ms drift always renders at the same visual distance,
+  // regardless of which measure the note lives in.
+  const totalScoreSec = useMemo(() => {
+    if (!stage) return 0;
+    const converter = new TickTimeConverter(stage.score.tempos);
+    return converter.tickToSec(stage.score.totalTicks);
+  }, [stage]);
 
   const stats = useMemo(
     () => (records ? computeTimingStats(records) : null),
@@ -226,15 +237,14 @@ export function ResultScreen() {
           >
             <ScoreView
               score={stage.score}
-              onRender={setNoteCoords}
               measuresPerLine={totalMeasures}
               measureWidths={measureWidths}
             />
-            {records && noteCoords && wrapperWidth > 0 && (
+            {records && wrapperWidth > 0 && totalScoreSec > 0 && (
               <TimingPlot
                 records={records}
-                noteCoords={noteCoords}
                 width={wrapperWidth}
+                totalSec={totalScoreSec}
               />
             )}
           </div>
