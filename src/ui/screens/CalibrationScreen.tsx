@@ -85,7 +85,9 @@ export function CalibrationScreen() {
       for (let i = 0; i < count; i++) {
         const t = blockStart + i * beatSec;
         times.push(t);
-        const osc = scheduleClick(ctx, t, false, 0.7);
+        // Calibration metronome is effectively 4/4 — every click is
+        // an accent so the player hears a uniform, full-bodied pulse.
+        const osc = scheduleClick(ctx, t, true, 0.7);
         oscs.push(osc);
         schedulePulseAt(t);
       }

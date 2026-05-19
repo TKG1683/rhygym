@@ -9,7 +9,7 @@
  * the handoff is seamless if they share the same BPM.
  */
 
-import { scheduleClick, DEFAULT_METRONOME_VOLUME } from './metronome';
+import { isAccentBeat, scheduleClick, DEFAULT_METRONOME_VOLUME } from './metronome';
 
 const LOOK_AHEAD_SEC = 0.1;
 const TICK_INTERVAL_MS = 25;
@@ -18,19 +18,22 @@ const SCHEDULE_PAST_TOLERANCE_SEC = 0.01;
 export interface FreeMetronomeOptions {
   bpm: number;
   /**
-   * How many beats make up one measure. Currently unused by the click
-   * itself — every beat renders identically (see schedule() for why).
-   * Kept on the API so a future "accent downbeat" setting can plug in
-   * without changing the constructor signature.
+   * Time-signature numerator and denominator. denominator drives the
+   * click subdivision (4 → quarter pulses, 8 → eighth pulses).
+   * numerator determines where a measure ends; for compound meters
+   * (6/8, 9/8, 12/8) clicks are accented every 3 eighths so the pulse
+   * reads as "TA-ta-ta" rather than "TA-ta-ta-ta-ta-ta".
    */
-  beatsPerMeasure: number;
+  numerator: number;
+  denominator: number;
   volume?: number;
 }
 
 export class FreeMetronome {
   private readonly ctx: AudioContext;
   private readonly bpm: number;
-  private readonly beatsPerMeasure: number;
+  private readonly numerator: number;
+  private readonly denominator: number;
   private volume: number;
 
   private startTime = 0;
@@ -52,7 +55,8 @@ export class FreeMetronome {
   constructor(ctx: AudioContext, opts: FreeMetronomeOptions) {
     this.ctx = ctx;
     this.bpm = opts.bpm;
-    this.beatsPerMeasure = opts.beatsPerMeasure;
+    this.numerator = opts.numerator;
+    this.denominator = opts.denominator;
     this.volume = opts.volume ?? DEFAULT_METRONOME_VOLUME;
   }
 
@@ -127,8 +131,8 @@ export class FreeMetronome {
    * keeps the metronome pulse rock-solid through tap-to-start.
    */
   nextDownbeatTimeFromNow(now: number): number {
-    const beatSec = 60 / this.bpm;
-    const measureSec = beatSec * this.beatsPerMeasure;
+    const beatSec = this.beatSec();
+    const measureSec = beatSec * this.numerator;
     const sinceStart = now - this.startTime;
     const measuresSince = Math.ceil(sinceStart / measureSec);
     // ceil() returns the *current* measure if we're exactly on a downbeat;
@@ -138,11 +142,23 @@ export class FreeMetronome {
     return target;
   }
 
+  /**
+   * Seconds per "beat" as defined by the time signature's denominator:
+   * 60/bpm × (4/denominator). For 4/4 this is plain 60/bpm (quarter);
+   * for 6/8 it's half that (eighth), so the click subdivides into the
+   * notated unit instead of always running on quarters.
+   */
+  private beatSec(): number {
+    return (60 / this.bpm) * (4 / this.denominator);
+  }
+
   private schedule(): void {
     if (!this._running) return;
     const now = this.ctx.currentTime;
     const horizon = now - this.startTime + LOOK_AHEAD_SEC;
-    const beatSec = 60 / this.bpm;
+    const beatSec = this.beatSec();
+    // Accent decisions are shared with the scheduled-play click grid
+    // (see isAccentBeat) so waiting and playing sound the same.
     // ceil — start at the first beat STRICTLY past what we already
     // scheduled. With floor, scheduledUpTo=0.1 and beatSec=0.5 yielded
     // index 0 again on the next pass; combined with the past-tolerance
@@ -154,13 +170,9 @@ export class FreeMetronome {
     for (let i = startBeatIndex; i < endBeatIndex; i++) {
       const beatTime = this.startTime + i * beatSec;
       if (beatTime < now - SCHEDULE_PAST_TOLERANCE_SEC) continue;
-      // Always render every click identically (no downbeat accent).
-      // Accenting beat 1 would tell the player exactly where the
-      // measure begins, which is the exact thing we want them reading
-      // off the staff. Flat clicks also mean the player can choose any
-      // beat as their starting "1" when they tap to begin — the click
-      // grid carries no opinion about phrasing.
-      const osc = scheduleClick(this.ctx, beatTime, false, this.volume);
+      const beatInMeasure = i % this.numerator;
+      const isAccent = isAccentBeat(this.numerator, this.denominator, beatInMeasure);
+      const osc = scheduleClick(this.ctx, beatTime, isAccent, this.volume);
       const entry = { osc, startAt: beatTime };
       this.scheduledOscs.push(entry);
       osc.onended = () => {

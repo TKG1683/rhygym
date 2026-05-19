@@ -9,12 +9,26 @@
 
 import { PPQ, type TimeSignatureEvent } from '../model/types';
 
-export const METRONOME_DOWNBEAT_FREQUENCY_HZ = 1600;
-export const METRONOME_OFFBEAT_FREQUENCY_HZ = 1200;
+// Single click tone shared by every beat — what differs between accent
+// and non-accent is gain, not pitch. Two pitches felt like two
+// instruments interrupting each other; one pitch with a quieter
+// "ghost" reads as the same drum hit softer.
+export const METRONOME_CLICK_FREQUENCY_HZ = 1600;
+// Back-compat aliases — kept so callers that imported the old names
+// keep building. Both point at the same pitch now.
+export const METRONOME_DOWNBEAT_FREQUENCY_HZ = METRONOME_CLICK_FREQUENCY_HZ;
+export const METRONOME_OFFBEAT_FREQUENCY_HZ = METRONOME_CLICK_FREQUENCY_HZ;
 
-const DOWNBEAT_BASE_GAIN = 1.0;
-const OFFBEAT_BASE_GAIN = 0.6;
+const ACCENT_BASE_GAIN = 1.0;
+// Soft beats need a wide gain gap from accents so the listener can
+// tell them apart at a glance. 0.55 turned out to read as "same
+// volume, slightly less"; 0.25 lands as a clear ghost note.
+const SOFT_BASE_GAIN = 0.25;
 const CLICK_DURATION_SEC = 0.05;
+// Soft beats also decay faster so they sound shorter as well as
+// quieter — duration and loudness compound to make them register as
+// "between" the accents rather than competing with them.
+const SOFT_DURATION_SEC = 0.025;
 /** Short fade-in so the oscillator doesn't pop when it switches on. */
 const CLICK_ATTACK_SEC = 0.002;
 /** exponentialRamp cannot reach 0; -60dB is effectively inaudible. */
@@ -43,11 +57,10 @@ export function scheduleClick(
   // triangle has odd harmonics that fall off ~9 dB/octave, giving it
   // body without the harshness of a square wave.
   osc.type = 'triangle';
-  osc.frequency.value = isDownbeat
-    ? METRONOME_DOWNBEAT_FREQUENCY_HZ
-    : METRONOME_OFFBEAT_FREQUENCY_HZ;
-  const baseGain = isDownbeat ? DOWNBEAT_BASE_GAIN : OFFBEAT_BASE_GAIN;
+  osc.frequency.value = METRONOME_CLICK_FREQUENCY_HZ;
+  const baseGain = isDownbeat ? ACCENT_BASE_GAIN : SOFT_BASE_GAIN;
   const peakGain = baseGain * volume;
+  const duration = isDownbeat ? CLICK_DURATION_SEC : SOFT_DURATION_SEC;
   // 0 → peak over 2 ms (linear) → near-zero over the remainder
   // (exponential). Without the attack ramp the gain jumps from 0 to peak
   // in one sample, which makes the audible "pop" that listeners hear on
@@ -56,16 +69,47 @@ export function scheduleClick(
   gain.gain.linearRampToValueAtTime(peakGain, audioTime + CLICK_ATTACK_SEC);
   gain.gain.exponentialRampToValueAtTime(
     NEAR_ZERO_GAIN,
-    audioTime + CLICK_DURATION_SEC,
+    audioTime + duration,
   );
 
   osc.start(audioTime);
-  osc.stop(audioTime + CLICK_DURATION_SEC);
+  osc.stop(audioTime + duration);
   return osc;
 }
 
 function ticksPerBeat(ts: TimeSignatureEvent): number {
   return (PPQ * 4) / ts.denominator;
+}
+
+/**
+ * Decide whether a given beat-within-measure should be accented for
+ * the click grid:
+ *  - compound 8/ (6/8, 9/8, 12/8): every 3rd eighth ("TA-ta-ta")
+ *  - asymmetric 5/8 (3+2): beats 0 and 3
+ *  - asymmetric 7/8 (2+2+3): beats 0, 2, 4
+ *  - everything else (simple meter): every beat accented — the click
+ *    grid stays "neutral" so the player has to read phrasing from
+ *    the staff, not the metronome.
+ *
+ * The asymmetric patterns are the most common Greek / Bulgarian
+ * defaults; stages that want a different grouping (e.g. 7/8 = 3+2+2)
+ * can override later.
+ */
+export function isAccentBeat(
+  numerator: number,
+  denominator: number,
+  beatIndexInMeasure: number,
+): boolean {
+  if (denominator === 8 && numerator % 3 === 0) {
+    return beatIndexInMeasure % 3 === 0;
+  }
+  if (denominator === 8 && numerator === 5) {
+    return beatIndexInMeasure === 0 || beatIndexInMeasure === 3;
+  }
+  if (denominator === 8 && numerator === 7) {
+    return beatIndexInMeasure === 0 || beatIndexInMeasure === 2 || beatIndexInMeasure === 4;
+  }
+  return true;
 }
 
 function ticksPerMeasure(ts: TimeSignatureEvent): number {
@@ -118,7 +162,9 @@ export function collectBeats(
       continue;
     }
     const posInMeasure = (tick - ts.tick) % measureTicks;
-    result.push({ tick, isDownbeat: posInMeasure === 0 });
+    const beatIndexInMeasure = posInMeasure / beatTicks;
+    const isDownbeat = isAccentBeat(ts.numerator, ts.denominator, beatIndexInMeasure);
+    result.push({ tick, isDownbeat });
     tick += beatTicks;
   }
 
