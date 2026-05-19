@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { STAGES, type StageWithMeta } from '../../core/score/stages';
+import { ETUDES, type EtudeWithMovementMeta } from '../../core/score/etudes';
 import { getAllBests, type BestRecord } from '../../core/storage/localStore';
 import type { Rank } from '../../core/judgement';
 import { useAppStore } from '../store/appStore';
@@ -19,7 +19,7 @@ type Medal = 'gold' | 'silver' | 'bronze';
  * through some of a level (but not finished it) still gets visible
  * progress.
  */
-function movementMedal(stages: readonly StageWithMeta[], bests: Record<string, BestRecord>): Medal | null {
+function movementMedal(stages: readonly EtudeWithMovementMeta[], bests: Record<string, BestRecord>): Medal | null {
   const total = stages.length;
   if (total === 0) return null;
   let cleared = 0;
@@ -39,22 +39,22 @@ function movementMedal(stages: readonly StageWithMeta[], bests: Record<string, B
 interface MovementGroup {
   level: number;
   themeColor: string;
-  stages: readonly StageWithMeta[];
+  stages: readonly EtudeWithMovementMeta[];
 }
 
 export function StageSelectScreen() {
   const goto = useAppStore((s) => s.goto);
-  const selectStage = useAppStore((s) => s.selectStage);
-  const loadedStages = useAppStore((s) => s.loadedStages);
-  const stagesLoadState = useAppStore((s) => s.stagesLoadState);
-  const initialMovement = useAppStore((s) => s.selectInitialLevel);
-  const setInitialMovement = useAppStore((s) => s.setSelectInitialLevel);
+  const selectEtude = useAppStore((s) => s.selectEtude);
+  const loadedEtudes = useAppStore((s) => s.loadedEtudes);
+  const etudesLoadState = useAppStore((s) => s.etudesLoadState);
+  const initialMovement = useAppStore((s) => s.selectInitialMovement);
+  const setInitialMovement = useAppStore((s) => s.setSelectInitialMovement);
 
   // Prefer the network-loaded roster once it's ready, otherwise fall
-  // back to the bundled placeholder STAGES so a missing public/stages/
+  // back to the bundled placeholder ETUDES so a missing public/stages/
   // (e.g. local dev before content lands) doesn't blank the screen.
-  const stages: readonly StageWithMeta[] = loadedStages ?? STAGES;
-  const usingFallback = stagesLoadState === 'error';
+  const stages: readonly EtudeWithMovementMeta[] = loadedEtudes ?? ETUDES;
+  const usingFallback = etudesLoadState === 'error';
 
   // Snapshot all bests on mount. Result writes back via setBest, but
   // this screen only re-reads on navigation back, which is fine — the
@@ -64,7 +64,7 @@ export function StageSelectScreen() {
   // Group stages by their level number, sorted ascending. Stages
   // within a group keep their original (manifest / hardcoded) order.
   const levelGroups = useMemo<MovementGroup[]>(() => {
-    const byLevel = new Map<number, StageWithMeta[]>();
+    const byLevel = new Map<number, EtudeWithMovementMeta[]>();
     for (const stage of stages) {
       const list = byLevel.get(stage.level) ?? [];
       list.push(stage);
@@ -90,7 +90,7 @@ export function StageSelectScreen() {
   }, []);
 
   const start = (id: string) => {
-    selectStage(id);
+    selectEtude(id);
     goto('game');
   };
 
@@ -115,7 +115,7 @@ export function StageSelectScreen() {
     <MovementListView
       groups={levelGroups}
       bests={bests}
-      loadingHint={stagesLoadState === 'loading' ? '譜面を読み込み中…' : null}
+      loadingHint={etudesLoadState === 'loading' ? '譜面を読み込み中…' : null}
       fallbackHint={usingFallback ? '※ 譜面ファイル未配置のためデモ譜面で代替中' : null}
       onOpenMovement={setOpenMovement}
       onBack={() => goto('title')}
@@ -218,7 +218,7 @@ function MedalChip({ medal }: { medal: Medal }) {
 }
 
 /* ================================================================== */
-/*  Stage list (drilled into a level)                                 */
+/*  Etude list (drilled into a level)                                 */
 /* ================================================================== */
 
 interface EtudeListProps {
@@ -247,7 +247,7 @@ function EtudeListView({ group, bests, onStart, onBack }: EtudeListProps) {
 }
 
 interface EtudeCardProps {
-  stage: StageWithMeta;
+  stage: EtudeWithMovementMeta;
   best: BestRecord | undefined;
   onStart: (id: string) => void;
 }
@@ -311,13 +311,13 @@ function movementGlyph(level: number): string {
   }
 }
 
-function etudeGlyph(stage: StageWithMeta): string {
+function etudeGlyph(stage: EtudeWithMovementMeta): string {
   if (stage.isExam) return '★';
   return movementGlyph(stage.level);
 }
 
 /** Display the piece's opening time signature on the Etude card. */
-function etudeTimeSig(stage: StageWithMeta): string {
+function etudeTimeSig(stage: EtudeWithMovementMeta): string {
   const ts = stage.score.timeSigs[0];
   if (!ts) return '4/4';
   return `${ts.numerator}/${ts.denominator}`;
@@ -327,7 +327,7 @@ function etudeTimeSig(stage: StageWithMeta): string {
  * True for compound primary meters (6/8 / 9/8 / 12/8) where the bpm
  * value is the dotted-quarter pulse and we render "♩." instead of "♩".
  */
-function isCompoundEtude(stage: StageWithMeta): boolean {
+function isCompoundEtude(stage: EtudeWithMovementMeta): boolean {
   const ts = stage.score.timeSigs[0];
   return ts != null && ts.denominator === 8 && ts.numerator % 3 === 0;
 }

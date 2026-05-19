@@ -5,7 +5,7 @@ import {
   PASS_RANK_THRESHOLD,
 } from '../../core/judgement/score';
 import { PPQ } from '../../core/model';
-import { STAGES, type StageWithMeta } from '../../core/score/stages';
+import { ETUDES, type EtudeWithMovementMeta } from '../../core/score/etudes';
 import { getBest, isNewBest, setBest } from '../../core/storage/localStore';
 import { TimingPlot } from '../game/TimingPlot';
 import { ScoreView } from '../vexflow/ScoreView';
@@ -31,9 +31,9 @@ function rankAtLeast(rank: string, min: string): boolean {
  * is the next level's stage 1.
  */
 function findNextEtude(
-  roster: readonly StageWithMeta[],
-  current: StageWithMeta,
-): StageWithMeta | null {
+  roster: readonly EtudeWithMovementMeta[],
+  current: EtudeWithMovementMeta,
+): EtudeWithMovementMeta | null {
   if (current.isExam) {
     return firstEtudeOfMovement(roster, current.level + 1);
   }
@@ -43,7 +43,7 @@ function findNextEtude(
     );
     if (sameLevelNext) return sameLevelNext;
   } else {
-    // Roster doesn't carry per-stage indices (placeholder STAGES): use
+    // Roster doesn't carry per-stage indices (placeholder ETUDES): use
     // roster order within the level.
     const sameLevel = roster.filter((s) => s.level === current.level);
     const idx = sameLevel.findIndex((s) => s.id === current.id);
@@ -53,9 +53,9 @@ function findNextEtude(
 }
 
 function firstEtudeOfMovement(
-  roster: readonly StageWithMeta[],
+  roster: readonly EtudeWithMovementMeta[],
   level: number,
-): StageWithMeta | null {
+): EtudeWithMovementMeta | null {
   const inLevel = roster.filter((s) => s.level === level);
   if (inLevel.length === 0) return null;
   const withIndex = inLevel.find((s) => s.indexInLevel === 1);
@@ -64,14 +64,14 @@ function firstEtudeOfMovement(
 
 export function ResultScreen() {
   const goto = useAppStore((s) => s.goto);
-  const selectStage = useAppStore((s) => s.selectStage);
+  const selectEtude = useAppStore((s) => s.selectEtude);
   const result = useAppStore((s) => s.lastResult);
-  const stage = useAppStore((s) => s.lastStage);
+  const stage = useAppStore((s) => s.lastEtude);
   const records = useAppStore((s) => s.lastRecords);
   const calibrationOffsetSec = useAppStore((s) => s.calibrationOffsetSec);
-  const loadedStages = useAppStore((s) => s.loadedStages);
+  const loadedEtudes = useAppStore((s) => s.loadedEtudes);
   const setCalibrationReturnScreen = useAppStore((s) => s.setCalibrationReturnScreen);
-  const setSelectInitialLevel = useAppStore((s) => s.setSelectInitialLevel);
+  const setSelectInitialMovement = useAppStore((s) => s.setSelectInitialMovement);
   const calibrated = calibrationOffsetSec !== 0;
 
   // Mark this screen as the return target so calibration can bring the
@@ -88,9 +88,9 @@ export function ResultScreen() {
   // StageSelect to open it on mount.
   const goEtudeSelect = () => {
     if (stage) {
-      const roster = loadedStages ?? STAGES;
+      const roster = loadedEtudes ?? ETUDES;
       const meta = roster.find((s) => s.id === stage.id);
-      if (meta) setSelectInitialLevel(meta.level);
+      if (meta) setSelectInitialMovement(meta.level);
     }
     goto('select');
   };
@@ -180,15 +180,15 @@ export function ResultScreen() {
 
   // "Next stage" lookup — only relevant once we know the player cleared
   // (rank A or higher). Resolved against the loaded roster (with the
-  // bundled STAGES as a fallback for the same reasons GameScreen does).
-  const nextEtude = useMemo<StageWithMeta | null>(() => {
+  // bundled ETUDES as a fallback for the same reasons GameScreen does).
+  const nextEtude = useMemo<EtudeWithMovementMeta | null>(() => {
     if (!stage || !result) return null;
     if (!rankAtLeast(result.rank, PASS_RANK_THRESHOLD)) return null;
-    const roster = loadedStages ?? STAGES;
+    const roster = loadedEtudes ?? ETUDES;
     const currentMeta = roster.find((s) => s.id === stage.id);
     if (!currentMeta) return null;
     return findNextEtude(roster, currentMeta);
-  }, [stage, result, loadedStages]);
+  }, [stage, result, loadedEtudes]);
 
   const passed =
     result != null && rankAtLeast(result.rank, PASS_RANK_THRESHOLD);
@@ -198,7 +198,7 @@ export function ResultScreen() {
 
   const goNext = () => {
     if (!nextEtude) return;
-    selectStage(nextEtude.id);
+    selectEtude(nextEtude.id);
     goto('game');
   };
 

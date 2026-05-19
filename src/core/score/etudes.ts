@@ -13,10 +13,10 @@
  * (`level-N-exam`) that previews the next Level's signature element.
  */
 
-import type { Stage } from '../model';
-import { DEMO_STAGE } from './demoStage';
+import type { Etude } from '../model';
+import { DEMO_ETUDE } from './demoEtude';
 
-interface StageMeta {
+interface EtudeMeta {
   id: string;
   name: string;
   description: string;
@@ -47,14 +47,14 @@ const COLOR: Record<number, string> = {
 };
 
 // Per-Level BPM target — the headline tempo for that Level's curriculum.
-const LEVEL_BPM: Record<number, number> = {
+const MOVEMENT_BPM: Record<number, number> = {
   1: 80, 2: 90, 3: 95, 4: 100, 5: 110,
   6: 120, 7: 130, 8: 140, 9: 152, 10: 168,
 };
 
 // One-line description for each Level's 5 graded stages + exam. Authored
 // so the StageSelect cards have something more specific than "Level N — k".
-const STAGE_DESCRIPTIONS: Record<string, string> = {
+const ETUDE_DESCRIPTIONS: Record<string, string> = {
   // Level 1 — quarter / half / whole
   'level-1-1': '四分音符を歩く',
   'level-1-2': '二分音符の伸びを感じる',
@@ -127,8 +127,8 @@ const STAGE_DESCRIPTIONS: Record<string, string> = {
   'level-10-exam': '卒業試験 — Rhygym の最終形',
 };
 
-function buildLevelMetas(level: number): StageMeta[] {
-  const bpm = LEVEL_BPM[level]!;
+function buildMovementMetas(level: number): EtudeMeta[] {
+  const bpm = MOVEMENT_BPM[level]!;
   const color = COLOR[level]!;
   const indices: Array<{ key: string; indexInLevel: number; isExam?: boolean; minor: string }> = [
     { key: '1', indexInLevel: 1, minor: '1' },
@@ -146,10 +146,10 @@ function buildLevelMetas(level: number): StageMeta[] {
     const name = it.isExam
       ? `Movement ${level}-Final`
       : `Etude ${level}-${it.minor}`;
-    const meta: StageMeta = {
+    const meta: EtudeMeta = {
       id,
       name,
-      description: STAGE_DESCRIPTIONS[id] ?? name,
+      description: ETUDE_DESCRIPTIONS[id] ?? name,
       bpm,
       level,
       themeColor: color,
@@ -160,20 +160,20 @@ function buildLevelMetas(level: number): StageMeta[] {
   });
 }
 
-const STAGE_METAS: readonly StageMeta[] = Array.from({ length: 10 }, (_, i) =>
-  buildLevelMetas(i + 1),
+const ETUDE_METAS: readonly EtudeMeta[] = Array.from({ length: 10 }, (_, i) =>
+  buildMovementMetas(i + 1),
 ).flat();
 
-// Kept as a re-export for callers that imported the old StageWithMeta
-// type; structurally identical to Stage now that indexInLevel/isExam +
+// Kept as a re-export for callers that imported the old EtudeWithMovementMeta
+// type; structurally identical to Etude now that indexInLevel/isExam +
 // level/themeColor live on the base type / are added here.
-export interface StageWithMeta extends Stage {
+export interface EtudeWithMovementMeta extends Etude {
   level: number;
   themeColor: string;
 }
 
-export const STAGES: readonly StageWithMeta[] = STAGE_METAS.map((m) => {
-  const stage: StageWithMeta = {
+export const ETUDES: readonly EtudeWithMovementMeta[] = ETUDE_METAS.map((m) => {
+  const stage: EtudeWithMovementMeta = {
     id: m.id,
     name: m.name,
     description: m.description,
@@ -181,11 +181,11 @@ export const STAGES: readonly StageWithMeta[] = STAGE_METAS.map((m) => {
     level: m.level,
     themeColor: m.themeColor,
     indexInLevel: m.indexInLevel,
-    // Offline fallback uses DEMO_STAGE's note pattern but overrides the
+    // Offline fallback uses DEMO_ETUDE's note pattern but overrides the
     // tempo with this Level's authored BPM so metronome and playhead
     // stay in sync. Real per-stage scores load from public/stages/.
     score: {
-      ...DEMO_STAGE.score,
+      ...DEMO_ETUDE.score,
       tempos: [{ tick: 0, bpm: m.bpm }],
     },
   };
@@ -193,11 +193,11 @@ export const STAGES: readonly StageWithMeta[] = STAGE_METAS.map((m) => {
   return stage;
 });
 
-export function getStageById(id: string): StageWithMeta | null {
-  return STAGES.find((s) => s.id === id) ?? null;
+export function getEtudeById(id: string): EtudeWithMovementMeta | null {
+  return ETUDES.find((s) => s.id === id) ?? null;
 }
 
-export function getStageLevel(id: string): number | null {
-  const meta = STAGE_METAS.find((m) => m.id === id);
+export function getEtudeMovement(id: string): number | null {
+  const meta = ETUDE_METAS.find((m) => m.id === id);
   return meta?.level ?? null;
 }

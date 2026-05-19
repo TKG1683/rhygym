@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import type { GameResult, JudgementRecord } from '../../core/judgement';
-import type { Stage } from '../../core/model';
-import type { StageWithMeta } from '../../core/score/stages';
+import type { Etude } from '../../core/model';
+import type { EtudeWithMovementMeta } from '../../core/score/etudes';
 import {
   getCalibration,
   getMetronomeAccents,
@@ -9,13 +9,13 @@ import {
   type MetronomeAccents,
 } from '../../core/storage/localStore';
 
-export type StagesLoadState = 'idle' | 'loading' | 'ready' | 'error';
+export type EtudesLoadState = 'idle' | 'loading' | 'ready' | 'error';
 
 export type Screen = 'title' | 'select' | 'game' | 'result' | 'calibration';
 
 interface AppState {
   screen: Screen;
-  selectedStageId: string | null;
+  selectedEtudeId: string | null;
   /**
    * Shared AudioContext. Created lazily by the Title screen's Start
    * button so it inherits a real user-gesture grant (required on iOS
@@ -24,8 +24,8 @@ interface AppState {
   audioContext: AudioContext | null;
   /** Result of the most recent play; consumed by ResultScreen. */
   lastResult: GameResult | null;
-  /** Stage that produced lastResult — for displaying name/BPM and looking up the best-score key. */
-  lastStage: Stage | null;
+  /** Etude that produced lastResult — for displaying name/BPM and looking up the best-score key. */
+  lastEtude: Etude | null;
   /** Full per-tap audit trail behind lastResult — drives the timing plot and timing stats. */
   lastRecords: readonly JudgementRecord[] | null;
   /**
@@ -44,11 +44,11 @@ interface AppState {
    */
   calibrationOffsetSec: number;
   /** Roster loaded over the network (null until ready or on fallback). */
-  loadedStages: readonly StageWithMeta[] | null;
+  loadedEtudes: readonly EtudeWithMovementMeta[] | null;
   /** Lifecycle of the initial roster fetch. */
-  stagesLoadState: StagesLoadState;
+  etudesLoadState: EtudesLoadState;
   /** Last error message from a failed manifest / stage load. */
-  stagesLoadError: string | null;
+  etudesLoadError: string | null;
   /**
    * Where to send the player after they finish (or back out of) the
    * CalibrationScreen. Lets Result → Calib → return land them back
@@ -62,7 +62,7 @@ interface AppState {
    * level they just played instead of the top-level Level list.
    * Cleared on StageSelect mount.
    */
-  selectInitialLevel: number | null;
+  selectInitialMovement: number | null;
   /**
    * Per-time-sig accent overrides for the metronome. Loaded from
    * localStorage on init; updates propagate back to storage so the
@@ -81,39 +81,39 @@ interface AppState {
    * handler so back/forward don't double-push.
    */
   setScreen: (screen: Screen) => void;
-  selectStage: (id: string) => void;
+  selectEtude: (id: string) => void;
   setAudioContext: (ctx: AudioContext) => void;
   setLastResult: (result: GameResult) => void;
-  setLastStage: (stage: Stage) => void;
+  setLastEtude: (stage: Etude) => void;
   setLastRecords: (records: readonly JudgementRecord[]) => void;
   setBpmMultiplier: (multiplier: number) => void;
   setCalibrationOffsetSec: (sec: number) => void;
-  setLoadedStages: (stages: readonly StageWithMeta[] | null) => void;
-  setStagesLoadState: (state: StagesLoadState) => void;
-  setStagesLoadError: (error: string | null) => void;
+  setLoadedEtudes: (stages: readonly EtudeWithMovementMeta[] | null) => void;
+  setEtudesLoadState: (state: EtudesLoadState) => void;
+  setEtudesLoadError: (error: string | null) => void;
   setCalibrationReturnScreen: (screen: Screen | null) => void;
-  setSelectInitialLevel: (level: number | null) => void;
+  setSelectInitialMovement: (level: number | null) => void;
   setMetronomeAccentForTs: (tsKey: string, pattern: boolean[]) => void;
   resetMetronomeAccentForTs: (tsKey: string) => void;
 }
 
 export const useAppStore = create<AppState>((set) => ({
   screen: 'title',
-  selectedStageId: null,
+  selectedEtudeId: null,
   audioContext: null,
   lastResult: null,
-  lastStage: null,
+  lastEtude: null,
   lastRecords: null,
   bpmMultiplier: 1,
   // Eagerly seed from localStorage so the first play after a reload
   // uses the saved calibration without anyone having to remember to
   // re-load it manually.
   calibrationOffsetSec: getCalibration()?.offsetSec ?? 0,
-  loadedStages: null,
-  stagesLoadState: 'idle',
-  stagesLoadError: null,
+  loadedEtudes: null,
+  etudesLoadState: 'idle',
+  etudesLoadError: null,
   calibrationReturnScreen: null,
-  selectInitialLevel: null,
+  selectInitialMovement: null,
   metronomeAccents: getMetronomeAccents(),
   goto: (screen) => {
     // Push the destination so the OS back button steps backwards
@@ -124,18 +124,18 @@ export const useAppStore = create<AppState>((set) => ({
     set({ screen });
   },
   setScreen: (screen) => set({ screen }),
-  selectStage: (id) => set({ selectedStageId: id }),
+  selectEtude: (id) => set({ selectedEtudeId: id }),
   setAudioContext: (ctx) => set({ audioContext: ctx }),
   setLastResult: (result) => set({ lastResult: result }),
-  setLastStage: (stage) => set({ lastStage: stage }),
+  setLastEtude: (stage) => set({ lastEtude: stage }),
   setLastRecords: (records) => set({ lastRecords: records }),
   setBpmMultiplier: (multiplier) => set({ bpmMultiplier: multiplier }),
   setCalibrationOffsetSec: (sec) => set({ calibrationOffsetSec: sec }),
-  setLoadedStages: (stages) => set({ loadedStages: stages }),
-  setStagesLoadState: (state) => set({ stagesLoadState: state }),
-  setStagesLoadError: (error) => set({ stagesLoadError: error }),
+  setLoadedEtudes: (stages) => set({ loadedEtudes: stages }),
+  setEtudesLoadState: (state) => set({ etudesLoadState: state }),
+  setEtudesLoadError: (error) => set({ etudesLoadError: error }),
   setCalibrationReturnScreen: (screen) => set({ calibrationReturnScreen: screen }),
-  setSelectInitialLevel: (level) => set({ selectInitialLevel: level }),
+  setSelectInitialMovement: (level) => set({ selectInitialMovement: level }),
   setMetronomeAccentForTs: (tsKey, pattern) =>
     set((state) => {
       const next = { ...state.metronomeAccents, [tsKey]: pattern };
