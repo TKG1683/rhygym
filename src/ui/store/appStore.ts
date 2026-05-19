@@ -2,7 +2,12 @@ import { create } from 'zustand';
 import type { GameResult, JudgementRecord } from '../../core/judgement';
 import type { Stage } from '../../core/model';
 import type { StageWithMeta } from '../../core/score/stages';
-import { getCalibration } from '../../core/storage/localStore';
+import {
+  getCalibration,
+  getMetronomeAccents,
+  setMetronomeAccents,
+  type MetronomeAccents,
+} from '../../core/storage/localStore';
 
 export type StagesLoadState = 'idle' | 'loading' | 'ready' | 'error';
 
@@ -59,6 +64,13 @@ interface AppState {
    */
   selectInitialLevel: number | null;
   /**
+   * Per-time-sig accent overrides for the metronome. Loaded from
+   * localStorage on init; updates propagate back to storage so the
+   * player's preferences survive reload. Missing keys fall back to the
+   * built-in defaults from defaultAccentPattern().
+   */
+  metronomeAccents: MetronomeAccents;
+  /**
    * Navigate to a screen AND push that destination onto the browser
    * history. This is what UI buttons should call — it keeps the OS
    * back button in sync with in-app navigation.
@@ -81,6 +93,8 @@ interface AppState {
   setStagesLoadError: (error: string | null) => void;
   setCalibrationReturnScreen: (screen: Screen | null) => void;
   setSelectInitialLevel: (level: number | null) => void;
+  setMetronomeAccentForTs: (tsKey: string, pattern: boolean[]) => void;
+  resetMetronomeAccentForTs: (tsKey: string) => void;
 }
 
 export const useAppStore = create<AppState>((set) => ({
@@ -100,6 +114,7 @@ export const useAppStore = create<AppState>((set) => ({
   stagesLoadError: null,
   calibrationReturnScreen: null,
   selectInitialLevel: null,
+  metronomeAccents: getMetronomeAccents(),
   goto: (screen) => {
     // Push the destination so the OS back button steps backwards
     // through the app rather than leaving it.
@@ -121,4 +136,18 @@ export const useAppStore = create<AppState>((set) => ({
   setStagesLoadError: (error) => set({ stagesLoadError: error }),
   setCalibrationReturnScreen: (screen) => set({ calibrationReturnScreen: screen }),
   setSelectInitialLevel: (level) => set({ selectInitialLevel: level }),
+  setMetronomeAccentForTs: (tsKey, pattern) =>
+    set((state) => {
+      const next = { ...state.metronomeAccents, [tsKey]: pattern };
+      setMetronomeAccents(next);
+      return { metronomeAccents: next };
+    }),
+  resetMetronomeAccentForTs: (tsKey) =>
+    set((state) => {
+      if (!(tsKey in state.metronomeAccents)) return {};
+      const next = { ...state.metronomeAccents };
+      delete next[tsKey];
+      setMetronomeAccents(next);
+      return { metronomeAccents: next };
+    }),
 }));
