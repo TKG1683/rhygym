@@ -267,7 +267,10 @@ function StageCard({ stage, best, onStart }: StageCardProps) {
         </div>
         <div className="stage-card-desc">{stage.description}</div>
         <div className="stage-card-meta">
-          <span className="stage-card-bpm">♩ = {stage.bpm}</span>
+          <span className="stage-card-ts">{stageTimeSig(stage)}</span>
+          <span className="stage-card-bpm">
+            ♩{isCompoundStage(stage) && <span className="bpm-dot">.</span>} = {stage.bpm}
+          </span>
           {best && (
             <span className="stage-card-best">
               <RankMedal rank={best.rank} />
@@ -311,4 +314,20 @@ function levelGlyph(level: number): string {
 function stageGlyph(stage: StageWithMeta): string {
   if (stage.isExam) return '★';
   return levelGlyph(stage.level);
+}
+
+/** Display the piece's opening time signature on the Etude card. */
+function stageTimeSig(stage: StageWithMeta): string {
+  const ts = stage.score.timeSigs[0];
+  if (!ts) return '4/4';
+  return `${ts.numerator}/${ts.denominator}`;
+}
+
+/**
+ * True for compound primary meters (6/8 / 9/8 / 12/8) where the bpm
+ * value is the dotted-quarter pulse and we render "♩." instead of "♩".
+ */
+function isCompoundStage(stage: StageWithMeta): boolean {
+  const ts = stage.score.timeSigs[0];
+  return ts != null && ts.denominator === 8 && ts.numerator % 3 === 0;
 }

@@ -93,7 +93,6 @@ export function GameView({ stage }: Props) {
   const tsFirst = stage.score.timeSigs[0];
   const isCompoundPiece =
     tsFirst != null && tsFirst.denominator === 8 && tsFirst.numerator % 3 === 0;
-  const beatSymbol = isCompoundPiece ? '♩.' : '♩';
 
   // Unique time signatures the piece visits, in score order. Drives
   // the accent-config UI — one row per distinct meter, in the order
@@ -401,7 +400,9 @@ export function GameView({ stage }: Props) {
       <div className="game-header no-tap">
         <div>
           <h1 className="game-title">{stage.name}</h1>
-          <p className="muted">{beatSymbol} = {effectiveBpm}</p>
+          <p className="muted">
+            ♩{isCompoundPiece && <span className="bpm-dot">.</span>} = {effectiveBpm}
+          </p>
         </div>
         <div className="row">
           <button className="secondary" onClick={resetGame}>
