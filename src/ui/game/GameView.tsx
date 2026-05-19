@@ -179,8 +179,14 @@ export function GameView({ stage }: Props) {
 
     const ts = adjustedScore.timeSigs[0] ?? { tick: 0, numerator: 4, denominator: 4 };
     const fmKey = tsKey(ts.numerator, ts.denominator);
+    // FreeMetronome needs the *internal* MIDI tempo (quarter per min),
+    // not the displayed StageDef.bpm — for compound pieces the latter
+    // is ♩.=N and would make the click run at 2/3 speed vs the
+    // scheduler. Use the score's tempo head, which buildScore already
+    // scaled for compound primaries.
+    const internalBpm = adjustedScore.tempos[0]?.bpm ?? effectiveBpm;
     const fm = new FreeMetronome(audioContext, {
-      bpm: effectiveBpm,
+      bpm: internalBpm,
       numerator: ts.numerator,
       denominator: ts.denominator,
       accentPattern: metronomeAccents[fmKey],
