@@ -34,3 +34,7 @@ lerna-debug.log*
 
 # OS
 Thumbs.db
+
+# Local temp files (icon working set + zipped sources) — never commit
+_icons_tmp/
+files.zip
