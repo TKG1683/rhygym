@@ -19,6 +19,7 @@
 
 import { TickTimeConverter } from '../timing/tickTime';
 import type { Score, TimeSignatureEvent } from '../model/types';
+import { createAudioContext } from './audioContext';
 import { collectBeats, DEFAULT_METRONOME_VOLUME, scheduleClick } from './metronome';
 
 export const SCHEDULER_LOOK_AHEAD_SEC = 0.1;
@@ -132,7 +133,7 @@ export class GameScheduler {
     if (this._playing) this.stop();
 
     if (!this.ctx) {
-      this.ctx = new AudioContext();
+      this.ctx = createAudioContext();
       this.ownsCtx = true;
     }
     if (this.ctx.state === 'suspended') {
