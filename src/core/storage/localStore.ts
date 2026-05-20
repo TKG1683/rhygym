@@ -19,6 +19,7 @@ const STORAGE_KEY = 'rhygym:best:v2';
 const CALIB_KEY = 'rhygym:calibration:v1';
 const CALIB_SUGGEST_DISMISSED_KEY = 'rhygym:calibSuggestDismissed:v1';
 const METRONOME_ACCENTS_KEY = 'rhygym:metronomeAccents:v1';
+const USER_BPM_KEY = 'rhygym:userBpm:v1';
 
 export interface BestRecord {
   etudeId: string;
@@ -290,5 +291,45 @@ export function setMetronomeAccents(value: MetronomeAccents): void {
     localStorage.setItem(METRONOME_ACCENTS_KEY, JSON.stringify(value));
   } catch {
     // storage unavailable — settings just won't persist this session
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/*  User BPM: player-chosen absolute tempo, shared across stages      */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Player's chosen absolute BPM (integer, e.g. 120). Persisted across
+ * stages so a player who likes "I always practise at 80" doesn't have
+ * to redial the slider every Etude. Returns null on first run (never
+ * set) — caller falls back to the stage's authored BPM in that case.
+ *
+ * Defensive: storage disabled / corrupted / out-of-range values all
+ * look like "no preference yet" to the caller.
+ */
+export function getUserBpm(): number | null {
+  try {
+    if (typeof localStorage === 'undefined') return null;
+    const raw = localStorage.getItem(USER_BPM_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (typeof parsed !== 'number' || !Number.isFinite(parsed)) return null;
+    // Guard against absurd values that might have slipped in from a
+    // future schema or a manual edit — clamp range is the same one the
+    // slider exposes (40–240).
+    if (parsed < 20 || parsed > 400) return null;
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+export function setUserBpm(bpm: number): void {
+  try {
+    if (typeof localStorage === 'undefined') return;
+    if (!Number.isFinite(bpm)) return;
+    localStorage.setItem(USER_BPM_KEY, JSON.stringify(bpm));
+  } catch {
+    // storage unavailable — preference just won't persist this session
   }
 }

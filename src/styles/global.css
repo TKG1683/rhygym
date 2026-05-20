@@ -394,36 +394,74 @@ button.secondary:active {
   opacity: 0.9;
 }
 
-/* GameScreen lays out top→bottom: header, staff, controls, status.
- * The entire screen is a TapArea — anywhere not marked .no-tap counts
- * as a rhythm tap. overflow:hidden + overscroll-behavior:none keep
- * swipe gestures from scrolling the page or triggering pull-to-refresh
- * mid-play. (Both confined to the game-style screens so the rest of
- * the app can still pull-to-refresh normally.) */
+/* GameScreen — post #79/#80 layout. Top→bottom:
+ *   header (name + ♩=N + warning + gear/retry/abort)
+ *   staff (max-height ~45vh, manual scroll)
+ *   tap zone (fills the rest; staff + verdict both live inside it so
+ *             tapping anywhere below the header counts as a rhythm tap)
+ *
+ * The screen itself takes full viewport height and prevents page
+ * scrolling — every "interactive" element either lives inside the
+ * gear popover (no-tap) or is a header button (no-tap). Without this
+ * height pin, the .game-tap-zone's flex:1 collapses on Safari because
+ * the main element auto-sizes to content height. */
 .screen-game {
   justify-content: flex-start;
   padding-top: 16px;
-  padding-bottom: 32px;
+  padding-bottom: 16px;
   gap: 12px;
-  /* No overflow override — the page grows past 100dvh and body scrolls
-   * naturally on phones, so players can reach the BPM slider + accent
-   * editor below the verdict band. */
+  height: 100dvh;
+  max-height: 100dvh;
+  overflow: hidden;
+  overscroll-behavior: none;
 }
 
-/* Tap zone = the verdict band itself. No border, no background — the
- * band's existing min-height + the verdict / prompt text are the only
- * visual indicators that the area is interactive. Header buttons,
- * BPM slider, and accent editor live outside this element so they
- * keep normal pointer / scroll behavior. */
+/* Tap zone fills the remaining vertical space below the header and
+ * staff. It wraps the staff so a tap anywhere on the staff also
+ * counts as a rhythm tap (issue #79). The staff and the lower
+ * verdict band are stacked vertically inside via flex-column.
+ *
+ * touch-action: none on the parent stops the browser from interpreting
+ * a tap as the start of a scroll gesture; .game-score-wrapper inside
+ * opts back into pan-y so the staff itself remains scrollable when it
+ * overflows its max-height. */
 .game-tap-zone {
   width: 100%;
+  flex: 1;
+  min-height: 0;
   cursor: pointer;
   user-select: none;
   -webkit-user-select: none;
   -webkit-tap-highlight-color: transparent;
   touch-action: none;
   display: flex;
+  flex-direction: column;
   align-items: stretch;
+}
+
+/* Staff wrapper *inside* the tap zone. Caps the staff at ~45 vh so
+ * the bottom half of the screen is reliably free for the tap area.
+ * touch-action: pan-y lets the player drag the staff vertically when
+ * it overflows — without this override the parent's touch-action:none
+ * would lock the scroll. (Decision: pan-y, not auto — we don't want a
+ * horizontal pan to count as a tap-cancel either.) */
+.game-score-wrapper {
+  max-height: 45vh;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  touch-action: pan-y;
+  flex-shrink: 0;
+}
+
+/* Lower half of the tap zone — visually empty, but it's the part of
+ * the screen the player should be aiming for. The JudgementLayer
+ * (verdict + prompt) sits centred here so the player sees feedback
+ * over the area they're tapping. */
+.game-tap-lower {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  align-items: center;
   justify-content: center;
 }
 
@@ -442,11 +480,57 @@ button.secondary:active {
   align-items: flex-start;
   justify-content: space-between;
   gap: 12px;
+  flex-shrink: 0;
+}
+
+.game-header-title {
+  min-width: 0;
+  flex: 1;
+  text-align: left;
 }
 
 .game-title {
   font-size: var(--fs-lg);
   margin: 0;
+}
+
+.game-bpm-line {
+  margin: 2px 0 0;
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.game-header-actions {
+  flex-shrink: 0;
+  flex-wrap: nowrap;
+  gap: 6px;
+}
+
+/* Gear icon button. Square + no horizontal padding overrides the
+ * default chunky button shape so the ⚙ glyph reads as an icon rather
+ * than a labeled action. */
+.game-gear-btn {
+  font-size: 20px;
+  line-height: 1;
+  padding: 8px 12px;
+  min-width: 44px;
+}
+
+/* Warning chip — muted yellow background, small ish so it sits next
+ * to the ♩=N without shouting. The pass-threshold warning is
+ * informational, not an error, so the visual weight stays light. */
+.bpm-warning-chip {
+  display: inline-flex;
+  align-items: center;
+  font-size: var(--fs-xs);
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--highlight-band);
+  color: var(--text-strong);
+  opacity: 0.85;
+  font-weight: 600;
 }
 
 .bpm-control {
@@ -455,15 +539,6 @@ button.secondary:active {
   flex-direction: column;
   align-items: stretch;
   gap: 6px;
-  /* The staff is the headline element on this screen; the BPM slider
-   * is a one-off "before you start" knob. Drop its opacity so it
-   * sits visually behind the staff. */
-  opacity: 0.7;
-}
-
-.bpm-control:focus-within,
-.bpm-control:hover {
-  opacity: 1;
 }
 
 .bpm-label {
@@ -482,10 +557,21 @@ button.secondary:active {
   letter-spacing: 0.02em;
 }
 
-.bpm-multiplier {
-  opacity: 0.6;
+.bpm-hint {
+  margin: 2px 0 0;
+  text-align: center;
   font-size: var(--fs-xs);
-  font-weight: 500;
+}
+
+.bpm-warning {
+  margin: 4px 0 0;
+  font-size: var(--fs-xs);
+  text-align: center;
+  color: var(--brand-primary);
+  background: var(--highlight-band);
+  padding: 6px 10px;
+  border-radius: var(--radius-sm);
+  font-weight: 600;
 }
 
 input[type='range'] {
@@ -1285,4 +1371,105 @@ input[type='range']:disabled {
   .new-best-badge {
     animation: screen-enter 250ms ease-out both;
   }
+}
+
+/* Result-screen banner for below-pass-threshold runs. Muted yellow
+ * to match the in-game warning chip — same "informational, not an
+ * error" weight. */
+.bpm-threshold-banner {
+  width: 100%;
+  max-width: 480px;
+  margin: 8px 0;
+  padding: 10px 14px;
+  background: var(--highlight-band);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-soft);
+}
+
+.bpm-threshold-text {
+  margin: 0;
+  font-size: var(--fs-sm);
+  text-align: center;
+  line-height: 1.4;
+}
+
+/* In-game settings popover. Full-screen backdrop + centred card so the
+ * BPM slider + accent editor are quickly reachable without crowding
+ * the play area. Backdrop is a dim overlay; the card itself uses the
+ * usual cream surface so it visually matches the rest of the app.
+ *
+ * Marked .no-tap on the backdrop so taps inside never count as rhythm
+ * input. The popover is rendered as a sibling of the TapArea (not
+ * nested inside it), but .closest('.no-tap') would still match if the
+ * structure shifts. */
+.game-settings-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(42, 27, 6, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  z-index: 50;
+  /* Animation cribs from the screen-enter pattern so the popover
+   * fades in rather than snapping into existence. */
+  animation: screen-enter 180ms ease-out both;
+}
+
+.game-settings-dialog {
+  position: relative;
+  width: 100%;
+  max-width: 480px;
+  max-height: 100%;
+  overflow-y: auto;
+  background: var(--surface);
+  border-radius: var(--radius-md);
+  padding: 20px 20px 24px;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.25);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  -webkit-overflow-scrolling: touch;
+}
+
+.game-settings-title {
+  font-size: var(--fs-lg);
+  margin: 0 0 var(--space-1);
+  text-align: left;
+}
+
+.game-settings-subtitle {
+  font-size: var(--fs-sm);
+  font-weight: 700;
+  margin: 0 0 var(--space-2);
+  opacity: 0.8;
+}
+
+.game-settings-section {
+  display: flex;
+  flex-direction: column;
+}
+
+.game-settings-accents {
+  padding: 0;
+}
+
+.game-settings-close {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  background: transparent;
+  border: none;
+  font-size: 28px;
+  line-height: 1;
+  padding: 6px 12px;
+  min-height: auto;
+  color: var(--text-strong);
+  cursor: pointer;
+  opacity: 0.7;
+  border-radius: var(--radius-sm);
+}
+
+.game-settings-close:hover {
+  opacity: 1;
 }

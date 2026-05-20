@@ -67,6 +67,7 @@ export function ResultScreen() {
   const result = useAppStore((s) => s.lastResult);
   const stage = useAppStore((s) => s.lastEtude);
   const records = useAppStore((s) => s.lastRecords);
+  const lastPlayedBpm = useAppStore((s) => s.lastPlayedBpm);
   const calibrationOffsetSec = useAppStore((s) => s.calibrationOffsetSec);
   const loadedEtudes = useAppStore((s) => s.loadedEtudes);
   const setCalibrationReturnScreen = useAppStore((s) => s.setCalibrationReturnScreen);
@@ -165,20 +166,35 @@ export function ResultScreen() {
     [stage, result],
   );
 
+  // A run is "below threshold" when the player chose a tempo slower
+  // than the stage's authored BPM. Authored BPM is the *minimum to
+  // pass*: the player can still play below it (useful for practice)
+  // but the run won't count as a best-score entry. lastPlayedBpm is
+  // pinned at run completion so a later userBpm nudge can't retro-
+  // actively unlock a record.
+  const belowPassThreshold =
+    stage != null &&
+    lastPlayedBpm != null &&
+    lastPlayedBpm < stage.bpm;
+
   const newBest =
-    stage && result
+    stage && result && !belowPassThreshold
       ? isNewBest({ etudeId: stage.id, score: result.score })
       : false;
 
   useEffect(() => {
     if (!stage || !result || !newBest) return;
+    // Defensive — newBest is already gated on belowPassThreshold above,
+    // but spelling out the guard here makes the "don't promote a below-
+    // threshold run" rule readable next to the actual setBest call.
+    if (belowPassThreshold) return;
     setBest({
       etudeId: stage.id,
       score: result.score,
       rank: result.rank,
       achievedAt: new Date().toISOString(),
     });
-  }, [stage, result, newBest]);
+  }, [stage, result, newBest, belowPassThreshold]);
 
   // Drift large enough to suggest (re-)calibration. Reuses the same
   // mean-signed-error already computed for the timing-stats line so we
@@ -264,6 +280,13 @@ export function ResultScreen() {
         )}
       </section>
 
+      {belowPassThreshold && (
+        <div className="bpm-threshold-banner" role="status">
+          <p className="bpm-threshold-text">
+            このBPM ({lastPlayedBpm}) は合格基準 ({stage.bpm}) 未満のため、ベスト記録には残しません。
+          </p>
+        </div>
+      )}
       {newBest && <p className="new-best-badge">NEW BEST!</p>}
       <div
         className={`result-rank-chip rank-${result.rank}`}

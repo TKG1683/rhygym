@@ -4,7 +4,7 @@
  * State machine:
  *   waiting → playing → done → (auto-navigates to Result)
  *
- *   waiting:  FreeMetronome runs, staff is shown, "♪ Tap to start" prompt.
+ *   waiting:  FreeMetronome runs, staff is shown, "♪ お好きな…" prompt.
  *             The first tap stops the FreeMetronome, starts the scheduler
  *             with that tap timestamp as beat 1, and is itself fed to
  *             judgeTap in case the score's first note lands on beat 1.
@@ -13,6 +13,14 @@
  *   done:     Triggered when every non-rest note has a verdict;
  *             computeResult is stored to appStore and the app navigates
  *             to the Result screen.
+ *
+ * Layout (post-#79/#80):
+ *   - Header: name + ♩=N + warning chip + gear + リトライ + 中断
+ *   - ScoreView wrapper (max ~45vh, manual scroll)
+ *   - TapArea fills the rest. The JudgementLayer + prompt sit centred
+ *     in the lower half so the entire lower portion of the viewport
+ *     reads as one big tap zone.
+ *   - Gear button opens GameSettingsPopover (BPM slider + accents).
  */
 
 import { useEffect, useMemo, useRef, useState } from 'react';
@@ -34,13 +42,18 @@ import { useAppStore } from '../store/appStore';
 import { ScoreView } from '../vexflow/ScoreView';
 import { JudgementLayer } from './JudgementLayer';
 import { TapArea } from './TapArea';
+import { GameSettingsPopover } from './GameSettingsPopover';
 import { startGameLoop } from './gameLoop';
 
 type Phase = 'waiting' | 'playing' | 'done';
 
-const BPM_MIN_MULTIPLIER = 0.5;
-const BPM_MAX_MULTIPLIER = 1.5;
-const BPM_STEP = 0.05;
+// Absolute BPM range exposed by the slider. 40 covers slow-practice
+// territory; 240 caps where the click grid starts becoming a buzz at
+// 4/4 quarter-pulse. Step 1 is fine — finer than that and the slider
+// just nudges the same audible tempo.
+const BPM_MIN = 40;
+const BPM_MAX = 240;
+const BPM_STEP = 1;
 
 interface Props {
   stage: Etude;
@@ -51,16 +64,17 @@ export function GameView({ stage }: Props) {
   const setLastResult = useAppStore((s) => s.setLastResult);
   const setLastEtude = useAppStore((s) => s.setLastEtude);
   const setLastRecords = useAppStore((s) => s.setLastRecords);
+  const setLastPlayedBpm = useAppStore((s) => s.setLastPlayedBpm);
   const calibrationOffsetSec = useAppStore((s) => s.calibrationOffsetSec);
   const goto = useAppStore((s) => s.goto);
   /**
-   * BPM scaling factor the player can dial in while waiting. 1.0 = play
-   * at the stage's authored BPM; 0.5 = half speed; 1.5 = 1.5× speed.
-   * Stored in appStore so the value survives Game→Result→Retry — local
-   * useState would reset to 1.0 every time the player came back.
+   * Player-chosen absolute BPM. `null` = "never set" — we fall back to
+   * the stage's authored BPM so the first run on a brand-new install
+   * still has a working tempo. The setter mirrors to localStorage so
+   * the choice survives reload and follows the player across stages.
    */
-  const bpmMultiplier = useAppStore((s) => s.bpmMultiplier);
-  const setBpmMultiplier = useAppStore((s) => s.setBpmMultiplier);
+  const userBpm = useAppStore((s) => s.userBpm);
+  const setUserBpm = useAppStore((s) => s.setUserBpm);
   const loadedEtudes = useAppStore((s) => s.loadedEtudes);
   const setSelectInitialMovement = useAppStore((s) => s.setSelectInitialMovement);
   const metronomeAccents = useAppStore((s) => s.metronomeAccents);
@@ -83,7 +97,25 @@ export function GameView({ stage }: Props) {
   const [phase, setPhase] = useState<Phase>('waiting');
   const [verdict, setVerdict] = useState<Judgement | null>(null);
   const [triggerId, setTriggerId] = useState(0);
-  const effectiveBpm = Math.round(stage.bpm * bpmMultiplier);
+  // Open/close state for the gear-icon settings popover. Pure React
+  // state — no need to put it in zustand since nothing outside this
+  // screen cares whether the popover is showing.
+  const [settingsOpen, setSettingsOpen] = useState(false);
+
+  // userBpm `null` (never set) → fall back to stage.bpm so we always
+  // have a real number to feed the audio graph. Clamp once at the
+  // boundary so a corrupted store value (e.g. negative) can't crash
+  // the scheduler.
+  const effectiveBpm = useMemo(() => {
+    const chosen = userBpm ?? stage.bpm;
+    return Math.min(BPM_MAX, Math.max(BPM_MIN, Math.round(chosen)));
+  }, [userBpm, stage.bpm]);
+  // Scaling factor that pulls the stage's authored score into the
+  // player's chosen tempo. `1` when they pick exactly the authored BPM,
+  // `0.85` when 15% slower, etc. — exactly the semantics the old
+  // bpmMultiplier carried, just derived from absolute BPM now.
+  const tempoScale = effectiveBpm / stage.bpm;
+
   // BPM symbol — depends on what unit the bpm value represents:
   //  - simple 4/ → ♩=N (quarter per minute, MIDI default)
   //  - compound 8/ (6/8/9/8/12/8) → ♩.=N (dotted-quarter pulse)
@@ -122,14 +154,12 @@ export function GameView({ stage }: Props) {
     setMetronomeAccentForTs(key, next);
   };
 
-  /** Debug: draw a moving playhead over the staff so we can eyeball timing. */
-
   const adjustedScore: Score = useMemo(
     () => ({
       ...stage.score,
-      tempos: stage.score.tempos.map((t) => ({ ...t, bpm: t.bpm * bpmMultiplier })),
+      tempos: stage.score.tempos.map((t) => ({ ...t, bpm: t.bpm * tempoScale })),
     }),
-    [stage, bpmMultiplier],
+    [stage, tempoScale],
   );
   const converter = useMemo(
     () => new TickTimeConverter(adjustedScore.tempos),
@@ -261,11 +291,11 @@ export function GameView({ stage }: Props) {
   /**
    * Drop everything back to the `waiting` state without re-mounting.
    * Used by the "リトライ" button in the header so the player can bail
-   * on a bad run mid-song and restart instantly. Doesn't touch the BPM
-   * multiplier — the whole point of restarting is to try the same
-   * settings again. The recorded verdicts so far are dropped, so the
-   * abandoned run never reaches the result screen and won't pollute
-   * any best-score tracking added in #10.
+   * on a bad run mid-song and restart instantly. Doesn't touch userBpm
+   * — the whole point of restarting is to try the same settings again.
+   * The recorded verdicts so far are dropped, so the abandoned run
+   * never reaches the result screen and won't pollute any best-score
+   * tracking.
    */
   const resetGame = () => {
     const ctx = audioContext;
@@ -367,6 +397,10 @@ export function GameView({ stage }: Props) {
           setLastResult(computeResult(finalRecords));
           setLastEtude(stage);
           setLastRecords(finalRecords);
+          // Pin the BPM the run was actually played at so ResultScreen
+          // can decide whether the run was below the stage's pass
+          // threshold even if the player nudges userBpm afterwards.
+          setLastPlayedBpm(effectiveBpm);
           setPhase('done');
           // 1.5 s breathing room so the last judgement effect, the
           // tail of the final click, and a moment of silence all
@@ -375,7 +409,7 @@ export function GameView({ stage }: Props) {
         }
       },
     });
-  }, [phase, candidates, audioContext, setLastResult, setLastEtude, setLastRecords, goto, stage, adjustedScore, converter]);
+  }, [phase, candidates, audioContext, setLastResult, setLastEtude, setLastRecords, setLastPlayedBpm, goto, stage, adjustedScore, converter, effectiveBpm]);
 
   if (!audioContext) {
     return (
@@ -392,92 +426,72 @@ export function GameView({ stage }: Props) {
   // Prompt the player only in waiting state — once they tap to start,
   // the band stays clean (the verdict pop-ups are signal enough that
   // they're already in the right zone).
-  const status = phase === 'waiting' ? '♪ ここをタップして開始' : '';
+  // 文言は要レビュー — 実装時に議論ペンディング
+  const status = phase === 'waiting' ? '♪ お好きなタイミングでタップ → そこが1拍目' : '';
+
+  const belowPassThreshold = effectiveBpm < stage.bpm;
 
   return (
     <main className="screen screen-game">
       <div className="game-header">
-        <div>
+        <div className="game-header-title">
           <h1 className="game-title">{stage.name}</h1>
-          <p className="muted">
-            {isAsymmetricPiece ? '♪' : '♩'}{isCompoundPiece && <span className="bpm-dot">.</span>} = {effectiveBpm}
+          <p className="muted game-bpm-line">
+            {isAsymmetricPiece ? '♪' : '♩'}
+            {isCompoundPiece && <span className="bpm-dot">.</span>} = {effectiveBpm}
+            {belowPassThreshold && (
+              <span className="bpm-warning-chip" role="status">
+                ⚠ 合格判定が出ません (最低 BPM: {stage.bpm})
+              </span>
+            )}
           </p>
         </div>
-        <div className="row">
-          <button className="secondary" onClick={resetGame}>
+        <div className="row game-header-actions">
+          <button
+            type="button"
+            className="secondary game-gear-btn no-tap"
+            aria-label="設定"
+            onClick={() => setSettingsOpen(true)}
+          >
+            ⚙
+          </button>
+          <button className="secondary no-tap" onClick={resetGame}>
             リトライ
           </button>
-          <button className="secondary" onClick={goEtudeList}>
+          <button className="secondary no-tap" onClick={goEtudeList}>
             中断
           </button>
         </div>
       </div>
-      <div className="score-view-wrapper">
-        <ScoreView score={adjustedScore} measuresPerLine={2} />
-      </div>
-      {/* The verdict band IS the tap zone. PERFECT/GOOD/MISS appears
-       * here on each tap; when no verdict is showing the same band
-       * carries a "♪ ここをタップ…" prompt. Header, BPM slider, and
-       * accent editor sit outside the TapArea so they interact
-       * normally and the page scrolls on phones. */}
+      {/* TapArea wraps BOTH the staff and the lower verdict band so
+       * tapping anywhere below the header counts as a rhythm tap. The
+       * staff wrapper inside opts back into vertical pan so the player
+       * can still scroll a tall staff even though the parent has
+       * touch-action: none. */}
       <TapArea ctx={audioContext} onTap={handleTap} className="game-tap-zone">
-        <JudgementLayer verdict={verdict} triggerId={triggerId} prompt={status} />
-      </TapArea>
-      <div className="bpm-control">
-        <label htmlFor="bpm-slider" className="bpm-label">
-          Tempo: <span className="bpm-value">{effectiveBpm}</span>
-          {bpmMultiplier !== 1 && (
-            <span className="bpm-multiplier">
-              ({bpmMultiplier.toFixed(2)}× of {stage.bpm})
-            </span>
-          )}
-        </label>
-        <input
-          id="bpm-slider"
-          type="range"
-          min={BPM_MIN_MULTIPLIER}
-          max={BPM_MAX_MULTIPLIER}
-          step={BPM_STEP}
-          value={bpmMultiplier}
-          disabled={phase !== 'waiting'}
-          onChange={(e) => setBpmMultiplier(Number(e.target.value))}
-        />
-      </div>
-      <details className="metronome-config">
-        <summary className="metronome-config-summary">メトロノーム アクセント設定</summary>
-        <div className="metronome-config-body">
-          {uniqueTimeSigs.map((ts) => {
-            const pattern = accentPatternFor(ts.numerator, ts.denominator);
-            const isCustom = ts.key in metronomeAccents;
-            return (
-              <div className="metronome-config-row" key={ts.key}>
-                <span className="metronome-config-ts">{ts.key}</span>
-                <div className="metronome-config-beats">
-                  {pattern.map((accent, i) => (
-                    <button
-                      key={i}
-                      type="button"
-                      className={`metronome-beat ${accent ? 'is-accent' : 'is-soft'}`}
-                      onClick={() => toggleAccent(ts.key, ts.numerator, ts.denominator, i)}
-                      aria-label={`${ts.key} の ${i + 1} 拍目を${accent ? 'アクセント無し' : 'アクセント'}に切替`}
-                    >
-                      {i + 1}
-                    </button>
-                  ))}
-                </div>
-                <button
-                  type="button"
-                  className="metronome-reset"
-                  onClick={() => resetMetronomeAccentForTs(ts.key)}
-                  disabled={!isCustom}
-                >
-                  リセット
-                </button>
-              </div>
-            );
-          })}
+        <div className="score-view-wrapper game-score-wrapper">
+          <ScoreView score={adjustedScore} measuresPerLine={2} />
         </div>
-      </details>
+        <div className="game-tap-lower">
+          <JudgementLayer verdict={verdict} triggerId={triggerId} prompt={status} />
+        </div>
+      </TapArea>
+      <GameSettingsPopover
+        open={settingsOpen}
+        onClose={() => setSettingsOpen(false)}
+        effectiveBpm={effectiveBpm}
+        stageBpm={stage.bpm}
+        bpmMin={BPM_MIN}
+        bpmMax={BPM_MAX}
+        bpmStep={BPM_STEP}
+        bpmDisabled={phase !== 'waiting'}
+        onBpmChange={setUserBpm}
+        uniqueTimeSigs={uniqueTimeSigs}
+        metronomeAccents={metronomeAccents}
+        accentPatternFor={accentPatternFor}
+        onToggleAccent={toggleAccent}
+        onResetAccent={resetMetronomeAccentForTs}
+      />
     </main>
   );
 }
