@@ -385,6 +385,13 @@ button.secondary:active {
 .score-view svg {
   display: block;
   max-width: 100%;
+  /* The renderer now emits a viewBox on every SVG; max-height keeps
+   * tall staves from overflowing their wrapper. preserveAspectRatio
+   * (default xMidYMid meet) scales uniformly, so width comes down to
+   * match. */
+  max-height: 100%;
+  height: auto;
+  width: auto;
 }
 
 .status-text {
@@ -407,9 +414,9 @@ button.secondary:active {
  * the main element auto-sizes to content height. */
 .screen-game {
   justify-content: flex-start;
-  padding-top: 16px;
-  padding-bottom: 16px;
-  gap: 12px;
+  padding-top: 8px;
+  padding-bottom: 12px;
+  gap: 6px;
   height: 100dvh;
   max-height: 100dvh;
   overflow: hidden;
@@ -439,18 +446,30 @@ button.secondary:active {
   align-items: stretch;
 }
 
-/* Staff wrapper *inside* the tap zone. Caps the staff at ~45 vh so
- * the bottom half of the screen is reliably free for the tap area.
- * touch-action: pan-y lets the player drag the staff vertically when
- * it overflows — without this override the parent's touch-action:none
- * would lock the scroll. (Decision: pan-y, not auto — we don't want a
- * horizontal pan to count as a tap-cancel either.) */
+/* Staff wrapper — sits BETWEEN header and tap zone, OUTSIDE the
+ * TapArea so a touch on the staff never fires a rhythm tap. The SVG
+ * inside has a viewBox + intrinsic width/height; max-height in vh on
+ * the SVG itself (not the wrapper, which fights with flex sizing)
+ * scales the staff DOWN uniformly when an etude has too many rows
+ * for the upper half of the screen. preserveAspectRatio (default)
+ * keeps width and height in lockstep. */
 .game-score-wrapper {
-  max-height: 45vh;
-  overflow-y: auto;
-  overscroll-behavior: contain;
-  touch-action: pan-y;
+  width: 100%;
   flex-shrink: 0;
+}
+
+.game-score-wrapper .score-view {
+  /* Tighter padding than the Result screen's 12px so the staff edge
+   * isn't lost in white space; keep the surface frame + radius. */
+  padding: 4px 8px;
+}
+
+.game-score-wrapper .score-view svg {
+  /* Width and height are written as pixel values by ScoreView when
+   * `maxHeightVh` is set, so all this rule does is centre the staff
+   * horizontally in the surface frame. */
+  display: block;
+  margin: 0 auto;
 }
 
 /* Lower half of the tap zone — visually empty, but it's the part of
@@ -508,14 +527,24 @@ button.secondary:active {
   gap: 6px;
 }
 
-/* Gear icon button. Square + no horizontal padding overrides the
- * default chunky button shape so the ⚙ glyph reads as an icon rather
- * than a labeled action. */
-.game-gear-btn {
-  font-size: 20px;
-  line-height: 1;
+/* Metronome-icon + 設定 label. Inline-flex so the SVG and the text
+ * sit on a baseline with a small gap; the label tells the player the
+ * popover is for metronome / tempo settings, while the icon makes it
+ * scannable at a glance. */
+.game-settings-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   padding: 8px 12px;
-  min-width: 44px;
+  font-size: var(--fs-sm);
+  line-height: 1;
+}
+
+.game-settings-icon {
+  width: 18px;
+  height: 18px;
+  display: block;
+  flex-shrink: 0;
 }
 
 /* Warning chip — muted yellow background, small ish so it sits next
@@ -1014,9 +1043,27 @@ input[type='range']:disabled {
   margin-left: auto;
 }
 
+/* The BPM cell IS the pass-threshold chip. Wrapping the whole label +
+ * BPM number in the yellow chip makes "this BPM is the bar to clear"
+ * read at a glance — putting the label outside the chip read instead
+ * as "label, then a separate BPM number" which was the confusion. */
 .etude-card-bpm {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 10px;
+  border-radius: 999px;
+  background: var(--highlight-band);
+  color: var(--text-strong);
   font-size: var(--fs-sm);
-  opacity: 0.75;
+  font-weight: 600;
+}
+
+.etude-card-bpm-label {
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  opacity: 0.85;
 }
 
 .etude-card-best {

@@ -170,7 +170,7 @@ export function ResultScreen() {
   // than the stage's authored BPM. Authored BPM is the *minimum to
   // pass*: the player can still play below it (useful for practice)
   // but the run won't count as a best-score entry. lastPlayedBpm is
-  // pinned at run completion so a later userBpm nudge can't retro-
+  // pinned at run completion so a later slider nudge can't retro-
   // actively unlock a record.
   const belowPassThreshold =
     stage != null &&
@@ -283,7 +283,7 @@ export function ResultScreen() {
       {belowPassThreshold && (
         <div className="bpm-threshold-banner" role="status">
           <p className="bpm-threshold-text">
-            このBPM ({lastPlayedBpm}) は合格基準 ({stage.bpm}) 未満のため、ベスト記録には残しません。
+            このBPM ({lastPlayedBpm}) は合格基準 ({stage.bpm}) 未満のため、記録は残りません。
           </p>
         </div>
       )}

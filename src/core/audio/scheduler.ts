@@ -169,6 +169,16 @@ export class GameScheduler {
     }
   }
 
+  /**
+   * Replace the per-time-sig accent overrides. Picked up by the next
+   * schedule pass (so within ~25 ms / one tick-interval the new pattern
+   * is audible). Lets the player toggle accents from the popover and
+   * hear the change mid-piece without having to abort the run.
+   */
+  setAccentOverrides(overrides: Readonly<Record<string, readonly boolean[]>> | undefined): void {
+    this.accentOverrides = overrides;
+  }
+
   private scheduleSafely(): void {
     if (this._disposed) return;
     if (!this.ctx || !this._playing) return;

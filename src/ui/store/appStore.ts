@@ -5,9 +5,7 @@ import type { EtudeWithMovementMeta } from '../../core/score/etudes';
 import {
   getCalibration,
   getMetronomeAccents,
-  getUserBpm,
   setMetronomeAccents,
-  setUserBpm,
   type MetronomeAccents,
 } from '../../core/storage/localStore';
 
@@ -31,22 +29,20 @@ interface AppState {
   /** Full per-tap audit trail behind lastResult — drives the timing plot and timing stats. */
   lastRecords: readonly JudgementRecord[] | null;
   /**
-   * Player-chosen absolute BPM, persisted across stages.
-   *   - `null` = never set (first run) → caller falls back to stage.bpm
-   *   - any number = "play every stage at this tempo" (clamped 40-240
-   *     by the slider; stored as-is here)
-   *
-   * Lives in the store so the player's chosen tempo survives
-   * Game→Result→Retry without re-reading localStorage every hop; the
-   * setter mirrors writes back to localStorage so the value also
-   * survives reload and follows the player into the next stage.
+   * Last BPM the player explicitly dialled in, scoped to *one* Etude.
+   * Survives Game → Result → リトライ so a player who picked 100 BPM
+   * and failed doesn't get bumped back to the authored 80 on retry,
+   * but switching to a different Etude resets to its own authored
+   * (= pass-line) value. Pair of `lastChosenBpm` + `lastChosenBpmEtudeId`
+   * — the etudeId is the cross-mount key, the bpm is the value.
    */
-  userBpm: number | null;
+  lastChosenBpm: number | null;
+  lastChosenBpmEtudeId: string | null;
   /**
    * BPM the *most recent* run was actually played at. Pinned at run
    * completion (alongside lastResult) so ResultScreen can decide whether
    * to suppress the best-score write and show the "below-threshold"
-   * warning, even if the player nudges userBpm afterwards.
+   * warning, even if the player's slider is in some other position.
    */
   lastPlayedBpm: number | null;
   /**
@@ -100,7 +96,7 @@ interface AppState {
   setLastResult: (result: GameResult) => void;
   setLastEtude: (stage: Etude) => void;
   setLastRecords: (records: readonly JudgementRecord[]) => void;
-  setUserBpm: (bpm: number) => void;
+  setLastChosenBpm: (bpm: number, etudeId: string) => void;
   setLastPlayedBpm: (bpm: number | null) => void;
   setCalibrationOffsetSec: (sec: number) => void;
   setLoadedEtudes: (stages: readonly EtudeWithMovementMeta[] | null) => void;
@@ -119,9 +115,8 @@ export const useAppStore = create<AppState>((set) => ({
   lastResult: null,
   lastEtude: null,
   lastRecords: null,
-  // Seed userBpm from localStorage so the player's chosen absolute
-  // tempo follows them across reloads as well as stages.
-  userBpm: getUserBpm(),
+  lastChosenBpm: null,
+  lastChosenBpmEtudeId: null,
   lastPlayedBpm: null,
   // Eagerly seed from localStorage so the first play after a reload
   // uses the saved calibration without anyone having to remember to
@@ -147,13 +142,8 @@ export const useAppStore = create<AppState>((set) => ({
   setLastResult: (result) => set({ lastResult: result }),
   setLastEtude: (stage) => set({ lastEtude: stage }),
   setLastRecords: (records) => set({ lastRecords: records }),
-  setUserBpm: (bpm) => {
-    // Mirror to localStorage on every change so the player's preference
-    // survives reloads without anyone having to remember to flush on
-    // shutdown / navigate-away.
-    setUserBpm(bpm);
-    set({ userBpm: bpm });
-  },
+  setLastChosenBpm: (bpm, etudeId) =>
+    set({ lastChosenBpm: bpm, lastChosenBpmEtudeId: etudeId }),
   setLastPlayedBpm: (bpm) => set({ lastPlayedBpm: bpm }),
   setCalibrationOffsetSec: (sec) => set({ calibrationOffsetSec: sec }),
   setLoadedEtudes: (stages) => set({ loadedEtudes: stages }),

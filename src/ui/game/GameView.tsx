@@ -47,12 +47,18 @@ import { startGameLoop } from './gameLoop';
 
 type Phase = 'waiting' | 'playing' | 'done';
 
-// Absolute BPM range exposed by the slider. 40 covers slow-practice
-// territory; 240 caps where the click grid starts becoming a buzz at
-// 4/4 quarter-pulse. Step 1 is fine — finer than that and the slider
-// just nudges the same audible tempo.
-const BPM_MIN = 40;
-const BPM_MAX = 240;
+// Slider range, expressed in canonical eighth-notes-per-minute and
+// divided by each stage's eighths-per-pulse at render time. Keeping
+// the *musical* range constant (rather than the displayed number)
+// means the slider exposes roughly the same span of wall-clock
+// speeds in every meter:
+//   ♩= : 40 – 240  (eighth 80 – 480)
+//   ♪= : 80 – 480  (eighth 80 – 480)
+//   ♩.= : 27 – 160 (eighth 81 – 480)
+// 80 eighth/min is slow practice territory, 480 is about as fast as
+// a click grid stays useful before it blurs into a buzz.
+const EIGHTH_BPM_MIN = 80;
+const EIGHTH_BPM_MAX = 480;
 const BPM_STEP = 1;
 
 interface Props {
@@ -67,14 +73,6 @@ export function GameView({ stage }: Props) {
   const setLastPlayedBpm = useAppStore((s) => s.setLastPlayedBpm);
   const calibrationOffsetSec = useAppStore((s) => s.calibrationOffsetSec);
   const goto = useAppStore((s) => s.goto);
-  /**
-   * Player-chosen absolute BPM. `null` = "never set" — we fall back to
-   * the stage's authored BPM so the first run on a brand-new install
-   * still has a working tempo. The setter mirrors to localStorage so
-   * the choice survives reload and follows the player across stages.
-   */
-  const userBpm = useAppStore((s) => s.userBpm);
-  const setUserBpm = useAppStore((s) => s.setUserBpm);
   const loadedEtudes = useAppStore((s) => s.loadedEtudes);
   const setSelectInitialMovement = useAppStore((s) => s.setSelectInitialMovement);
   const metronomeAccents = useAppStore((s) => s.metronomeAccents);
@@ -102,30 +100,41 @@ export function GameView({ stage }: Props) {
   // screen cares whether the popover is showing.
   const [settingsOpen, setSettingsOpen] = useState(false);
 
-  // userBpm `null` (never set) → fall back to stage.bpm so we always
-  // have a real number to feed the audio graph. Clamp once at the
-  // boundary so a corrupted store value (e.g. negative) can't crash
-  // the scheduler.
-  const effectiveBpm = useMemo(() => {
-    const chosen = userBpm ?? stage.bpm;
-    return Math.min(BPM_MAX, Math.max(BPM_MIN, Math.round(chosen)));
-  }, [userBpm, stage.bpm]);
-  // Scaling factor that pulls the stage's authored score into the
-  // player's chosen tempo. `1` when they pick exactly the authored BPM,
-  // `0.85` when 15% slower, etc. — exactly the semantics the old
-  // bpmMultiplier carried, just derived from absolute BPM now.
-  const tempoScale = effectiveBpm / stage.bpm;
-
-  // BPM symbol — depends on what unit the bpm value represents:
+  // BPM symbol — depends on what unit the stage's bpm value represents:
   //  - simple 4/ → ♩=N (quarter per minute, MIDI default)
   //  - compound 8/ (6/8/9/8/12/8) → ♩.=N (dotted-quarter pulse)
-  //  - asymmetric 8/ (5/8/7/8) → ♪=N (eighth pulse — that's how
-  //    these meters are typically counted)
+  //  - asymmetric 8/ (5/8/7/8) → ♪=N (eighth pulse)
   const tsFirst = stage.score.timeSigs[0];
   const isCompoundPiece =
     tsFirst != null && tsFirst.denominator === 8 && tsFirst.numerator % 3 === 0;
   const isAsymmetricPiece =
     tsFirst != null && tsFirst.denominator === 8 && (tsFirst.numerator === 5 || tsFirst.numerator === 7);
+  // Eighths per *displayed* pulse — drives the slider's BPM range so
+  // that "240 ♩= ≠ 240 ♪= ≠ 240 ♩.=" can't happen: each unit caps at
+  // the same musical speed (EIGHTH_BPM_MAX).
+  const eighthsPerPulse = isCompoundPiece ? 3 : isAsymmetricPiece ? 1 : 2;
+  const bpmMin = Math.ceil(EIGHTH_BPM_MIN / eighthsPerPulse);
+  const bpmMax = Math.floor(EIGHTH_BPM_MAX / eighthsPerPulse);
+
+  // Slider BPM, scoped to a single Etude. The store carries the value
+  // across Game → Result → リトライ (which remounts GameView) so a
+  // failed run doesn't lose the player's tempo choice on retry. The
+  // etudeId pairing is what makes "different Etude resets to authored"
+  // work: when the stored etudeId doesn't match this stage, we treat
+  // the stored bpm as belonging to a different stage and ignore it.
+  const lastChosenBpm = useAppStore((s) => s.lastChosenBpm);
+  const lastChosenBpmEtudeId = useAppStore((s) => s.lastChosenBpmEtudeId);
+  const setLastChosenBpm = useAppStore((s) => s.setLastChosenBpm);
+  const effectiveBpm = useMemo(() => {
+    const carry = lastChosenBpmEtudeId === stage.id && lastChosenBpm != null;
+    const raw = carry ? lastChosenBpm : stage.bpm;
+    return Math.min(bpmMax, Math.max(bpmMin, Math.round(raw)));
+  }, [lastChosenBpm, lastChosenBpmEtudeId, stage.id, stage.bpm, bpmMin, bpmMax]);
+  const tempoScale = effectiveBpm / stage.bpm;
+  const handleBpmChange = (newBpm: number) => {
+    const clamped = Math.min(bpmMax, Math.max(bpmMin, Math.round(newBpm)));
+    setLastChosenBpm(clamped, stage.id);
+  };
 
   // Unique time signatures the piece visits, in score order. Drives
   // the accent-config UI — one row per distinct meter, in the order
@@ -184,16 +193,18 @@ export function GameView({ stage }: Props) {
    */
   const startAudioTimeRef = useRef(0);
 
-  // Push accent-pattern changes into the running FreeMetronome without
-  // tearing the audio graph down — toggling a beat shouldn't cause a
-  // click drop-out. Only the primary time-sig is relevant since
-  // FreeMetronome runs at the piece's opening meter (mid-piece meter
-  // changes for the click grid are a separate issue).
+  // Push accent-pattern changes into both audio drivers without tearing
+  // the graph down — toggling a beat shouldn't cause a click drop-out.
+  // FreeMetronome only sees the opening meter (it's the waiting-state
+  // driver, fixed-ts by design); the GameScheduler owns the playing-
+  // state pulse and follows mid-piece meter changes via collectBeats,
+  // so it gets the full per-ts override map.
   useEffect(() => {
     const fm = freeMetronomeRef.current;
-    if (!fm) return;
+    const sch = schedulerRef.current;
     const ts = adjustedScore.timeSigs[0] ?? { tick: 0, numerator: 4, denominator: 4 };
-    fm.setAccentPattern(metronomeAccents[tsKey(ts.numerator, ts.denominator)]);
+    fm?.setAccentPattern(metronomeAccents[tsKey(ts.numerator, ts.denominator)]);
+    sch?.setAccentOverrides(metronomeAccents);
   }, [metronomeAccents, adjustedScore]);
 
   // Build/tear down the audio machinery for this stage. Re-runs when the
@@ -227,14 +238,16 @@ export function GameView({ stage }: Props) {
     fm.start(audioContext.currentTime + WARMUP_LEAD_SEC);
     freeMetronomeRef.current = fm;
 
-    // Scheduler's own metronome is disabled — FreeMetronome owns the
-    // pulse end-to-end so the click never jitters when we hand off into
-    // playing state. Scheduler only drives the note timeline and the
-    // onComplete signal.
+    // Scheduler owns the click during PLAYING. Its collectBeats walks
+    // through `score.timeSigs` and applies the per-ts accent pattern
+    // at the right tick — that's how mid-piece meter changes (4/4 →
+    // 5/8 etc.) get correctly accented. FreeMetronome handles the
+    // waiting state with the opening meter only.
     const sch = new GameScheduler({
       score: adjustedScore,
       audioContext,
-      metronomeEnabled: false,
+      metronomeEnabled: true,
+      accentOverrides: metronomeAccents,
     });
     schedulerRef.current = sch;
 
@@ -291,7 +304,7 @@ export function GameView({ stage }: Props) {
   /**
    * Drop everything back to the `waiting` state without re-mounting.
    * Used by the "リトライ" button in the header so the player can bail
-   * on a bad run mid-song and restart instantly. Doesn't touch userBpm
+   * on a bad run mid-song and restart instantly. Doesn't touch effectiveBpm
    * — the whole point of restarting is to try the same settings again.
    * The recorded verdicts so far are dropped, so the abandoned run
    * never reaches the result screen and won't pollute any best-score
@@ -330,6 +343,12 @@ export function GameView({ stage }: Props) {
       const nearestBeatIndex = Math.max(0, Math.round(sinceFmStart / beatSec));
       const nearestBeatTime = fmStart + nearestBeatIndex * beatSec;
       startAudioTimeRef.current = nearestBeatTime;
+      // Hand the click off from FreeMetronome to the scheduler. FM's
+      // queued look-ahead clicks (including any at nearestBeatTime
+      // that haven't fired yet) are disconnected; the scheduler's
+      // first click is queued for the same nearestBeatTime so the
+      // pulse stays continuous across the handoff.
+      fm.stop();
       void schedulerRef.current?.play(0, { atAudioTime: nearestBeatTime });
       setPhase('playing');
       // First tap counts as a tap on whatever lives at tick=0.
@@ -399,7 +418,7 @@ export function GameView({ stage }: Props) {
           setLastRecords(finalRecords);
           // Pin the BPM the run was actually played at so ResultScreen
           // can decide whether the run was below the stage's pass
-          // threshold even if the player nudges userBpm afterwards.
+          // threshold even if the player nudges the slider afterwards.
           setLastPlayedBpm(effectiveBpm);
           setPhase('done');
           // 1.5 s breathing room so the last judgement effect, the
@@ -449,11 +468,28 @@ export function GameView({ stage }: Props) {
         <div className="row game-header-actions">
           <button
             type="button"
-            className="secondary game-gear-btn no-tap"
-            aria-label="設定"
+            className="secondary game-settings-btn no-tap"
+            aria-label="メトロノーム設定"
             onClick={() => setSettingsOpen(true)}
           >
-            ⚙
+            <svg
+              className="game-settings-icon"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth={2}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden="true"
+            >
+              {/* Metronome body — isoceles trapezoid (wider at the base) */}
+              <path d="M8 21 L16 21 L14 4 L10 4 Z" />
+              {/* Base line — flat foot */}
+              <line x1="6" y1="21" x2="18" y2="21" />
+              {/* Pendulum needle, tilted right as if mid-swing */}
+              <line x1="12" y1="14" x2="15.5" y2="6" />
+            </svg>
+            <span>設定</span>
           </button>
           <button className="secondary no-tap" onClick={resetGame}>
             リトライ
@@ -463,29 +499,26 @@ export function GameView({ stage }: Props) {
           </button>
         </div>
       </div>
-      {/* TapArea wraps BOTH the staff and the lower verdict band so
-       * tapping anywhere below the header counts as a rhythm tap. The
-       * staff wrapper inside opts back into vertical pan so the player
-       * can still scroll a tall staff even though the parent has
-       * touch-action: none. */}
+      {/* Staff lives OUTSIDE the TapArea so a swipe-to-scroll on a long
+       * etude doesn't fire a stray rhythm tap. The bottom half of the
+       * screen is the dedicated tap zone — large enough on its own
+       * without needing the staff to double as tap target. */}
+      <div className="score-view-wrapper game-score-wrapper">
+        <ScoreView score={adjustedScore} measuresPerLine={2} maxHeightVh={48} />
+      </div>
       <TapArea ctx={audioContext} onTap={handleTap} className="game-tap-zone">
-        <div className="score-view-wrapper game-score-wrapper">
-          <ScoreView score={adjustedScore} measuresPerLine={2} />
-        </div>
-        <div className="game-tap-lower">
-          <JudgementLayer verdict={verdict} triggerId={triggerId} prompt={status} />
-        </div>
+        <JudgementLayer verdict={verdict} triggerId={triggerId} prompt={status} />
       </TapArea>
       <GameSettingsPopover
         open={settingsOpen}
         onClose={() => setSettingsOpen(false)}
         effectiveBpm={effectiveBpm}
         stageBpm={stage.bpm}
-        bpmMin={BPM_MIN}
-        bpmMax={BPM_MAX}
+        bpmMin={bpmMin}
+        bpmMax={bpmMax}
         bpmStep={BPM_STEP}
         bpmDisabled={phase !== 'waiting'}
-        onBpmChange={setUserBpm}
+        onBpmChange={handleBpmChange}
         uniqueTimeSigs={uniqueTimeSigs}
         metronomeAccents={metronomeAccents}
         accentPatternFor={accentPatternFor}

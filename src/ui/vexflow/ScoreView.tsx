@@ -19,6 +19,14 @@ interface Props {
    * since the total can exceed the viewport.
    */
   measureWidths?: readonly number[];
+  /**
+   * Maximum height as a fraction of window.innerHeight. When set, the
+   * SVG is rescaled (uniform, via the viewBox) so its rendered pixel
+   * height never exceeds `window.innerHeight * maxHeightVh / 100`.
+   * Use this on the Game screen so the staff always fits the upper
+   * half of the viewport without overflow / scroll / clipping.
+   */
+  maxHeightVh?: number;
 }
 
 /**
@@ -26,7 +34,13 @@ interface Props {
  * inside a ResizeObserver so the staff re-wraps as the container width
  * changes (orientation change, browser resize, etc.).
  */
-export function ScoreView({ score, onRender, measuresPerLine, measureWidths }: Props) {
+export function ScoreView({
+  score,
+  onRender,
+  measuresPerLine,
+  measureWidths,
+  maxHeightVh,
+}: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const onRenderRef = useRef(onRender);
 
@@ -47,8 +61,12 @@ export function ScoreView({ score, onRender, measuresPerLine, measureWidths }: P
           viewportWidth: width,
           measuresPerLine,
           measureWidths,
+          responsiveScaling: maxHeightVh != null,
         });
         onRenderRef.current?.(result.noteCoords);
+        if (maxHeightVh != null) {
+          applyMaxHeightScale(container, maxHeightVh);
+        }
       } catch (err) {
         console.error('VexFlow render failed:', err);
       }
@@ -57,8 +75,47 @@ export function ScoreView({ score, onRender, measuresPerLine, measureWidths }: P
     render();
     const observer = new ResizeObserver(() => render());
     observer.observe(container);
-    return () => observer.disconnect();
-  }, [score, measuresPerLine, measureWidths]);
+    // Re-scale on window resize too — clientHeight-based scaling is
+    // pegged to window.innerHeight, which a viewport resize changes
+    // independently of the container's own width-driven re-render.
+    const onWindowResize = () => {
+      if (maxHeightVh != null) applyMaxHeightScale(container, maxHeightVh);
+    };
+    window.addEventListener('resize', onWindowResize);
+    return () => {
+      observer.disconnect();
+      window.removeEventListener('resize', onWindowResize);
+    };
+  }, [score, measuresPerLine, measureWidths, maxHeightVh]);
 
   return <div ref={containerRef} className="score-view" />;
+}
+
+/**
+ * Forces a vh-based max height on the rendered SVG by writing pixel
+ * dimensions into its inline style. Done in JS rather than via CSS
+ * because pure CSS max-height + viewBox on an SVG with no intrinsic
+ * width/height is interpreted inconsistently across browsers (Safari
+ * in particular ignores it and renders at the viewBox's pixel size).
+ */
+function applyMaxHeightScale(container: HTMLDivElement, maxHeightVh: number): void {
+  const svg = container.querySelector('svg');
+  if (!svg) return;
+  const viewBox = svg.getAttribute('viewBox');
+  if (!viewBox) return;
+  const parts = viewBox.split(/\s+/).map((s) => parseFloat(s));
+  const svgW = parts[2];
+  const svgH = parts[3];
+  if (svgW == null || svgH == null || !Number.isFinite(svgW) || !Number.isFinite(svgH)) return;
+  const targetMaxPx = window.innerHeight * (maxHeightVh / 100);
+  const scale = svgH > targetMaxPx ? targetMaxPx / svgH : 1;
+  // Cap the rendered width to the container so the staff never spills
+  // sideways either (a narrow viewport with a wide score would still
+  // need clamping even at scale=1).
+  const containerWidth = container.clientWidth;
+  const widthScale = svgW * scale > containerWidth ? containerWidth / svgW : scale;
+  const finalScale = Math.min(scale, widthScale);
+  svg.style.width = `${Math.round(svgW * finalScale)}px`;
+  svg.style.height = `${Math.round(svgH * finalScale)}px`;
+  svg.style.display = 'block';
 }
