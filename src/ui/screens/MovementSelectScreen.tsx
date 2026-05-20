@@ -268,7 +268,12 @@ function EtudeCard({ stage, best, onStart }: EtudeCardProps) {
         <div className="etude-card-desc">{stage.description}</div>
         <div className="etude-card-meta">
           <span className="etude-card-ts">{etudeTimeSig(stage)}</span>
-          <span className="etude-card-bpm">
+          {/* The card's BPM doubles as the pass threshold — running slower
+           * than this is allowed (good for practice) but won't count as a
+           * best-score entry. Label it as such so it doesn't read as
+           * "this is THE tempo to play at". */}
+          <span className="etude-card-bpm" title="合格ライン (これ以上の BPM で完走すると記録対象)">
+            <span className="etude-card-bpm-label">合格ライン</span>
             {isAsymmetricEtude(stage) ? '♪' : '♩'}{isCompoundEtude(stage) && <span className="bpm-dot">.</span>} = {stage.bpm}
           </span>
           {best && (

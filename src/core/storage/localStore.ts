@@ -292,3 +292,4 @@ export function setMetronomeAccents(value: MetronomeAccents): void {
     // storage unavailable — settings just won't persist this session
   }
 }
+

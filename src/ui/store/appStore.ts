@@ -29,12 +29,22 @@ interface AppState {
   /** Full per-tap audit trail behind lastResult — drives the timing plot and timing stats. */
   lastRecords: readonly JudgementRecord[] | null;
   /**
-   * Tempo scaling factor (1 = stage's authored BPM). Lives in the store
-   * so the player's chosen tempo survives the Game→Result→Retry round-
-   * trip — without this, hitting "リトライ" would silently reset the
-   * BPM slider to 1.0 every time.
+   * Last BPM the player explicitly dialled in, scoped to *one* Etude.
+   * Survives Game → Result → リトライ so a player who picked 100 BPM
+   * and failed doesn't get bumped back to the authored 80 on retry,
+   * but switching to a different Etude resets to its own authored
+   * (= pass-line) value. Pair of `lastChosenBpm` + `lastChosenBpmEtudeId`
+   * — the etudeId is the cross-mount key, the bpm is the value.
    */
-  bpmMultiplier: number;
+  lastChosenBpm: number | null;
+  lastChosenBpmEtudeId: string | null;
+  /**
+   * BPM the *most recent* run was actually played at. Pinned at run
+   * completion (alongside lastResult) so ResultScreen can decide whether
+   * to suppress the best-score write and show the "below-threshold"
+   * warning, even if the player's slider is in some other position.
+   */
+  lastPlayedBpm: number | null;
   /**
    * Per-device tap latency offset in seconds, measured by the
    * CalibrationScreen. Subtracted from every tapSec before judgement
@@ -86,7 +96,8 @@ interface AppState {
   setLastResult: (result: GameResult) => void;
   setLastEtude: (stage: Etude) => void;
   setLastRecords: (records: readonly JudgementRecord[]) => void;
-  setBpmMultiplier: (multiplier: number) => void;
+  setLastChosenBpm: (bpm: number, etudeId: string) => void;
+  setLastPlayedBpm: (bpm: number | null) => void;
   setCalibrationOffsetSec: (sec: number) => void;
   setLoadedEtudes: (stages: readonly EtudeWithMovementMeta[] | null) => void;
   setEtudesLoadState: (state: EtudesLoadState) => void;
@@ -104,7 +115,9 @@ export const useAppStore = create<AppState>((set) => ({
   lastResult: null,
   lastEtude: null,
   lastRecords: null,
-  bpmMultiplier: 1,
+  lastChosenBpm: null,
+  lastChosenBpmEtudeId: null,
+  lastPlayedBpm: null,
   // Eagerly seed from localStorage so the first play after a reload
   // uses the saved calibration without anyone having to remember to
   // re-load it manually.
@@ -129,7 +142,9 @@ export const useAppStore = create<AppState>((set) => ({
   setLastResult: (result) => set({ lastResult: result }),
   setLastEtude: (stage) => set({ lastEtude: stage }),
   setLastRecords: (records) => set({ lastRecords: records }),
-  setBpmMultiplier: (multiplier) => set({ bpmMultiplier: multiplier }),
+  setLastChosenBpm: (bpm, etudeId) =>
+    set({ lastChosenBpm: bpm, lastChosenBpmEtudeId: etudeId }),
+  setLastPlayedBpm: (bpm) => set({ lastPlayedBpm: bpm }),
   setCalibrationOffsetSec: (sec) => set({ calibrationOffsetSec: sec }),
   setLoadedEtudes: (stages) => set({ loadedEtudes: stages }),
   setEtudesLoadState: (state) => set({ etudesLoadState: state }),

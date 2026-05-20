@@ -35,7 +35,6 @@ import {
   sixteenthRest,
   sixteenthTriplet,
   sixTuplet,
-  tempoChange,
   tie,
   tsChange,
   w,
@@ -1169,7 +1168,7 @@ const ETUDE_DEFS: readonly EtudeDef[] = [
     description: '次レベルへ向け、拍子切替の予告',
     bpm: 118,
     themeColor: COLOR[9],
-    // Bridge to Level 10: meter changes mid-piece + tempo bump.
+    // Bridge to Level 10: meter changes mid-piece.
     score: buildScore({ ts: [4, 4], bpm: 118 }, [
       q(), q(), eighth(), eighth(), q(),
       eighthTriplet(), eighthTriplet(), eighthTriplet(), h(), q(),
@@ -1180,14 +1179,16 @@ const ETUDE_DEFS: readonly EtudeDef[] = [
       qd(), q(), q(),
       eighth(), eighth(), eighth(), eighth(), qd(),
       tsChange(4, 4),
-      tempoChange(168),
       q(), q(), q(), q(),
       w(),
     ]),
   },
 
   // ============================================================
-  // Level 10 — mixed meter / meter-change / cross-rhythm / tempo change
+  // Level 10 — mixed meter / meter-change / cross-rhythm
+  // (NB: no mid-piece tempo changes — Rhygym is a sight-reading game,
+  // not a falling-notes rhythm game, so the player can't react to a
+  // tempo shift mid-run. BPM is fixed once the run starts.)
   // ============================================================
   {
     id: 'movement-10-etude-1',
@@ -1216,28 +1217,26 @@ const ETUDE_DEFS: readonly EtudeDef[] = [
     movement: 10,
     indexInMovement: 2,
     name: 'Etude 10-2',
-    description: 'テンポチェンジ + 6/8 への揺らぎ',
+    description: '4/4 ⇄ 6/8 の揺らぎ',
     bpm: 126,
     themeColor: COLOR[10],
-    // Combine tempo dips with a mid-piece swing to 6/8 so the
-    // "tempo change" theme also exercises a meter shift.
+    // Mid-piece meter shifts (4/4 ⇄ 6/8) — fixed tempo throughout
+    // since the player can't target a tempo change in a sight-reading
+    // game.
     score: buildScore({ ts: [4, 4], bpm: 126 }, [
-      // 4/4 opening at full tempo
+      // 4/4 opening
       q(), q(), q(), q(),
       h(), q(), q(),
-      // Slow down and drop into 6/8 — same pulse, different grouping.
-      tempoChange(120),
+      // Drop into 6/8 — same pulse, different grouping.
       tsChange(6, 8),
       qd(), qd(),
       eighth(), eighth(), eighth(), qd(),
       eighthTriplet(), eighthTriplet(), eighthTriplet(), eighthTriplet(), eighthTriplet(), eighthTriplet(), q(),
-      // Snap back to 4/4 and accelerate.
+      // Snap back to 4/4.
       tsChange(4, 4),
-      tempoChange(168),
       q(), eighth(), eighth(), q(), q(),
       sixteenth(), sixteenth(), sixteenth(), sixteenth(), q(), h(),
-      // Final ritardando.
-      tempoChange(96),
+      // Close.
       hd(), q(),
       w(),
     ]),
@@ -1344,8 +1343,9 @@ const ETUDE_DEFS: readonly EtudeDef[] = [
     themeColor: COLOR[10],
     // Level 10 final: there's no Level 11 to preview, so this stage
     // pushes every Level-10 element to its limit — meter changes per
-    // measure, tempo ramps, cross-rhythms, ties across barlines, and
-    // every tuplet family in rotation.
+    // measure, cross-rhythms, ties across barlines, and every tuplet
+    // family in rotation. Fixed tempo (no mid-piece tempo changes —
+    // sight-reading game, not falling-notes).
     score: buildScore({ ts: [4, 4], bpm: 126 }, [
       // 1. statement in 4/4
       eighthDotted(), sixteenth(), eighth(), eighth(), q(), q(),
@@ -1354,19 +1354,16 @@ const ETUDE_DEFS: readonly EtudeDef[] = [
       tsChange(5, 8),
       qd(), q(),
       eighth(), eighth(), eighth(), q(),
-      // 3. into 7/8 with a tempo dip
+      // 3. into 7/8
       tsChange(7, 8),
-      tempoChange(132),
       qd(), q(), q(),
       eighth(), eighth(), qd(), q(),
-      // 4. tuplet workout in 4/4, tempo restored
+      // 4. tuplet workout in 4/4
       tsChange(4, 4),
-      tempoChange(168),
       fiveTuplet(), fiveTuplet(), fiveTuplet(), fiveTuplet(), fiveTuplet(), ...septuplet(), h(),
       sixTuplet(), sixTuplet(), sixTuplet(), sixTuplet(), sixTuplet(), sixTuplet(), eighthTriplet(), eighthTriplet(), eighthTriplet(), q(), q(),
-      // 5. cross-rhythm + tie + accel into the close
+      // 5. cross-rhythm + tie into the close
       quarterTriplet(), quarterTriplet(), quarterTriplet(), tie(eighth(), q()), eighth(),
-      tempoChange(184),
       sixteenth(), sixteenth(), sixteenth(), sixteenth(), eighth(), eighth(), q(), q(),
       // 6. final cadence — sustained
       tie(h(), h()), h(), q(), qr(),

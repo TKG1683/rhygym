@@ -50,13 +50,36 @@ export interface RenderOptions {
    * the score's measure count.
    */
   measureWidths?: readonly number[];
+  /**
+   * Strip the SVG's intrinsic width/height attributes after render so
+   * CSS becomes the single source of sizing truth. Used by the Game
+   * screen so a `max-height: <vh>` on the host wrapper can scale the
+   * staff down uniformly via the viewBox. Off by default — Result
+   * relies on the intrinsic width to trigger horizontal scroll.
+   */
+  responsiveScaling?: boolean;
 }
 
 const DEFAULT_MEASURE_WIDTH = 220;
 const MIN_MEASURE_WIDTH = 100;
-const LINE_HEIGHT = 90;
-const STAVE_TOP_OFFSET = 30;
-const BOTTOM_PADDING = 30;
+// Compact vertical layout. 62 px row pitch is the floor for our
+// 5-line staff: VexFlow's middle-line note + stem up extends ~30 px
+// above the middle line, so we need ~62 px between consecutive
+// staves (stem-bottom of row N to stem-top of row N+1) to keep beams
+// from colliding.
+//
+// STAVE_TOP_OFFSET is the empty band ABOVE the first staff line.
+// 12 keeps the score sitting visually "high" in its frame; stem tops
+// for ♪ flag groups still fit because VexFlow's stems-up extend
+// ~15 px above the staff (= y ≥ -3, fully visible in the SVG).
+//
+// BOTTOM_PADDING is the empty band BELOW the last staff line, sized
+// to cover stem-down (~15 px below the bottom staff line) plus a few
+// pixels of breathing room. Smaller values clip the final row's
+// stem-bottoms (visible as "notes cut off at the bottom").
+const LINE_HEIGHT = 62;
+const STAVE_TOP_OFFSET = 6;
+const BOTTOM_PADDING = 32;
 const FIRST_MEASURE_LEFT_PAD = 5;
 
 export function renderScore(score: Score, opts: RenderOptions): RenderResult {
@@ -191,6 +214,19 @@ export function renderScore(score: Score, opts: RenderOptions): RenderResult {
       });
     });
   });
+
+  // Always emit a viewBox so consumers can scale via CSS if they want
+  // to. Only when responsiveScaling is on do we strip the intrinsic
+  // pixel size — Result needs the pixel size so its horizontal scroll
+  // wrapper still works.
+  const svg = opts.container.querySelector('svg');
+  if (svg) {
+    svg.setAttribute('viewBox', `0 0 ${svgWidth} ${height}`);
+    if (opts.responsiveScaling) {
+      svg.removeAttribute('width');
+      svg.removeAttribute('height');
+    }
+  }
 
   return { noteCoords, height };
 }
