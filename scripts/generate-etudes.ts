@@ -674,24 +674,33 @@ const ETUDE_DEFS: readonly EtudeDef[] = [
   },
 
   // ============================================================
-  // Level 6 — + syncopation, ties across barlines
+  // Level 6 — cross-rhythm (hemiola) — 3+3+2 eighth groupings in 4/4
+  // via dotted-quarter sequences. No triplets (that's Level 7), no
+  // ties (Rhygym judges onsets only and we removed tie rendering in
+  // #71); the cross-rhythm feel comes purely from where the notes
+  // land relative to the quarter pulse.
   // ============================================================
   {
     id: 'movement-6-etude-1',
     movement: 6,
     indexInMovement: 1,
     name: 'Etude 6-1',
-    description: 'シンコペーション入門',
+    description: '付点四分のヘミオラ入門',
     bpm: 103,
     themeColor: COLOR[6],
+    // qd qd q (= 720+720+480) is the canonical 3+3+2 hemiola pattern
+    // in a 4/4 bar — the dotted quarters land off the natural quarter
+    // pulse, creating the "two against three" feel without any
+    // tuplets. Straight bars (h+q+q / w) anchor the reader so the
+    // cross-rhythm feel stays a contrast, not a constant.
     score: buildScore({ ts: [4, 4], bpm: 103 }, [
-      eighth(), q(), q(), q(), eighth(),
-      q(), eighth(), q(), eighth(), q(),
-      eighth(), q(), eighth(), eighth(), q(), eighth(),
+      qd(), qd(), q(),
+      q(), q(), h(),
+      qd(), q(), qd(),
       w(),
-      eighth(), q(), eighth(), eighth(), q(), eighth(),
-      q(), eighth(), q(), eighth(), q(),
-      h(), eighth(), q(), eighth(),
+      qd(), qd(), q(),
+      q(), qd(), qd(),
+      h(), q(), q(),
       w(),
     ]),
   },
@@ -700,18 +709,20 @@ const ETUDE_DEFS: readonly EtudeDef[] = [
     movement: 6,
     indexInMovement: 2,
     name: 'Etude 6-2',
-    description: '小節を跨ぐタイ',
+    description: '8分絡みの 3-grouping',
     bpm: 103,
     themeColor: COLOR[6],
+    // qd alternated with eighths puts the cross-rhythm onset on
+    // off-beats: 3+3+1+1 / 1+1+3+3 / 3+1+1+3 are all 8-eighth
+    // measures grouped against the 2-eighth (quarter) pulse.
     score: buildScore({ ts: [4, 4], bpm: 103 }, [
-      // measure 1-2: half + dotted-half-tied-across-the-barline + half (3840 = 2 bars)
-      h(), tie(q(), hd()), h(),
-      q(), q(), h(),
+      qd(), qd(), eighth(), eighth(),
+      eighth(), eighth(), qd(), qd(),
+      qd(), eighth(), eighth(), qd(),
       w(),
-      // measure 5-6: half tied to half (sustained whole across the bar)
-      h(), tie(h(), h()), h(),
-      eighth(), eighth(), q(), h(),
-      tie(q(), h()), q(),
+      qd(), qd(), q(),
+      eighth(), eighth(), q(), eighth(), eighth(), q(),
+      qd(), q(), qd(),
       w(),
     ]),
   },
@@ -720,17 +731,20 @@ const ETUDE_DEFS: readonly EtudeDef[] = [
     movement: 6,
     indexInMovement: 3,
     name: 'Etude 6-3',
-    description: 'シンコペとタイの混合',
+    description: '休符込みのオフビートクロス',
     bpm: 103,
     themeColor: COLOR[6],
+    // Slot an eighth rest into the hemiola so the cross-rhythm onset
+    // lands on a "felt off-beat" — harder to read because the player
+    // has to count past silence to find the next dotted-quarter.
     score: buildScore({ ts: [4, 4], bpm: 103 }, [
-      eighth(), q(), q(), q(), eighth(),
-      tie(eighth(), q()), eighth(), eighth(), q(), eighth(),
-      q(), eighth(), eighth(), h(),
+      eighthRest(), qd(), qd(), eighth(),
+      qd(), qd(), eighthRest(), eighth(),
+      q(), eighthRest(), qd(), eighth(), eighth(),
       w(),
-      eighth(), q(), eighth(), eighth(), eighth(), q(),
-      tie(q(), eighth()), eighth(), h(),
-      q(), eighth(), eighth(), q(), q(),
+      qd(), eighthRest(), eighth(), qd(),
+      eighth(), qd(), qd(), eighth(),
+      qd(), q(), qd(),
       w(),
     ]),
   },
@@ -739,17 +753,20 @@ const ETUDE_DEFS: readonly EtudeDef[] = [
     movement: 6,
     indexInMovement: 4,
     name: 'Etude 6-4',
-    description: 'アンチシペーションで先取り',
+    description: '16分との組み合わせ',
     bpm: 103,
     themeColor: COLOR[6],
+    // Introduce the 16th-level cross-rhythm: ed s = 480 (one quarter)
+    // spelled as 3 sixteenths + 1 — the same 3-grouping idea pushed
+    // down a subdivision level. Mixed with qd hemiolas for variety.
     score: buildScore({ ts: [4, 4], bpm: 103 }, [
-      eighth(), q(), eighth(), eighth(), q(), eighth(),
-      tie(eighth(), h()), eighth(), q(),
-      q(), eighth(), q(), eighth(), q(),
+      eighthDotted(), sixteenth(), qd(), qd(),
+      qd(), eighthDotted(), sixteenth(), qd(),
+      qd(), qd(), eighthDotted(), sixteenth(),
       w(),
-      eighth(), q(), q(), q(), eighth(),
-      tie(eighth(), q()), tie(eighth(), q()), q(),
-      eighth(), q(), eighth(), h(),
+      eighthDotted(), sixteenth(), eighthDotted(), sixteenth(), qd(), eighth(),
+      qd(), eighthDotted(), sixteenth(), eighthDotted(), sixteenth(), eighth(),
+      qd(), q(), qd(),
       w(),
     ]),
   },
@@ -758,17 +775,20 @@ const ETUDE_DEFS: readonly EtudeDef[] = [
     movement: 6,
     indexInMovement: 5,
     name: 'Etude 6-5',
-    description: '裏拍とタイで踊る',
+    description: 'クロスリズム総集編',
     bpm: 103,
     themeColor: COLOR[6],
+    // Combine everything: hemiola, off-beat eighth, dotted-eighth +
+    // sixteenth groupings, and a rest-driven cross. The reader has to
+    // hold the quarter pulse internally against shifting groupings.
     score: buildScore({ ts: [4, 4], bpm: 103 }, [
-      sixteenth(), sixteenth(), eighth(), q(), eighth(), q(), eighth(),
-      tie(eighth(), q()), eighth(), eighth(), q(), eighth(),
-      q(), tie(eighth(), q()), eighth(), q(),
+      qd(), eighth(), eighth(), qd(),
+      eighth(), qd(), qd(), eighth(),
+      eighthDotted(), sixteenth(), qd(), q(), eighth(),
       w(),
-      eighth(), q(), eighth(), eighth(), eighth(), eighth(), eighth(),
-      tie(q(), h()), q(),
-      eighth(), q(), eighth(), q(), q(),
+      q(), eighthRest(), qd(), eighth(), eighth(),
+      qd(), eighthDotted(), sixteenth(), eighthDotted(), sixteenth(), eighth(),
+      qd(), qd(), q(),
       w(),
     ]),
   },
@@ -781,13 +801,15 @@ const ETUDE_DEFS: readonly EtudeDef[] = [
     description: '次レベルへ向け、3連符の予告',
     bpm: 103,
     themeColor: COLOR[6],
-    // Bridge to Level 7: introduce triplets.
+    // Bridge to Level 7: same hemiola idea expressed as actual
+    // triplets so the reader meets Movement 7's primary device with
+    // their cross-rhythm ear already warmed up.
     score: buildScore({ ts: [4, 4], bpm: 103 }, [
       eighthTriplet(), eighthTriplet(), eighthTriplet(), q(), h(),
-      eighth(), q(), q(), q(), eighth(),
+      qd(), qd(), q(),
       eighthTriplet(), eighthTriplet(), eighthTriplet(), eighthTriplet(), eighthTriplet(), eighthTriplet(), h(),
       w(),
-      tie(q(), eighth()), eighth(), q(), q(),
+      qd(), eighth(), q(), q(),
       q(), eighthTriplet(), eighthTriplet(), eighthTriplet(), h(),
       eighth(), q(), eighth(), h(),
       w(),

@@ -38,18 +38,12 @@ export interface VexNote {
   ticks: number;
   /**
    * Original RhythmNote.id this token came from. Set on the first token of
-   * a split note; null for rests and subsequent tied fragments. Tap
-   * judgement uses this to map a rendered notehead back to the source note.
+   * a split note; null for rests and subsequent continuation fragments
+   * (e.g. the tail of a cross-bar note). Tap judgement uses this to map a
+   * rendered notehead back to the source note — only the head fragment is
+   * a valid tap target so the player isn't asked to tap the held-out tail.
    */
   originalNoteId: string | null;
-  /**
-   * True when this token is followed by another token that belongs to the
-   * SAME source RhythmNote (because the duration couldn't be expressed as
-   * a single notehead or because the note spanned a barline). The next
-   * token may live in the same measure or in the next measure. ScoreRenderer
-   * draws a `StaveTie` arc between consecutive tokens flagged this way.
-   */
-  tiedToNext: boolean;
   /**
    * When this note is part of an N-in-the-time-of-M tuplet (triplet,
    * quintuplet, sextuplet, septuplet), the ratio used to draw the
@@ -295,7 +289,6 @@ export function scoreToVex(score: Score): VexScore {
             isRest: true,
             ticks: durTicks(dur),
             originalNoteId: null,
-            tiedToNext: false,
           });
           cursor += durTicks(dur);
         }
@@ -329,7 +322,6 @@ export function scoreToVex(score: Score): VexScore {
           isRest: true,
           ticks: durTicks(dur),
           originalNoteId: null,
-          tiedToNext: false,
         });
         cursor += durTicks(dur);
       }
@@ -362,31 +354,32 @@ export function scoreToVex(score: Score): VexScore {
  * head segment (first measure of the note) pass 0, for a carry-over tail
  * pass any monotonically increasing value.
  *
- * `tieToNextOuter` forces the LAST emitted token to `tiedToNext: true` —
- * used when the note continues into the following measure. Within this
- * call, internal split tokens are already wired together with ties.
+ * `continuesPastSegment` signals that more of this RhythmNote will be
+ * emitted after this call (next measure). It only affects the tuplet
+ * single-notehead shortcut — a fragment that continues past its segment
+ * isn't a tuplet member, so we fall through to the multi-token split
+ * path. No tie metadata is emitted because Rhygym judges onsets only;
+ * the held tail just renders as plain notes without a slur arc.
  */
 function emitNoteTokens(
   out: VexNote[],
   n: RhythmNote,
   consumeTicks: number,
   startPartIndex: number,
-  tieToNextOuter: boolean,
+  continuesPastSegment: boolean,
 ): void {
   if (consumeTicks <= 0) return;
 
   const isHeadSegment = startPartIndex === 0;
   const single = exactDuration(consumeTicks);
   // Tuplet members carry their fixed per-note tick value (e.g. 320 for
-  // quarter-triplet). They never get split or tied — if a tail-of-a-
-  // tied-note fragment happens to land on the same tick count it's a
-  // coincidence, not a tuplet, so only the head segment is eligible for
-  // the tuplet single-notehead path.
+  // quarter-triplet). Only the head segment is eligible for the tuplet
+  // single-notehead path — a tail fragment that happens to land on the
+  // same tick count is a coincidence, not a tuplet.
   const tupletSingle =
-    single === null && isHeadSegment && !tieToNextOuter
+    single === null && isHeadSegment && !continuesPastSegment
       ? tupletSingleDuration(consumeTicks)
       : null;
-  // Only rests are styled rest-y; ties never apply to rests.
   const isRest = n.isRest;
 
   if (single !== null) {
@@ -400,7 +393,6 @@ function emitNoteTokens(
       // Continuation fragments (later split pieces or cross-bar tails)
       // mustn't claim the same tap target.
       originalNoteId: !isRest && isHeadSegment ? n.id : null,
-      tiedToNext: !isRest && tieToNextOuter,
     });
   } else if (tupletSingle !== null) {
     // Tuplet member: keep its true tick count so cursor math stays honest,
@@ -412,25 +404,22 @@ function emitNoteTokens(
       isRest,
       ticks: consumeTicks,
       originalNoteId: isRest ? null : n.id,
-      tiedToNext: false,
     });
   } else {
-    // Duration doesn't fit a single notehead — split into a tied run of
-    // tokens that sum to `consumeTicks`. Mark every token tiedToNext
-    // except the last (unless the caller asked us to extend the tie past
-    // this segment, in which case the last token is also tied).
+    // Duration doesn't fit a single notehead — split into a run of tokens
+    // that sum to `consumeTicks`. Only the first token of the head segment
+    // claims the originalNoteId (= tap target); subsequent split tokens
+    // are continuation fragments.
     const tokens = decomposeTicks(consumeTicks);
     tokens.forEach((dur, i) => {
       const partIdx = startPartIndex + i;
       const isFirstEver = isHeadSegment && i === 0;
-      const isLastInSegment = i === tokens.length - 1;
       out.push({
         id: isFirstEver ? n.id : `${n.id}-part${partIdx}`,
         vexBaseDuration: dur,
         isRest,
         ticks: durTicks(dur),
         originalNoteId: !isRest && isFirstEver ? n.id : null,
-        tiedToNext: !isRest && (!isLastInSegment || tieToNextOuter),
       });
     });
   }
