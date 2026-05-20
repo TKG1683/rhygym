@@ -23,6 +23,7 @@ import {
   SIXTEENTH_NOTE_TICKS,
   THIRTYSECOND_NOTE_TICKS,
   WHOLE_NOTE_TICKS,
+  type RhythmNote,
   type Score,
   type TimeSignatureEvent,
 } from '../../core/model';
@@ -41,6 +42,14 @@ export interface VexNote {
    * judgement uses this to map a rendered notehead back to the source note.
    */
   originalNoteId: string | null;
+  /**
+   * True when this token is followed by another token that belongs to the
+   * SAME source RhythmNote (because the duration couldn't be expressed as
+   * a single notehead or because the note spanned a barline). The next
+   * token may live in the same measure or in the next measure. ScoreRenderer
+   * draws a `StaveTie` arc between consecutive tokens flagged this way.
+   */
+  tiedToNext: boolean;
   /**
    * When this note is part of an N-in-the-time-of-M tuplet (triplet,
    * quintuplet, sextuplet, septuplet), the ratio used to draw the
@@ -231,6 +240,11 @@ export function scoreToVex(score: Score): VexScore {
   let measureIdx = 0;
   let measureStart = 0;
 
+  // Carry-over from the previous measure when a note's duration spans the
+  // barline. `partIndex` keeps `${note.id}-partN` ids unique across the
+  // bar split so consumers can still treat each fragment as its own token.
+  let pending: { note: RhythmNote; remainingTicks: number; partIndex: number } | null = null;
+
   while (measureStart < score.totalTicks) {
     const ts = findTimeSigAt(sortedTimeSigs, measureStart);
     const measureLength = ticksPerMeasure(ts);
@@ -238,6 +252,36 @@ export function scoreToVex(score: Score): VexScore {
     const measureNotes: VexNote[] = [];
 
     let cursor = measureStart;
+
+    // First: consume any tail carried over from the previous measure. It
+    // starts at the bar's downbeat, so no leading-rest fill is needed.
+    if (pending !== null) {
+      const available = measureEnd - cursor;
+      const consumed = Math.min(pending.remainingTicks, available);
+      const continuesPastBar = consumed < pending.remainingTicks;
+      emitNoteTokens(
+        measureNotes,
+        pending.note,
+        consumed,
+        pending.partIndex,
+        continuesPastBar,
+      );
+      cursor += consumed;
+      if (continuesPastBar) {
+        // Hop the bar again. partIndex advances by however many tokens we
+        // emitted; emitNoteTokens returns nothing so just bump by the
+        // typical 1 (each split chunk == one or more tokens, but the
+        // exact count doesn't matter for uniqueness as long as we keep
+        // climbing — collisions only happen if we reuse a value).
+        pending = {
+          note: pending.note,
+          remainingTicks: pending.remainingTicks - consumed,
+          partIndex: pending.partIndex + measureNotes.length, // monotonic
+        };
+      } else {
+        pending = null;
+      }
+    }
 
     for (const n of sortedNotes) {
       if (n.tick < measureStart || n.tick >= measureEnd) continue;
@@ -251,46 +295,29 @@ export function scoreToVex(score: Score): VexScore {
             isRest: true,
             ticks: durTicks(dur),
             originalNoteId: null,
+            tiedToNext: false,
           });
           cursor += durTicks(dur);
         }
       }
 
-      // Emit the note (or split it if it doesn't match a single duration).
-      const single = exactDuration(n.durationTicks);
-      const tupletSingle = single === null ? tupletSingleDuration(n.durationTicks) : null;
-      if (single !== null) {
-        measureNotes.push({
-          id: n.id,
-          vexBaseDuration: single,
-          isRest: n.isRest,
-          ticks: n.durationTicks,
-          originalNoteId: n.isRest ? null : n.id,
-        });
-      } else if (tupletSingle !== null) {
-        // Tuplet member: keep its true tick count so cursor math stays
-        // honest, but render the head with a duration VexFlow accepts.
-        // The Tuplet bracket added later carries the rhythmic ratio.
-        measureNotes.push({
-          id: n.id,
-          vexBaseDuration: tupletSingle,
-          isRest: n.isRest,
-          ticks: n.durationTicks,
-          originalNoteId: n.isRest ? null : n.id,
-        });
-      } else {
-        const tokens = decomposeTicks(n.durationTicks);
-        tokens.forEach((dur, i) => {
-          measureNotes.push({
-            id: i === 0 ? n.id : `${n.id}-part${i}`,
-            vexBaseDuration: dur,
-            isRest: n.isRest,
-            ticks: durTicks(dur),
-            originalNoteId: n.isRest || i > 0 ? null : n.id,
-          });
-        });
+      // Does this note fit entirely in the current measure?
+      const available = measureEnd - cursor;
+      const consumed = Math.min(n.durationTicks, available);
+      const spansBarline = consumed < n.durationTicks;
+
+      emitNoteTokens(measureNotes, n, consumed, 0, spansBarline);
+      cursor += consumed;
+
+      if (spansBarline) {
+        pending = {
+          note: n,
+          remainingTicks: n.durationTicks - consumed,
+          partIndex: measureNotes.length, // monotonic counter, used for unique ids
+        };
+        // No more notes can fit in this measure — the bar is full.
+        break;
       }
-      cursor += n.durationTicks;
     }
 
     // Trailing rest fill.
@@ -302,6 +329,7 @@ export function scoreToVex(score: Score): VexScore {
           isRest: true,
           ticks: durTicks(dur),
           originalNoteId: null,
+          tiedToNext: false,
         });
         cursor += durTicks(dur);
       }
@@ -323,4 +351,87 @@ export function scoreToVex(score: Score): VexScore {
   }
 
   return { measures };
+}
+
+/**
+ * Emit one note's worth of VexNote tokens into `out`, covering exactly
+ * `consumeTicks` (which may be less than `n.durationTicks` when the note
+ * spans a barline and only the portion before the bar is being placed now).
+ *
+ * `startPartIndex` seeds the unique-id counter for split tokens; for the
+ * head segment (first measure of the note) pass 0, for a carry-over tail
+ * pass any monotonically increasing value.
+ *
+ * `tieToNextOuter` forces the LAST emitted token to `tiedToNext: true` —
+ * used when the note continues into the following measure. Within this
+ * call, internal split tokens are already wired together with ties.
+ */
+function emitNoteTokens(
+  out: VexNote[],
+  n: RhythmNote,
+  consumeTicks: number,
+  startPartIndex: number,
+  tieToNextOuter: boolean,
+): void {
+  if (consumeTicks <= 0) return;
+
+  const isHeadSegment = startPartIndex === 0;
+  const single = exactDuration(consumeTicks);
+  // Tuplet members carry their fixed per-note tick value (e.g. 320 for
+  // quarter-triplet). They never get split or tied — if a tail-of-a-
+  // tied-note fragment happens to land on the same tick count it's a
+  // coincidence, not a tuplet, so only the head segment is eligible for
+  // the tuplet single-notehead path.
+  const tupletSingle =
+    single === null && isHeadSegment && !tieToNextOuter
+      ? tupletSingleDuration(consumeTicks)
+      : null;
+  // Only rests are styled rest-y; ties never apply to rests.
+  const isRest = n.isRest;
+
+  if (single !== null) {
+    out.push({
+      id: isHeadSegment ? n.id : `${n.id}-part${startPartIndex}`,
+      vexBaseDuration: single,
+      isRest,
+      ticks: consumeTicks,
+      // originalNoteId is set only on the very first emitted token of a
+      // RhythmNote so tap judgement maps one tap event to one note id.
+      // Continuation fragments (later split pieces or cross-bar tails)
+      // mustn't claim the same tap target.
+      originalNoteId: !isRest && isHeadSegment ? n.id : null,
+      tiedToNext: !isRest && tieToNextOuter,
+    });
+  } else if (tupletSingle !== null) {
+    // Tuplet member: keep its true tick count so cursor math stays honest,
+    // but render the head with a duration VexFlow accepts. The Tuplet
+    // bracket added later carries the rhythmic ratio.
+    out.push({
+      id: n.id,
+      vexBaseDuration: tupletSingle,
+      isRest,
+      ticks: consumeTicks,
+      originalNoteId: isRest ? null : n.id,
+      tiedToNext: false,
+    });
+  } else {
+    // Duration doesn't fit a single notehead — split into a tied run of
+    // tokens that sum to `consumeTicks`. Mark every token tiedToNext
+    // except the last (unless the caller asked us to extend the tie past
+    // this segment, in which case the last token is also tied).
+    const tokens = decomposeTicks(consumeTicks);
+    tokens.forEach((dur, i) => {
+      const partIdx = startPartIndex + i;
+      const isFirstEver = isHeadSegment && i === 0;
+      const isLastInSegment = i === tokens.length - 1;
+      out.push({
+        id: isFirstEver ? n.id : `${n.id}-part${partIdx}`,
+        vexBaseDuration: dur,
+        isRest,
+        ticks: durTicks(dur),
+        originalNoteId: !isRest && isFirstEver ? n.id : null,
+        tiedToNext: !isRest && (!isLastInSegment || tieToNextOuter),
+      });
+    });
+  }
 }

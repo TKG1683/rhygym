@@ -7,9 +7,9 @@
  * hit effects) can align with each note.
  */
 
-import { Barline, Beam, Dot, Formatter, Renderer, Stave, StaveNote, Stem, Tuplet, Voice } from 'vexflow';
+import { Barline, Beam, Dot, Formatter, Renderer, Stave, StaveNote, StaveTie, Stem, Tuplet, Voice } from 'vexflow';
 import { QUARTER_NOTE_TICKS, type Score } from '../../core/model';
-import { scoreToVex, type VexNote } from './scoreToVex';
+import { scoreToVex, type VexMeasure, type VexNote } from './scoreToVex';
 
 const BEAMABLE_DURATIONS = new Set(['8', '16', '32']);
 
@@ -107,6 +107,10 @@ export function renderScore(score: Score, opts: RenderOptions): RenderResult {
   renderer.resize(svgWidth, height);
   const ctx = renderer.getContext();
   const noteCoords = new Map<string, NoteCoords>();
+  // Collect per-measure StaveNote arrays so cross-bar StaveTies can join
+  // the last note of measure i with the first of measure i+1 after every
+  // bar has been laid out and drawn.
+  const staveNotesByMeasure: StaveNote[][] = [];
 
   vex.measures.forEach((m, idx) => {
     const lineIdx = Math.floor(idx / measuresPerLine);
@@ -190,7 +194,17 @@ export function renderScore(score: Score, opts: RenderOptions): RenderResult {
         lineIdx,
       });
     });
+
+    staveNotesByMeasure[idx] = staveNotes;
   });
+
+  // Draw StaveTie arcs AFTER every voice has been formatted/drawn so the
+  // ties have real note coordinates to anchor to. Walks each measure's
+  // (vexNote, staveNote) pairs; for any pair whose vexNote.tiedToNext is
+  // true, find the next non-rest StaveNote — same measure if available,
+  // otherwise the first note of the next measure for cross-bar ties.
+  const ties = buildTies(vex.measures, staveNotesByMeasure);
+  ties.forEach((t) => t.setContext(ctx).draw());
 
   return { noteCoords, height };
 }
@@ -204,6 +218,46 @@ function computeMaxLineWidth(widths: readonly number[], measuresPerLine: number)
     if (lineW > maxW) maxW = lineW;
   }
   return maxW;
+}
+
+/**
+ * Build StaveTie arcs for every (vexNote, nextNote) pair whose vexNote
+ * has `tiedToNext: true`. Walks across measure boundaries so a note that
+ * spans a barline produces two tie objects (one ending at the bar, one
+ * starting at the next bar's downbeat) — VexFlow's StaveTie supports
+ * partial ties via leaving firstNote or lastNote null.
+ */
+function buildTies(
+  measures: VexMeasure[],
+  staveNotesByMeasure: StaveNote[][],
+): StaveTie[] {
+  const ties: StaveTie[] = [];
+
+  for (let mi = 0; mi < measures.length; mi++) {
+    const m = measures[mi]!;
+    const sns = staveNotesByMeasure[mi]!;
+    for (let i = 0; i < m.notes.length; i++) {
+      const v = m.notes[i]!;
+      if (!v.tiedToNext) continue;
+      const firstNote = sns[i]!;
+      // Same-measure tie target: the next token in this measure.
+      if (i + 1 < m.notes.length) {
+        ties.push(new StaveTie({ firstNote, lastNote: sns[i + 1]! }));
+        continue;
+      }
+      // Cross-bar tie. Emit two partial ties so VexFlow can clip each
+      // arc to its own stave: trailing arc at the end of this bar,
+      // leading arc at the start of the next bar.
+      const nextMeasure = measures[mi + 1];
+      const nextSns = staveNotesByMeasure[mi + 1];
+      if (nextMeasure && nextSns && nextSns.length > 0) {
+        ties.push(new StaveTie({ firstNote, lastNote: null }));
+        ties.push(new StaveTie({ firstNote: null, lastNote: nextSns[0]! }));
+      }
+    }
+  }
+
+  return ties;
 }
 
 /**
