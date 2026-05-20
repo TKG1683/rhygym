@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { createAudioContext } from '../../core/audio/audioContext';
 import {
   getAllBests,
   isCalibSuggestDismissed,
@@ -25,17 +26,24 @@ export function TitleScreen() {
     setSuggestVisible(false);
   };
 
-  const handleStart = async () => {
+  const handleStart = () => {
     // Create (or reuse) the AudioContext while we are still inside the
     // user-gesture handler — iOS Safari and Android Chrome both refuse
     // to start audio that wasn't initiated by a tap/click.
     let ctx = audioContext;
     if (!ctx) {
-      ctx = new AudioContext();
+      ctx = createAudioContext();
       setAudioContext(ctx);
     }
+    // Fire-and-forget resume — Safari needs the user-gesture token to
+    // still be alive at the moment we call resume(); awaiting yields
+    // back to the microtask queue and some Safari versions drop the
+    // gesture across that boundary. The warmup and navigation that
+    // follow are unaffected by whether resume() has actually resolved
+    // (resume returns a promise but it's safe to keep calling other
+    // APIs while it's in-flight).
     if (ctx.state === 'suspended') {
-      await ctx.resume();
+      void ctx.resume();
     }
     // Warm-up: play an inaudible 50 ms buffer so the audio pipeline is
     // fully spun up by the time GameScreen mounts. Without this, the
@@ -45,16 +53,16 @@ export function TitleScreen() {
     goto('select');
   };
 
-  const goCalibrate = async () => {
+  const goCalibrate = () => {
     // Calibration also needs a live AudioContext; reuse the same
     // user-gesture handling as Start.
     let ctx = audioContext;
     if (!ctx) {
-      ctx = new AudioContext();
+      ctx = createAudioContext();
       setAudioContext(ctx);
     }
     if (ctx.state === 'suspended') {
-      await ctx.resume();
+      void ctx.resume();
     }
     warmUpAudio(ctx);
     goto('calibration');
