@@ -86,6 +86,9 @@ export function TitleScreen() {
       <button className="primary" onClick={handleStart}>
         Start
       </button>
+      <button className="secondary" onClick={() => goto('help')}>
+        遊び方
+      </button>
       <button className="secondary" onClick={goCalibrate}>
         キャリブレーション
         {calibrated && (

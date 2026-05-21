@@ -6,8 +6,9 @@ import { StageSelectScreen } from './ui/screens/MovementSelectScreen';
 import { GameScreen } from './ui/screens/GameScreen';
 import { ResultScreen } from './ui/screens/ResultScreen';
 import { CalibrationScreen } from './ui/screens/CalibrationScreen';
+import { HelpScreen } from './ui/screens/HelpScreen';
 
-const VALID_SCREENS: readonly Screen[] = ['title', 'select', 'game', 'result', 'calibration'];
+const VALID_SCREENS: readonly Screen[] = ['title', 'select', 'game', 'result', 'calibration', 'help'];
 
 export default function App() {
   const screen = useAppStore((s) => s.screen);
@@ -77,5 +78,7 @@ export default function App() {
       return <ResultScreen />;
     case 'calibration':
       return <CalibrationScreen />;
+    case 'help':
+      return <HelpScreen />;
   }
 }

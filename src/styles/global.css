@@ -1578,3 +1578,169 @@ input[type='range']:disabled {
 .game-settings-close:hover {
   opacity: 1;
 }
+
+/* Help screen (#26) — scrollable tutorial with a fixed back button
+ * at the top. Layout is a vertical column of section cards on the
+ * brand-cream surface so the screen reads like a small book of
+ * topics rather than a wall of text.
+ *
+ * The header sits ABOVE the scrollable content (not inside) so the
+ * back button stays reachable as the player swipes through. The
+ * .screen-help container itself opts out of the default .screen
+ * justify-content:center because long help content needs to scroll
+ * from the top, not be vertically centred. */
+.screen-help {
+  justify-content: flex-start;
+  padding: 0;
+  gap: 0;
+  height: 100dvh;
+  max-height: 100dvh;
+  overflow: hidden;
+}
+
+.help-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  background: var(--brand-secondary);
+  border-bottom: 1px solid var(--border-soft);
+  flex-shrink: 0;
+}
+
+.help-back {
+  padding: 6px 14px;
+  min-height: auto;
+  font-size: var(--fs-sm);
+}
+
+.help-title {
+  margin: 0;
+  font-size: var(--fs-lg);
+  color: var(--text-strong);
+}
+
+.help-content {
+  flex: 1;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  max-width: 720px;
+  margin: 0 auto;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.help-section {
+  background: var(--surface);
+  border-radius: var(--radius-md);
+  padding: var(--space-4);
+  border: 1px solid var(--border-soft);
+  box-shadow: 0 1px 2px var(--shadow-soft);
+}
+
+.help-section-title {
+  margin: 0 0 var(--space-3);
+  font-size: var(--fs-md);
+  color: var(--text-strong);
+}
+
+.help-section p {
+  margin: 0 0 var(--space-3);
+  color: var(--text-strong);
+  line-height: 1.6;
+}
+
+.help-section p:last-child {
+  margin-bottom: 0;
+}
+
+.help-section strong {
+  font-weight: 700;
+}
+
+/* Callout box — used for "重要" warnings and side notes. Brand-yellow
+ * tint with a thicker left border so it stands apart from body copy
+ * without screaming. The -warn variant swaps to the accent orange for
+ * stronger "don't miss this" signal. */
+.help-callout {
+  background: var(--highlight-band);
+  border-left: 4px solid var(--brand-primary);
+  border-radius: var(--radius-sm);
+  padding: var(--space-3);
+  margin: var(--space-3) 0 0;
+  color: var(--text-strong);
+  line-height: 1.6;
+}
+
+.help-callout-warn {
+  border-left-color: var(--brand-accent);
+}
+
+.help-steps,
+.help-tips {
+  margin: 0;
+  padding-left: 1.4em;
+  color: var(--text-strong);
+  line-height: 1.7;
+}
+
+.help-steps li,
+.help-tips li {
+  margin-bottom: var(--space-2);
+}
+
+.help-steps li:last-child,
+.help-tips li:last-child {
+  margin-bottom: 0;
+}
+
+/* Judgement comparison table — chip per verdict with a description
+ * next to it. Pure flex (not a real <table>) so it stacks cleanly on
+ * narrow screens and the chips line up with their captions. */
+.help-judge-table {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+}
+
+.help-judge-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.help-judge-label {
+  flex-shrink: 0;
+  min-width: 80px;
+  font-weight: 800;
+  font-size: var(--fs-sm);
+  letter-spacing: 0.04em;
+  text-align: center;
+  padding: 4px 10px;
+  border-radius: var(--radius-sm);
+  color: var(--text-on-dark);
+}
+
+.help-judge-perfect { background: #FFD24A; color: var(--text-strong); }
+.help-judge-good    { background: #3a8dde; }
+.help-judge-miss    { background: #E8612E; }
+
+.help-judge-desc {
+  color: var(--text-strong);
+  line-height: 1.5;
+}
+
+.help-footer {
+  display: flex;
+  justify-content: center;
+  padding: var(--space-3) 0 var(--space-4);
+}
+
+.help-back-bottom {
+  min-width: 200px;
+}
