@@ -14,6 +14,14 @@ import { useAppStore } from '../store/appStore';
 
 /** Rank ordering for "is this rank at least PASS_RANK_THRESHOLD?". */
 const RANK_ORDER = ['D', 'C', 'B', 'A', 'S'] as const;
+
+/**
+ * Production URL for the share intent. Hard-coded rather than read
+ * from `location.origin` so a share from a local dev session still
+ * links to the live app — sharing "http://localhost:5173/rhygym/"
+ * would be useless to whoever clicks the link.
+ */
+const SHARE_URL = 'https://tkg1683.github.io/rhygym/';
 function rankAtLeast(rank: string, min: string): boolean {
   return RANK_ORDER.indexOf(rank as (typeof RANK_ORDER)[number]) >=
     RANK_ORDER.indexOf(min as (typeof RANK_ORDER)[number]);
@@ -229,6 +237,20 @@ export function ResultScreen() {
     goto('game');
   };
 
+  // Open X's post-intent in a new tab with the result pre-filled.
+  // Intent URL flow keeps the share path 100% client-side — no API
+  // keys, no SDK, no auth. The player still has to confirm the post
+  // on X itself before anything leaves their account.
+  const shareToX = () => {
+    if (!stage || !result) return;
+    const text = `Rhygym「${stage.name}」で ${result.rank} ランク達成！ (スコア ${result.score})`;
+    const intent = new URL('https://x.com/intent/post');
+    intent.searchParams.set('text', text);
+    intent.searchParams.set('url', SHARE_URL);
+    intent.searchParams.set('hashtags', 'Rhygym');
+    window.open(intent.toString(), '_blank', 'noopener,noreferrer');
+  };
+
   if (!result || !stage) {
     return (
       <main className="screen">
@@ -339,6 +361,7 @@ export function ResultScreen() {
                 Etude 一覧へ
               </button>
             )}
+            <ShareToXButton onClick={shareToX} />
           </div>
         </>
       ) : (
@@ -349,6 +372,7 @@ export function ResultScreen() {
           <button className="secondary" onClick={goEtudeSelect}>
             Etude 一覧へ
           </button>
+          <ShareToXButton onClick={shareToX} />
         </div>
       )}
       {/* When the drift banner is up it already carries a calibration
@@ -376,4 +400,29 @@ function formatBiasMs(ms: number): string {
   if (rounded === 0) return '±0ms';
   if (rounded > 0) return `+${rounded}ms (やや遅め)`;
   return `${rounded}ms (やや早め)`;
+}
+
+/**
+ * X (formerly Twitter) brand-style share button. Inline SVG for the
+ * 𝕏 mark — keeps it crisp at any size and avoids a network fetch for
+ * a logo. Aria-label spells out the action since the icon alone is
+ * not self-evident to non-X users.
+ */
+function ShareToXButton({ onClick }: { onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      className="secondary result-secondary-btn result-share-btn"
+      onClick={onClick}
+      aria-label="X (旧 Twitter) でシェア"
+    >
+      <svg className="result-share-icon" viewBox="0 0 24 24" aria-hidden="true">
+        <path
+          fill="currentColor"
+          d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231L18.244 2.25zm-1.161 17.52h1.833L7.084 4.126H5.117L17.083 19.77z"
+        />
+      </svg>
+      <span>シェア</span>
+    </button>
+  );
 }

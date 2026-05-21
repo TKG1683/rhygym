@@ -1259,6 +1259,22 @@ input[type='range']:disabled {
   padding: 10px 16px;
 }
 
+/* X (Twitter) share button — keeps the secondary-button frame but
+ * carries the brand icon next to a tiny "シェア" label. Currentcolor
+ * on the SVG path inherits the button's text colour so it stays
+ * legible across hover / disabled states without a second rule. */
+.result-share-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.result-share-icon {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}
+
 /* Title-screen first-run variant: same banner shell, but tighter and
  * carrying a dismiss × so a returning player can silence it once and
  * never see it again. */
