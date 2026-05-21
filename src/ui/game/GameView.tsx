@@ -4,22 +4,26 @@
  * State machine:
  *   waiting → playing → done → (auto-navigates to Result)
  *
- *   waiting:  FreeMetronome runs, staff is shown, "♪ お好きな…" prompt.
- *             The first tap stops the FreeMetronome, starts the scheduler
- *             with that tap timestamp as beat 1, and is itself fed to
- *             judgeTap in case the score's first note lands on beat 1.
- *   playing:  Each tap goes through judgeTap; a RAF loop expires any
- *             un-tapped note past the GOOD window into a MISS.
+ *   waiting:  FreeMetronome runs the click grid; a ConductorBaton SVG
+ *             draws the gesture for the stage's opening meter so the
+ *             player can see where beat 1 lands (issue #81 follow-up).
+ *             Any tap snaps to the nearest FM downbeat — that snapped
+ *             time becomes the song's beat 1 and is also judged against
+ *             the first note in case it lives at tick=0.
+ *   playing:  Scheduler takes over from the downbeat. Each tap goes
+ *             through judgeTap; a RAF loop expires any un-tapped note
+ *             past the GOOD window into a MISS.
  *   done:     Triggered when every non-rest note has a verdict;
  *             computeResult is stored to appStore and the app navigates
  *             to the Result screen.
  *
- * Layout (post-#79/#80):
+ * Layout (post-#81):
  *   - Header: name + ♩=N + warning chip + gear + リトライ + 中断
  *   - ScoreView wrapper (max ~45vh, manual scroll)
- *   - TapArea fills the rest. The JudgementLayer + prompt sit centred
- *     in the lower half so the entire lower portion of the viewport
- *     reads as one big tap zone.
+ *   - TapArea fills the rest. ConductorBaton sits centred in the
+ *     upper portion and owns the beat-count digit (waiting) and
+ *     verdict flash (playing) in the same overlay slot so the
+ *     player's focal point doesn't jump across phases.
  *   - Gear button opens GameSettingsPopover (BPM slider + accents).
  */
 
@@ -40,7 +44,7 @@ import { TickTimeConverter } from '../../core/timing/tickTime';
 import { defaultAccentPattern, tsKey } from '../../core/audio/metronome';
 import { useAppStore } from '../store/appStore';
 import { ScoreView } from '../vexflow/ScoreView';
-import { JudgementLayer } from './JudgementLayer';
+import { ConductorBaton } from './ConductorBaton';
 import { TapArea } from './TapArea';
 import { GameSettingsPopover } from './GameSettingsPopover';
 import { startGameLoop } from './gameLoop';
@@ -187,9 +191,10 @@ export function GameView({ stage }: Props) {
   const judgedIdsRef = useRef<Set<string>>(new Set());
   const verdictsRef = useRef<JudgementRecord[]>([]);
   /**
-   * AudioContext.currentTime at the moment of the very first tap.
-   * Acts as the song's t=0 in audio-time space. Tap-to-song-sec
-   * conversion is just `tapAudioTime - startAudioTimeRef.current`.
+   * AudioContext.currentTime at the moment the song's beat 1 lands —
+   * always a FreeMetronome downbeat, never the player's raw tap time.
+   * Tap-to-song-sec conversion is just
+   * `tapAudioTime - startAudioTimeRef.current`.
    */
   const startAudioTimeRef = useRef(0);
 
@@ -302,6 +307,29 @@ export function GameView({ stage }: Props) {
   };
 
   /**
+   * Judge the tap that started the song. Same matching as judgeAndApply
+   * but a tap that doesn't land near any candidate is *silently
+   * absorbed* instead of logged as a stray MISS — start taps that
+   * weren't aimed at a first note (e.g. piece opens with a rest)
+   * shouldn't penalise the player just for being the start signal.
+   */
+  const judgeStartTap = (tapSec: number) => {
+    const remaining = candidates.filter((c) => !judgedIdsRef.current.has(c.id));
+    const result = judgeTap(tapSec, remaining);
+    if (!result) return;
+    judgedIdsRef.current.add(result.noteId);
+    const note = candidates.find((c) => c.id === result.noteId);
+    verdictsRef.current.push({
+      noteId: result.noteId,
+      noteSec: note?.sec ?? null,
+      tapSec,
+      diffSec: result.diffSec,
+      judgement: result.judgement,
+    });
+    showVerdict(result.judgement);
+  };
+
+  /**
    * Drop everything back to the `waiting` state without re-mounting.
    * Used by the "リトライ" button in the header so the player can bail
    * on a bad run mid-song and restart instantly. Doesn't touch effectiveBpm
@@ -329,33 +357,41 @@ export function GameView({ stage }: Props) {
 
   const handleTap = (tapAudioTime: number) => {
     if (phase === 'waiting') {
-      // Anchor the song to the metronome click the player was AIMING
-      // for — the *nearest* beat to their tap, whichever side they
-      // landed on. This is the fix for #28: the song's beat 1 is the
-      // metronome's beat (so the click grid stays the truth), and the
-      // first tap is still judged against that beat 1 so a note at
-      // tick=0 can actually be hit by this tap.
+      // Snap the tap to the nearest FreeMetronome downbeat — that
+      // snapped instant is the song's beat 1. Snapping to *downbeats*
+      // (rather than the older nearest-beat snap) keeps variable-meter
+      // pieces musically coherent: a tap landing on a weak beat no
+      // longer reframes the upcoming time-signature change. See
+      // issue #81 / [[feedback_tap_to_downbeat]]. The ConductorBaton
+      // is the visual cue for *when* the downbeat is.
       const fm = freeMetronomeRef.current;
-      if (!fm) return;
-      const beatSec = 60 / effectiveBpm;
-      const fmStart = fm.startTimeAt;
-      const sinceFmStart = tapAudioTime - fmStart;
-      const nearestBeatIndex = Math.max(0, Math.round(sinceFmStart / beatSec));
-      const nearestBeatTime = fmStart + nearestBeatIndex * beatSec;
-      startAudioTimeRef.current = nearestBeatTime;
-      // Hand the click off from FreeMetronome to the scheduler. FM's
-      // queued look-ahead clicks (including any at nearestBeatTime
-      // that haven't fired yet) are disconnected; the scheduler's
-      // first click is queued for the same nearestBeatTime so the
-      // pulse stays continuous across the handoff.
+      const sch = schedulerRef.current;
+      const ctx = audioContext;
+      if (!fm || !sch || !ctx) return;
+      const ts = adjustedScore.timeSigs[0] ?? { tick: 0, numerator: 4, denominator: 4 };
+      const internalBpm = adjustedScore.tempos[0]?.bpm ?? effectiveBpm;
+      const beatSec = (60 / internalBpm) * (4 / ts.denominator);
+      const measureSec = beatSec * ts.numerator;
+      const sinceFmStart = tapAudioTime - fm.startTimeAt;
+      // Round to the nearest downbeat index — Math.round, not floor,
+      // so a tap anywhere in the second half of a measure snaps
+      // forward to the next downbeat instead of back to the previous.
+      const measureIndex = Math.max(0, Math.round(sinceFmStart / measureSec));
+      const downbeatTime = fm.startTimeAt + measureIndex * measureSec;
+      startAudioTimeRef.current = downbeatTime;
+      // FM clicks beyond the snap downbeat are disconnect()ed; the
+      // scheduler's first click is queued at downbeatTime so the pulse
+      // continues unbroken (or starts from the next beat if downbeatTime
+      // is already in the past once reaction-time is accounted for).
       fm.stop();
-      void schedulerRef.current?.play(0, { atAudioTime: nearestBeatTime });
+      void sch.play(0, { atAudioTime: downbeatTime });
       setPhase('playing');
-      // First tap counts as a tap on whatever lives at tick=0.
-      // Its diff is (tap − nearestBeat) with the personal offset
-      // subtracted, exactly like every later tap.
-      const tapSec = tapAudioTime - nearestBeatTime - calibrationOffsetSec;
-      judgeAndApply(tapSec);
+      // The start tap doubles as the first input — if a note lives at
+      // (or near) tick=0, this tap is its hit. judgeStartTap skips the
+      // stray-MISS log when there's nothing close to aim at, so opening
+      // on a rest doesn't punish the player for the start signal.
+      const tapSec = tapAudioTime - downbeatTime - calibrationOffsetSec;
+      judgeStartTap(tapSec);
       return;
     }
     if (phase === 'playing') {
@@ -367,6 +403,7 @@ export function GameView({ stage }: Props) {
       judgeAndApply(tapSec);
     }
   };
+
 
   // Expire un-tapped notes and detect end-of-game.
   useEffect(() => {
@@ -442,12 +479,6 @@ export function GameView({ stage }: Props) {
     );
   }
 
-  // Prompt the player only in waiting state — once they tap to start,
-  // the band stays clean (the verdict pop-ups are signal enough that
-  // they're already in the right zone).
-  // 文言は要レビュー — 実装時に議論ペンディング
-  const status = phase === 'waiting' ? '♪ お好きなタイミングでタップ → そこが1拍目' : '';
-
   const belowPassThreshold = effectiveBpm < stage.bpm;
 
   return (
@@ -507,7 +538,18 @@ export function GameView({ stage }: Props) {
         <ScoreView score={adjustedScore} measuresPerLine={2} maxHeightVh={48} />
       </div>
       <TapArea ctx={audioContext} onTap={handleTap} className="game-tap-zone">
-        <JudgementLayer verdict={verdict} triggerId={triggerId} prompt={status} />
+        {phase !== 'done' && (
+          <ConductorBaton
+            audioContext={audioContext}
+            fmRef={freeMetronomeRef}
+            startTimeRef={startAudioTimeRef}
+            phase={phase}
+            score={adjustedScore}
+            converter={converter}
+            verdict={verdict}
+            triggerId={triggerId}
+          />
+        )}
       </TapArea>
       <GameSettingsPopover
         open={settingsOpen}

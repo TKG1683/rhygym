@@ -484,14 +484,6 @@ button.secondary:active {
   justify-content: center;
 }
 
-.judgement-prompt {
-  font-weight: 700;
-  font-size: var(--fs-md);
-  color: var(--text-strong);
-  text-align: center;
-  opacity: 0.6;
-  pointer-events: none;
-}
 
 .game-header {
   width: 100%;
@@ -614,23 +606,6 @@ input[type='range']:disabled {
   opacity: 0.5;
 }
 
-/* Verdict band — reserved vertical slot between the staff and the
- * BPM/metronome controls. Always rendered (even empty) so the
- * surrounding layout can't jump when a PERFECT/GOOD/MISS pops in.
- * min-height holds the same room the 56px verdict label needs plus
- * a touch of breathing space, so on 360px screens the band reads as
- * a clean dedicated zone rather than a layout shift trap. */
-.judgement-band {
-  width: 100%;
-  min-height: 64px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  pointer-events: none;
-  position: relative;
-  z-index: 5;
-}
-
 @keyframes judgement-fade {
   0%   { opacity: 0; transform: scale(0.7); }
   20%  { opacity: 1; transform: scale(1.15); }
@@ -665,6 +640,89 @@ input[type='range']:disabled {
   20%  { opacity: 1; }
   60%  { opacity: 1; }
   100% { opacity: 0; }
+}
+
+/* Conductor baton + beat-count overlay (#81). Layout is:
+ *   .conductor-wrap            — positioned box, sized to the SVG
+ *     .conductor-baton (svg)   — the conducting gesture + tip
+ *     .conductor-count-overlay — absolute-positioned centre layer
+ *       .conductor-count       — big HTML digit
+ *
+ * The count is HTML (not SVG <text>) because earlier SVG-embedded
+ * versions stayed mysteriously invisible across hard reloads. The
+ * count is overlaid at the geometric centre of the conducting pattern
+ * so it reads as the meter's "core" and the baton tip sweeps around
+ * it. Inline text-shadow on the digit keeps it legible even while
+ * the yellow tip is crossing through its area. */
+.conductor-wrap {
+  position: relative;
+  margin: 0 auto;
+  width: min(48vw, 190px);
+  height: min(48vw, 190px);
+  flex: 0 0 auto;
+  pointer-events: none;
+}
+
+.conductor-baton {
+  display: block;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+.conductor-count-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  /* Shift the centring point upward — the conducting patterns have
+   * their visual mass biased below the geometric SVG centre (4/4
+   * has 3 ictuses at or below y=30 and only one at the top), so a
+   * dead-centre digit reads as "too low". 22% bottom padding lifts
+   * the count to roughly the upper third of the baton frame, where
+   * the eye expects the meter's "label". */
+  padding-bottom: 22%;
+  box-sizing: border-box;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.conductor-count {
+  /* Pulse keyed to React's per-beat remount (key={beat}) so the
+   * digit visibly "ticks" each beat. transform-origin: center so
+   * the scale doesn't drift off the overlay's flex centre. */
+  animation: conductor-count-pulse 220ms ease-out;
+  transform-origin: center;
+}
+
+/* Verdict overlay — re-uses the upper-centre slot the count digit
+ * occupies during waiting so PERFECT/GOOD/MISS flashes appear at
+ * the player's existing focal point. Layered above the count via
+ * higher z-index just to be defensive (the two are mutually
+ * exclusive in normal flow). */
+.conductor-verdict-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding-bottom: 22%;
+  box-sizing: border-box;
+  pointer-events: none;
+  z-index: 6;
+}
+
+@keyframes conductor-count-pulse {
+  0%   { opacity: 0.45; transform: scale(0.86); }
+  40%  { opacity: 1;    transform: scale(1.04); }
+  100% { opacity: 1;    transform: scale(1); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .conductor-count {
+    animation: none;
+  }
 }
 
 /* Result screen */
