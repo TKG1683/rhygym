@@ -1120,6 +1120,62 @@ input[type='range']:disabled {
   box-shadow: 0 2px 0 var(--shadow-soft);
 }
 
+/* Locked Movement card (#31). Renders as a non-interactive div so the
+ * whole card isn't clickable — only the inline 飛び級試験 button is.
+ * The card body is desaturated so it visually recedes from unlocked
+ * neighbours, but the theme stripe stays at full opacity so the
+ * movement's identity is still readable. */
+.etude-card-locked {
+  cursor: default;
+  background: var(--surface-elevated);
+  opacity: 0.78;
+  filter: grayscale(0.4);
+  /* Cancel the unlocked card's hover lift/highlight — the box should
+   * sit still since most of it isn't actionable. */
+}
+.etude-card-locked:hover {
+  background: var(--surface-elevated);
+  transform: none;
+  box-shadow: 0 2px 0 var(--shadow-soft);
+}
+
+/* The 🔒 glyph replaces the music notation glyph at full opacity so
+ * the locked state reads at a glance instead of hiding in the corner. */
+.etude-card-glyph-locked {
+  opacity: 0.65;
+  font-size: 44px;
+  font-family: inherit;
+}
+
+/* Skip-test sub-button on locked cards — the only actionable element
+ * inside the otherwise-static card. Coloured with the accent orange
+ * so it pops against the desaturated card surface and reads as
+ * "challenge mode, click here". */
+.movement-skip-test {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border: none;
+  border-radius: 999px;
+  background: var(--brand-accent);
+  color: var(--text-on-dark);
+  font-size: var(--fs-sm);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  transition: filter 0.12s ease, transform 0.12s ease;
+}
+
+.movement-skip-test:hover {
+  filter: brightness(1.08);
+  transform: translateY(-1px);
+}
+
+.movement-skip-test:active {
+  transform: translateY(0);
+}
+
 /* Vertical color stripe down the left edge — the only place each
  * tier's theme color speaks for itself. Keeps the card body neutral
  * so the type stays readable. */

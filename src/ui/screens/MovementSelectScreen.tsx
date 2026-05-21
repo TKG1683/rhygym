@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { ETUDES, type EtudeWithMovementMeta } from '../../core/score/etudes';
+import { evaluateMaxUnlocked } from '../../core/progress/progression';
 import { getAllBests, type BestRecord } from '../../core/storage/localStore';
 import type { Rank } from '../../core/judgement';
 import { useAppStore } from '../store/appStore';
@@ -89,15 +90,35 @@ export function StageSelectScreen() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Max-unlocked is derived from bests on every render — cheap (linear
+  // over ~60 stages) and avoids a separate persisted unlock store that
+  // could drift out of sync with scores.
+  const maxUnlocked = useMemo(
+    () => evaluateMaxUnlocked(bests, levelGroups),
+    [bests, levelGroups],
+  );
+
   const start = (id: string) => {
     selectEtude(id);
     goto('game');
   };
+  // Skip-test entry — start the Final stage of `movement` directly,
+  // bypassing the (locked) etude list. The movement might still be
+  // locked at this moment; once the player earns S on the Final the
+  // progression logic will reflect that on the next render.
+  const startSkipTest = (movement: number) => {
+    const group = levelGroups.find((g) => g.movement === movement);
+    const final = group?.stages.find((s) => s.isFinal);
+    if (!final) return;
+    start(final.id);
+  };
 
   if (openMovement !== null) {
     const group = levelGroups.find((g) => g.movement === openMovement);
-    if (!group) {
-      // Level disappeared (shouldn't happen, but guard anyway).
+    // Locked movements shouldn't be openable in the first place, but if
+    // a stale state pointed at one (e.g. progression rule change), bail
+    // back to the level list rather than rendering a half-broken view.
+    if (!group || openMovement > maxUnlocked) {
       setOpenMovement(null);
       return null;
     }
@@ -115,9 +136,11 @@ export function StageSelectScreen() {
     <MovementListView
       groups={levelGroups}
       bests={bests}
+      maxUnlocked={maxUnlocked}
       loadingHint={etudesLoadState === 'loading' ? '譜面を読み込み中…' : null}
       fallbackHint={usingFallback ? '※ 譜面ファイル未配置のためデモ譜面で代替中' : null}
       onOpenMovement={setOpenMovement}
+      onSkipTest={startSkipTest}
       onBack={() => goto('title')}
     />
   );
@@ -130,13 +153,24 @@ export function StageSelectScreen() {
 interface MovementListProps {
   groups: readonly MovementGroup[];
   bests: Record<string, BestRecord>;
+  maxUnlocked: number;
   loadingHint: string | null;
   fallbackHint: string | null;
   onOpenMovement: (movement: number) => void;
+  onSkipTest: (movement: number) => void;
   onBack: () => void;
 }
 
-function MovementListView({ groups, bests, loadingHint, fallbackHint, onOpenMovement, onBack }: MovementListProps) {
+function MovementListView({
+  groups,
+  bests,
+  maxUnlocked,
+  loadingHint,
+  fallbackHint,
+  onOpenMovement,
+  onSkipTest,
+  onBack,
+}: MovementListProps) {
   return (
     <main className="screen screen-select">
       <h1 className="select-title">Movement を選ぶ</h1>
@@ -147,6 +181,7 @@ function MovementListView({ groups, bests, loadingHint, fallbackHint, onOpenMove
           const cleared = group.stages.filter((s) =>
             CLEAR_RANKS.has(bests[s.id]?.rank ?? 'D'),
           ).length;
+          const locked = group.movement > maxUnlocked;
           return (
             <li key={group.movement}>
               <MovementCard
@@ -154,7 +189,9 @@ function MovementListView({ groups, bests, loadingHint, fallbackHint, onOpenMove
                 medal={movementMedal(group.stages, bests)}
                 cleared={cleared}
                 total={group.stages.length}
+                locked={locked}
                 onOpen={onOpenMovement}
+                onSkipTest={onSkipTest}
               />
             </li>
           );
@@ -172,10 +209,51 @@ interface MovementCardProps {
   medal: Medal | null;
   cleared: number;
   total: number;
+  locked: boolean;
   onOpen: (movement: number) => void;
+  onSkipTest: (movement: number) => void;
 }
 
-function MovementCard({ group, medal, cleared, total, onOpen }: MovementCardProps) {
+function MovementCard({
+  group,
+  medal,
+  cleared,
+  total,
+  locked,
+  onOpen,
+  onSkipTest,
+}: MovementCardProps) {
+  if (locked) {
+    return (
+      <div
+        className="etude-card etude-card-locked"
+        style={{ borderColor: group.themeColor }}
+        aria-label={`Movement ${group.movement} (ロック中)`}
+      >
+        <span className="etude-card-stripe" style={{ background: group.themeColor }} />
+        <span className="etude-card-glyph etude-card-glyph-locked" aria-hidden="true">
+          🔒
+        </span>
+        <div className="etude-card-body">
+          <div className="etude-card-head">
+            <span className="etude-card-name">Movement {group.movement}</span>
+          </div>
+          <div className="etude-card-desc">
+            前の Movement をクリアして解放 ・ または飛び級試験で S 取得
+          </div>
+          <div className="etude-card-meta">
+            <button
+              type="button"
+              className="movement-skip-test"
+              onClick={() => onSkipTest(group.movement)}
+            >
+              飛び級試験 →
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
   return (
     <button
       className="etude-card"
