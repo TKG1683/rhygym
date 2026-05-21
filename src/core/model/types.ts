@@ -26,6 +26,15 @@ export interface RhythmNote {
   tick: number;
   durationTicks: number;
   isRest: boolean;
+  /**
+   * Tremolo stroke count (#82). When > 0, the renderer draws that
+   * many diagonal slashes through the note's stem and the judgement
+   * pipeline expands the note into 2^n equal-subdivision onset
+   * candidates spread across its duration — e.g. tremoloStrokes=2
+   * on a quarter note = 4 sixteenth-note taps. Undefined / 0 = plain
+   * single-tap note. Only meaningful for non-rest notes.
+   */
+  tremoloStrokes?: number;
 }
 
 export interface Score {

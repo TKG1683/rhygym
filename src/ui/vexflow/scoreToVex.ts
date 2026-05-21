@@ -53,6 +53,13 @@ export interface VexNote {
   tupletShape?: { num: number; denom: number };
   /** Per-measure index identifying which tuplet bracket this note belongs to. */
   tupletGroupId?: number;
+  /**
+   * Tremolo stroke count (#82). Only set on the head segment of the
+   * source RhythmNote so VexFlow draws the slashes on exactly one
+   * notehead even when a tremolo note spans multiple tokens (split by
+   * a barline, etc.). Renderer applies VexFlow's Tremolo modifier.
+   */
+  tremoloStrokes?: number;
 }
 
 export interface VexMeasure {
@@ -382,8 +389,16 @@ function emitNoteTokens(
       : null;
   const isRest = n.isRest;
 
+  // Tremolo decoration only belongs on the head of the source note,
+  // and only on the first emitted token (so multi-token splits put it
+  // on the leading notehead rather than every fragment).
+  const tremoloHeadStrokes =
+    !isRest && isHeadSegment && n.tremoloStrokes != null
+      ? n.tremoloStrokes
+      : undefined;
+
   if (single !== null) {
-    out.push({
+    const token: VexNote = {
       id: isHeadSegment ? n.id : `${n.id}-part${startPartIndex}`,
       vexBaseDuration: single,
       isRest,
@@ -393,18 +408,22 @@ function emitNoteTokens(
       // Continuation fragments (later split pieces or cross-bar tails)
       // mustn't claim the same tap target.
       originalNoteId: !isRest && isHeadSegment ? n.id : null,
-    });
+    };
+    if (tremoloHeadStrokes !== undefined) token.tremoloStrokes = tremoloHeadStrokes;
+    out.push(token);
   } else if (tupletSingle !== null) {
     // Tuplet member: keep its true tick count so cursor math stays honest,
     // but render the head with a duration VexFlow accepts. The Tuplet
     // bracket added later carries the rhythmic ratio.
-    out.push({
+    const token: VexNote = {
       id: n.id,
       vexBaseDuration: tupletSingle,
       isRest,
       ticks: consumeTicks,
       originalNoteId: isRest ? null : n.id,
-    });
+    };
+    if (tremoloHeadStrokes !== undefined) token.tremoloStrokes = tremoloHeadStrokes;
+    out.push(token);
   } else {
     // Duration doesn't fit a single notehead — split into a run of tokens
     // that sum to `consumeTicks`. Only the first token of the head segment
@@ -414,13 +433,17 @@ function emitNoteTokens(
     tokens.forEach((dur, i) => {
       const partIdx = startPartIndex + i;
       const isFirstEver = isHeadSegment && i === 0;
-      out.push({
+      const token: VexNote = {
         id: isFirstEver ? n.id : `${n.id}-part${partIdx}`,
         vexBaseDuration: dur,
         isRest,
         ticks: durTicks(dur),
         originalNoteId: !isRest && isFirstEver ? n.id : null,
-      });
+      };
+      if (isFirstEver && tremoloHeadStrokes !== undefined) {
+        token.tremoloStrokes = tremoloHeadStrokes;
+      }
+      out.push(token);
     });
   }
 }

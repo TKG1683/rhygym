@@ -49,6 +49,13 @@ export interface NoteItem {
   kind: 'note';
   durationTicks: number;
   isRest: boolean;
+  /**
+   * Tremolo stroke count (#82). When set the renderer draws this many
+   * diagonal slashes through the stem and judgement expands the note
+   * into 2^n equal-subdivision onsets. Authored via the `tremolo()`
+   * helper, not by hand.
+   */
+  tremoloStrokes?: number;
 }
 
 export interface TimeSigChangeItem {
@@ -97,6 +104,27 @@ export const hr = () => rest(HALF_NOTE_TICKS);
 export const qr = () => rest(QUARTER_NOTE_TICKS);
 export const eighthRest = () => rest(EIGHTH_NOTE_TICKS);
 export const sixteenthRest = () => rest(SIXTEENTH_NOTE_TICKS);
+
+/**
+ * Tremolo helper (#82). Wraps a note value and tags it with a stroke
+ * count. The note still occupies its written duration; the strokes
+ * declare HOW MANY equal-subdivision onsets the player must tap
+ * within that duration (2^strokes — 1 slash = 2 onsets, 2 = 4, 3 = 8).
+ *
+ * `tremolo(q(), 2)` = quarter-note with 2 slashes = 4 sixteenth-note taps.
+ * `tremolo(h(), 3)` = half-note with 3 slashes = 16 thirty-second taps.
+ *
+ * Rests are rejected — a silent tremolo has no musical meaning.
+ */
+export function tremolo(value: NoteItem, strokes: number): NoteItem {
+  if (value.isRest) {
+    throw new Error('tremolo() cannot wrap a rest — pick a note value');
+  }
+  if (!Number.isInteger(strokes) || strokes < 1) {
+    throw new Error('tremolo() strokes must be a positive integer');
+  }
+  return { ...value, tremoloStrokes: strokes };
+}
 
 /**
  * Tie helper. Returns ONE NoteItem whose duration is the sum of its

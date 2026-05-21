@@ -39,6 +39,7 @@ import {
   type NoteCandidate,
 } from '../../core/judgement';
 import type { Score, Etude } from '../../core/model';
+import { expandToCandidates } from '../../core/score/candidates';
 import { ETUDES } from '../../core/score/etudes';
 import { TickTimeConverter } from '../../core/timing/tickTime';
 import { defaultAccentPattern, tsKey } from '../../core/audio/metronome';
@@ -179,10 +180,7 @@ export function GameView({ stage }: Props) {
     [adjustedScore],
   );
   const candidates = useMemo<NoteCandidate[]>(
-    () =>
-      adjustedScore.notes
-        .filter((n) => !n.isRest)
-        .map((n) => ({ id: n.id, sec: converter.tickToSec(n.tick) })),
+    () => expandToCandidates(adjustedScore.notes, converter),
     [adjustedScore, converter],
   );
 
