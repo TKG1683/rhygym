@@ -50,6 +50,14 @@ interface Props {
    * a row) re-trigger the fade animation by remounting the element.
    */
   triggerId: number;
+  /**
+   * Tutorial-only flag (#26 v2). When true, the count digit grows an
+   * adjacent "↓ TAP" hint on every *tappable* "1" — i.e. starting
+   * from the second downbeat onwards, matching GameView's "skip the
+   * first downbeat" tap-acceptance rule. Production stages stay
+   * clean of this guide.
+   */
+  tutorialMode?: boolean;
 }
 
 const VERDICT_FADE_MS = 320;
@@ -199,9 +207,14 @@ export function ConductorBaton({
   converter,
   verdict,
   triggerId,
+  tutorialMode = false,
 }: Props) {
   const tipRef = useRef<SVGCircleElement>(null);
   const trailRef = useRef<SVGCircleElement>(null);
+  // Tracks which FM-measure cycle we're in during `waiting` so the
+  // tutorial TAP hint only shows on tappable "1"s (the very first
+  // downbeat is intentionally skipped by GameView's handleTap).
+  const [fmMeasureIndex, setFmMeasureIndex] = useState(0);
 
   // Verdict visibility (formerly the standalone JudgementLayer). The
   // verdict text now occupies the same centre slot as the count digit
@@ -257,7 +270,9 @@ export function ConductorBaton({
         const n = ictuses.length;
         let pos: Point = ictuses[0] ?? { x: 0, y: 100 };
         let curBeat = 1;
+        let liveMeasureIndex = 0;
         if (sinceStart >= 0 && n > 0) {
+          liveMeasureIndex = Math.floor(sinceStart / measureSec);
           const measureProgress = ((sinceStart % measureSec) + measureSec) % measureSec / measureSec;
           const ictusProgress = measureProgress * n;
           const currentIctus = Math.floor(ictusProgress) % n;
@@ -272,6 +287,9 @@ export function ConductorBaton({
             pos = quadraticBezier(from, cp, to, eased);
           }
           curBeat = currentIctus + 1;
+        }
+        if (liveMeasureIndex !== fmMeasureIndex) {
+          setFmMeasureIndex(liveMeasureIndex);
         }
         activeIctuses = ictuses;
         state = {
@@ -352,7 +370,7 @@ export function ConductorBaton({
     };
     rafId = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(rafId);
-  }, [audioContext, fmRef, startTimeRef, phase, score, converter, pattern, beat]);
+  }, [audioContext, fmRef, startTimeRef, phase, score, converter, pattern, beat, fmMeasureIndex]);
 
   return (
     <div
@@ -395,23 +413,60 @@ export function ConductorBaton({
        * keeps tracing the gesture for rhythmic feel; the count
        * vanishes so reading the staff is the only way to know the
        * beat position. */}
-      {phase === 'waiting' && (
+      {/* Count + TAP overlay structure. The COUNT digit only renders
+       * during waiting (in any mode) — once the song starts, telling
+       * the player which beat they're on defeats the read-the-score
+       * goal. The TAP slot is tutorial-only and renders in both
+       * waiting (with a hint on tappable "1"s) and playing (with the
+       * audio-clock-aligned TAP pulse on each downbeat). The count
+       * slot stays mounted at fixed height even when the digit is
+       * hidden, so the TAP below sits at a stable Y coordinate
+       * regardless of phase. */}
+      {(phase === 'waiting' || (phase === 'playing' && tutorialMode)) && (
         <div className="conductor-count-overlay" aria-hidden="true">
-          <div
-            key={beat}
-            className="conductor-count"
-            style={{
-              fontSize: '88px',
-              fontWeight: 900,
-              color: '#FFD24A',
-              lineHeight: 1,
-              fontVariantNumeric: 'tabular-nums',
-              textShadow:
-                '0 0 12px rgba(0,0,0,0.85), 0 2px 6px rgba(0,0,0,0.6), -1px -1px 0 rgba(0,0,0,0.55), 1px 1px 0 rgba(0,0,0,0.55)',
-            }}
-          >
-            {beat}
+          <div className="conductor-count-slot">
+            {phase === 'waiting' && (
+              <div
+                key={beat}
+                className="conductor-count"
+                style={{
+                  fontSize: '88px',
+                  fontWeight: 900,
+                  color: '#FFD24A',
+                  lineHeight: 1,
+                  fontVariantNumeric: 'tabular-nums',
+                  textShadow:
+                    '0 0 12px rgba(0,0,0,0.85), 0 2px 6px rgba(0,0,0,0.6), -1px -1px 0 rgba(0,0,0,0.55), 1px 1px 0 rgba(0,0,0,0.55)',
+                }}
+              >
+                {beat}
+              </div>
+            )}
           </div>
+          {tutorialMode && (
+            <div className="conductor-tap-slot">
+              {phase === 'waiting' && beat === 1 && fmMeasureIndex >= 1 && (
+                <div
+                  key={`tap-wait-${fmMeasureIndex}`}
+                  className="conductor-tap-hint"
+                  aria-label="ここでタップ"
+                >
+                  TAP
+                </div>
+              )}
+              {/* TAP-play renders even while a verdict is showing — the
+               * tutorial guide shouldn't blink out every time the player
+               * hits a note. The verdict's higher z-index lets it sit
+               * over the TAP visually; the TAP keeps ticking underneath. */}
+              {phase === 'playing' && (
+                <ConductorTapPlay
+                  audioContext={audioContext}
+                  songStartTime={startTimeRef.current}
+                  score={score}
+                />
+              )}
+            </div>
+          )}
         </div>
       )}
       {/* Verdict overlay — re-uses the same .conductor-count-overlay
@@ -431,6 +486,71 @@ export function ConductorBaton({
           </span>
         </div>
       )}
+    </div>
+  );
+}
+
+/**
+ * Decoupled TAP-pulse renderer for tutorial play mode. Runs as a
+ * continuous (`animation-iteration-count: infinite`) CSS animation
+ * with `animation-duration` = one beat and `animation-delay` set to
+ * a negative offset that places the animation's "0%" frame (the BAM)
+ * directly on top of the next audio beat.
+ *
+ * Why a separate component: the alignment math is captured ONCE at
+ * mount via useState's lazy initialiser, so re-renders of the parent
+ * don't re-snap the phase. The animation then runs on the GPU
+ * compositor without involving React's render cycle — none of the
+ * 30–60 ms React-commit lag the previous "remount-per-beat" version
+ * inherited. When verdict animation hides us, this unmounts; on
+ * re-show the fresh mount re-aligns against the current audio clock.
+ *
+ * `beatSec` is derived from the score's opening tempo + time-sig.
+ * Tutorial etudes don't change tempo mid-piece so this stays valid
+ * for the whole run.
+ */
+function ConductorTapPlay({
+  audioContext,
+  songStartTime,
+  score,
+}: {
+  audioContext: AudioContext;
+  songStartTime: number;
+  score: Score;
+}) {
+  // Animation cycles ONCE per BEAT — TAP flashes on every tappable
+  // beat (which, for the tutorial etude's all-quarters pattern, is
+  // every note onset). The keyframes hold TAP visible for the first
+  // ~60% of each beat, then fade before the next BAM lands.
+  //
+  // VISUAL_LAG_COMPENSATION_SEC pushes the BAM slightly AFTER the
+  // metronome click — without it the eye saw "TAP" arrive a touch
+  // before the ear heard the audible beat, because Web Audio output
+  // sits ~30–80 ms behind AudioContext.currentTime depending on the
+  // device / driver buffer. 80 ms covers the common case; if the
+  // player has run calibration we'll have it more precisely later.
+  const VISUAL_LAG_COMPENSATION_SEC = 0.08;
+  const [{ beatSec, animationDelaySec }] = useState(() => {
+    const ts = score.timeSigs[0] ?? { tick: 0, numerator: 4, denominator: 4 };
+    const bpm = score.tempos[0]?.bpm ?? 120;
+    const beat = (60 / bpm) * (4 / ts.denominator);
+    const songSec = audioContext.currentTime - songStartTime;
+    const elapsedInBeat = ((songSec % beat) + beat) % beat;
+    return {
+      beatSec: beat,
+      animationDelaySec: -elapsedInBeat + VISUAL_LAG_COMPENSATION_SEC,
+    };
+  });
+  return (
+    <div
+      className="conductor-tap-play"
+      aria-label="ここでタップ"
+      style={{
+        animationDuration: `${beatSec}s`,
+        animationDelay: `${animationDelaySec}s`,
+      }}
+    >
+      TAP
     </div>
   );
 }

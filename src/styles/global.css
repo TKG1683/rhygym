@@ -674,8 +674,10 @@ input[type='range']:disabled {
   position: absolute;
   inset: 0;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
+  gap: 4px;
   /* Shift the centring point upward — the conducting patterns have
    * their visual mass biased below the geometric SVG centre (4/4
    * has 3 ictuses at or below y=30 and only one at the top), so a
@@ -686,6 +688,93 @@ input[type='range']:disabled {
   box-sizing: border-box;
   pointer-events: none;
   z-index: 1;
+}
+
+/* Fixed-height slot for the count digit. Stays at 88px even when
+ * the digit isn't rendered (= during playing in tutorial mode) so
+ * the TAP slot below sits at a stable Y coordinate across the
+ * waiting → playing transition. */
+.conductor-count-slot {
+  height: 88px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Fixed-height slot under the count digit reserved for the tutorial
+ * TAP hint. Always present (in tutorial mode) regardless of whether
+ * a TAP is currently showing so the count digit doesn't shift up or
+ * down as the hint appears/disappears between beats. */
+.conductor-tap-slot {
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Tutorial-only "↓ TAP" hint stacked just below the count digit
+ * during the waiting phase. Re-mounts each time the cycle hits a
+ * fresh tappable "1" (the key={`tap-wait-${fmMeasureIndex}`} prop)
+ * so the pulse re-fires every bar. The keyframe is "loud on the
+ * beat then settle" — earlier "fade in" framing made the hint
+ * appear visibly late vs the audio click. */
+.conductor-tap-hint {
+  font-size: 28px;
+  font-weight: 900;
+  letter-spacing: 0.18em;
+  color: #5EC85E; /* signal green — "go" */
+  text-shadow: 0 2px 6px rgba(0, 0, 0, 0.55), 0 0 12px rgba(94, 200, 94, 0.4);
+  animation: conductor-tap-hint-pulse 280ms ease-out;
+}
+
+@keyframes conductor-tap-hint-pulse {
+  0%   { opacity: 1; transform: scale(1.18); }
+  40%  { opacity: 1; transform: scale(0.96); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+/* Tutorial-only TAP pulse during the live playing phase. Lives
+ * INSIDE the count overlay (flex-column) so it sits just below the
+ * current count digit ─ same compact "↓ TAP" feel as the waiting
+ * hint, but driven by a continuous audio-clock-aligned CSS animation
+ * so each pulse lands on the metronome click without React-render lag. */
+.conductor-tap-play {
+  font-size: 28px;
+  font-weight: 900;
+  letter-spacing: 0.18em;
+  line-height: 1;
+  color: #5EC85E;
+  text-shadow: 0 2px 6px rgba(0, 0, 0, 0.55), 0 0 12px rgba(94, 200, 94, 0.4);
+  /* `animation-duration` (= beatSec) and `animation-delay`
+   * (= -elapsedInBeat at mount) are applied inline by
+   * ConductorTapPlay so the loop's "0%" frame ─ where the BAM sits ─
+   * lands exactly on each audio beat regardless of React's render lag. */
+  animation-name: conductor-tap-play-pulse;
+  animation-iteration-count: infinite;
+  animation-timing-function: ease-out;
+  transform-origin: center;
+  pointer-events: none;
+}
+
+/* Cycle runs over ONE BEAT so TAP flashes on every tappable beat
+ * (the tutorial etude is all quarter notes = one onset per beat).
+ * Visible portion ≈ first 60% of the beat then fades before the
+ * next BAM so each tap moment reads as a distinct "on then off"
+ * rather than a continuous glow. */
+@keyframes conductor-tap-play-pulse {
+  0%   { transform: scale(1.22); opacity: 1; }   /* BAM on the beat */
+  12%  { transform: scale(0.96); opacity: 1; }   /* slight rebound */
+  25%  { transform: scale(1);    opacity: 1; }   /* settled */
+  55%  { transform: scale(1);    opacity: 1; }   /* still visible */
+  70%  { transform: scale(1);    opacity: 0; }   /* fade out */
+  100% { transform: scale(1);    opacity: 0; }   /* invisible until next beat */
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .conductor-tap-hint,
+  .conductor-tap-play {
+    animation: none;
+  }
 }
 
 .conductor-count {
@@ -1577,4 +1666,120 @@ input[type='range']:disabled {
 
 .game-settings-close:hover {
   opacity: 1;
+}
+
+/* Tutorial walkthrough (#26 v2). The screen container fills the
+ * viewport like other screens but skips the default centred padding
+ * so the embedded GameView gets the same full-height layout it
+ * normally has on its own. */
+.screen-tutorial {
+  justify-content: flex-start;
+  padding: 0;
+  gap: 0;
+  height: 100dvh;
+  max-height: 100dvh;
+  overflow: hidden;
+  position: relative;
+}
+
+/* The GameView lives here while the player is in the live `playing`
+ * step. During pre-play hints we render a static placeholder of the
+ * same shape so the modal sits over a stable layout. */
+.tutorial-game-host,
+.tutorial-game-placeholder {
+  width: 100%;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Dim backdrop that covers the entire screen while a hint is open.
+ * pointer-events on so taps land on the modal, not on the game UI
+ * underneath. backdrop-filter softens the staff/baton so the eye
+ * naturally settles on the card. */
+.tutorial-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(20, 12, 0, 0.62);
+  backdrop-filter: blur(3px);
+  -webkit-backdrop-filter: blur(3px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-4);
+  z-index: 100;
+  /* Slide-fade in so the modal feels intentional rather than slammed. */
+  animation: tutorial-modal-backdrop-in 220ms ease-out both;
+}
+
+@keyframes tutorial-modal-backdrop-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.tutorial-modal-card {
+  background: var(--surface);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-lg);
+  padding: var(--space-5) var(--space-4) var(--space-4);
+  width: 100%;
+  max-width: 420px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.35);
+  text-align: center;
+  /* Slide up from below as it fades in for a "card lands" feel. */
+  animation: tutorial-modal-card-in 280ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+@keyframes tutorial-modal-card-in {
+  from { opacity: 0; transform: translateY(16px) scale(0.96); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.tutorial-modal-step {
+  margin: 0 0 var(--space-3);
+  font-size: var(--fs-xs);
+  letter-spacing: 0.18em;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+.tutorial-modal-title {
+  margin: 0 0 var(--space-3);
+  font-size: var(--fs-lg);
+  color: var(--text-strong);
+  line-height: 1.4;
+}
+
+.tutorial-modal-body {
+  margin: 0 0 var(--space-5);
+  color: var(--text-strong);
+  line-height: 1.7;
+  font-size: var(--fs-md);
+}
+
+.tutorial-modal-next {
+  width: 100%;
+  /* Bigger than the default secondary so the call-to-action lives in
+   * the player's tap-zone reflex (button-sized for mobile). */
+  min-height: 48px;
+  font-size: var(--fs-md);
+}
+
+/* Secondary modal action (e.g. "もう一回" alongside "タイトルへ戻る"
+ * after a flopped tutorial run). Sits above the primary so the
+ * positive / forward-facing action (going back to Title) stays in
+ * the natural last-button position. */
+.tutorial-modal-secondary {
+  width: 100%;
+  min-height: 44px;
+  font-size: var(--fs-sm);
+  margin-bottom: var(--space-2);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tutorial-modal-backdrop,
+  .tutorial-modal-card {
+    animation: none;
+  }
 }
