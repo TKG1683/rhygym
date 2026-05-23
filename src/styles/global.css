@@ -1259,19 +1259,27 @@ input[type='range']:disabled {
   padding: 10px 16px;
 }
 
-/* X (Twitter) share button — keeps the secondary-button frame but
- * carries the brand icon next to a tiny "シェア" label. Currentcolor
- * on the SVG path inherits the button's text colour so it stays
- * legible across hover / disabled states without a second rule. */
+/* X (Twitter) share row + button. Lives on its own line below the
+ * リトライ / Etude 一覧へ row so the player's eye lands on a clear
+ * "this posts your score" call-out. Sized larger than the inline
+ * secondary buttons since it's the only thing on its row. */
+.result-share-row {
+  width: 100%;
+  margin-top: var(--space-2);
+}
+
 .result-share-btn {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  justify-content: center;
+  gap: 10px;
+  font-size: var(--fs-sm);
+  padding: 12px 22px;
 }
 
 .result-share-icon {
-  width: 16px;
-  height: 16px;
+  width: 18px;
+  height: 18px;
   flex-shrink: 0;
 }
 
