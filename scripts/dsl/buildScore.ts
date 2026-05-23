@@ -42,12 +42,14 @@ export function buildScore(opts: BuildOptions, items: ReadonlyArray<DslItem>): S
 
   for (const item of items) {
     if (item.kind === 'note') {
-      notes.push({
+      const note: RhythmNote = {
         id: `n${notes.length}`,
         tick,
         durationTicks: item.durationTicks,
         isRest: item.isRest,
-      });
+      };
+      if (item.tremoloStrokes != null) note.tremoloStrokes = item.tremoloStrokes;
+      notes.push(note);
       tick += item.durationTicks;
     } else if (item.kind === 'timeSigChange') {
       timeSigs.push({ tick, numerator: item.numerator, denominator: item.denominator });

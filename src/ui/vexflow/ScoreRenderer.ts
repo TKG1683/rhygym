@@ -7,7 +7,7 @@
  * hit effects) can align with each note.
  */
 
-import { Barline, Beam, Dot, Formatter, Renderer, Stave, StaveNote, Stem, Tuplet, Voice } from 'vexflow';
+import { Barline, Beam, Dot, Formatter, Renderer, Stave, StaveNote, Stem, Tremolo, Tuplet, Voice } from 'vexflow';
 import { QUARTER_NOTE_TICKS, type Score } from '../../core/model';
 import { scoreToVex, type VexNote } from './scoreToVex';
 
@@ -176,6 +176,13 @@ export function renderScore(score: Score, opts: RenderOptions): RenderResult {
       // Force stem up so beams sit above the line consistently.
       sn.setStemDirection(Stem.UP);
       if (dotted) Dot.buildAndAttach([sn]);
+      // Tremolo slashes (#82) — attached only on the head segment so
+      // multi-token splits of a tremolo note get exactly one stem
+      // decoration. scoreToVex guarantees tremoloStrokes is set on
+      // the head and only the head.
+      if (vNote.tremoloStrokes != null && vNote.tremoloStrokes > 0) {
+        sn.addModifier(new Tremolo(vNote.tremoloStrokes));
+      }
       return sn;
     });
 
