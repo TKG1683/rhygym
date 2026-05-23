@@ -158,6 +158,63 @@ export function isNewBest(candidate: { etudeId: string; score: number }): boolea
   return candidate.score > existing.score;
 }
 
+/* ------------------------------------------------------------------ */
+/*  Skip-test Final tracking (#31 follow-up)                          */
+/* ------------------------------------------------------------------ */
+/*
+ * Set of Final stage IDs whose CURRENT best record was earned via a
+ * skip-test (locked-Movement 飛び級 sub-button) and not yet superseded
+ * by a normal-mode B+ clear. evaluateProgression uses this to gate
+ * the "Final B+ → next Movement unlocks" rule: a skip-test S grants
+ * etude access to the tested Movement but doesn't auto-progress past
+ * it. Only a normal-mode Final clear (post 3-etude-A+ unlock) opens
+ * the next Movement.
+ *
+ * Stored as a JSON array of etude IDs under SKIPTEST_KEY. Reads
+ * default to an empty set on any error (corrupt data, private mode,
+ * etc.); writes are best-effort.
+ */
+
+const SKIPTEST_KEY = 'rhygym.skipTestFinals';
+
+export function getSkipTestFinals(): Set<string> {
+  try {
+    if (typeof localStorage === 'undefined') return new Set();
+    const raw = localStorage.getItem(SKIPTEST_KEY);
+    if (!raw) return new Set();
+    const parsed = JSON.parse(raw);
+    if (Array.isArray(parsed)) {
+      return new Set(parsed.filter((x) => typeof x === 'string'));
+    }
+    return new Set();
+  } catch {
+    return new Set();
+  }
+}
+
+function writeSkipTestFinals(set: ReadonlySet<string>): void {
+  if (typeof localStorage === 'undefined') return;
+  try {
+    localStorage.setItem(SKIPTEST_KEY, JSON.stringify(Array.from(set)));
+  } catch {
+    /* ignore quota / private-mode errors */
+  }
+}
+
+export function addSkipTestFinal(etudeId: string): void {
+  const set = getSkipTestFinals();
+  if (set.has(etudeId)) return;
+  set.add(etudeId);
+  writeSkipTestFinals(set);
+}
+
+export function removeSkipTestFinal(etudeId: string): void {
+  const set = getSkipTestFinals();
+  if (!set.has(etudeId)) return;
+  set.delete(etudeId);
+  writeSkipTestFinals(set);
+}
+
 function readStorage(): string | null {
   if (typeof localStorage === 'undefined') return null;
   return localStorage.getItem(STORAGE_KEY);

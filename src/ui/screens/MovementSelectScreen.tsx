@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { ETUDES, type EtudeWithMovementMeta } from '../../core/score/etudes';
-import { evaluateMaxUnlocked } from '../../core/progress/progression';
-import { getAllBests, type BestRecord } from '../../core/storage/localStore';
+import { evaluateProgression, FINAL_UNLOCK_THRESHOLD } from '../../core/progress/progression';
+import { getAllBests, getSkipTestFinals, type BestRecord } from '../../core/storage/localStore';
 import type { Rank } from '../../core/judgement';
 import { useAppStore } from '../store/appStore';
 
@@ -61,6 +62,10 @@ export function StageSelectScreen() {
   // this screen only re-reads on navigation back, which is fine — the
   // newly-set value will show up next time the player visits.
   const bests = useMemo<Record<string, BestRecord>>(() => getAllBests(), []);
+  // Same snapshot pattern for the skip-test markers — tracks which
+  // Finals have a current best earned via skip-test only (no normal
+  // clear yet). evaluateProgression uses it to gate M+1 unlocks.
+  const skipTestFinals = useMemo(() => getSkipTestFinals(), []);
 
   // Group stages by their level number, sorted ascending. Stages
   // within a group keep their original (manifest / hardcoded) order.
@@ -90,27 +95,60 @@ export function StageSelectScreen() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Max-unlocked is derived from bests on every render — cheap (linear
-  // over ~60 stages) and avoids a separate persisted unlock store that
-  // could drift out of sync with scores.
-  const maxUnlocked = useMemo(
-    () => evaluateMaxUnlocked(bests, levelGroups),
-    [bests, levelGroups],
+  // Progression state is derived from bests on every render — cheap
+  // (linear over ~60 stages) and avoids a separate persisted unlock
+  // store that could drift out of sync with scores. Bundles both the
+  // Movement-level cap and the per-Movement Final unlock set.
+  const progression = useMemo(
+    () => evaluateProgression(bests, levelGroups, { skipTestFinals }),
+    [bests, levelGroups, skipTestFinals],
   );
+  const maxUnlocked = progression.maxMovementUnlocked;
+  const finalsUnlocked = progression.finalsUnlocked;
 
+  // Auto-Mode debug aid: dump progression state + every recorded best
+  // to the console so the user can diagnose "I cleared 3 etudes but
+  // Final isn't unlocked" without me guessing. Only fires when Auto
+  // Mode is on so production sessions aren't polluted.
+  const autoMode = useAppStore((s) => s.autoMode);
+  useEffect(() => {
+    if (!autoMode) return;
+    const rankByStage: Record<string, string> = {};
+    for (const g of levelGroups) {
+      for (const s of g.stages) {
+        const r = bests[s.id]?.rank;
+        if (r) rankByStage[s.id] = r;
+      }
+    }
+    // eslint-disable-next-line no-console
+    console.log('[Rhygym Auto] progression', {
+      maxMovementUnlocked: maxUnlocked,
+      finalsUnlocked: Array.from(finalsUnlocked),
+      bests: rankByStage,
+    });
+  }, [autoMode, levelGroups, bests, maxUnlocked, finalsUnlocked]);
+
+  const setViaSkipTest = useAppStore((s) => s.setViaSkipTest);
   const start = (id: string) => {
+    setViaSkipTest(false);
     selectEtude(id);
     goto('game');
   };
   // Skip-test entry — start the Final stage of `movement` directly,
   // bypassing the (locked) etude list. The movement might still be
   // locked at this moment; once the player earns S on the Final the
-  // progression logic will reflect that on the next render.
+  // progression logic will reflect that on the next render. The
+  // viaSkipTest flag tells ResultScreen to swap "Etude 一覧へ" for
+  // "Movement 一覧へ" — the player came in from the level list, not
+  // the etude list, so returning to a (possibly still-locked) etude
+  // list would feel wrong.
   const startSkipTest = (movement: number) => {
     const group = levelGroups.find((g) => g.movement === movement);
     const final = group?.stages.find((s) => s.isFinal);
     if (!final) return;
-    start(final.id);
+    setViaSkipTest(true);
+    selectEtude(final.id);
+    goto('game');
   };
 
   if (openMovement !== null) {
@@ -126,6 +164,7 @@ export function StageSelectScreen() {
       <EtudeListView
         group={group}
         bests={bests}
+        finalUnlocked={finalsUnlocked.has(group.movement)}
         onStart={start}
         onBack={() => setOpenMovement(null)}
       />
@@ -171,11 +210,29 @@ function MovementListView({
   onSkipTest,
   onBack,
 }: MovementListProps) {
+  const [showUnlockHelp, setShowUnlockHelp] = useState(false);
+  const hasLocked = groups.some((g) => g.movement > maxUnlocked);
   return (
     <main className="screen screen-select">
-      <h1 className="select-title">Movement を選ぶ</h1>
+      <div className="select-title-row">
+        <h1 className="select-title">Movement を選ぶ</h1>
+        {/* Show the help affordance only when there's at least one
+         * locked Movement on screen — there's nothing to explain
+         * otherwise. */}
+        {hasLocked && (
+          <button
+            type="button"
+            className="select-help-btn"
+            aria-label="解放条件のヘルプを開く"
+            onClick={() => setShowUnlockHelp(true)}
+          >
+            ❓ 解放条件
+          </button>
+        )}
+      </div>
       {loadingHint && <p className="muted select-hint">{loadingHint}</p>}
       {fallbackHint && <p className="muted select-hint">{fallbackHint}</p>}
+      {showUnlockHelp && <UnlockHelpModal onClose={() => setShowUnlockHelp(false)} />}
       <ul className="etude-list">
         {groups.map((group) => {
           const cleared = group.stages.filter((s) =>
@@ -238,8 +295,8 @@ function MovementCard({
           <div className="etude-card-head">
             <span className="etude-card-name">Movement {group.movement}</span>
           </div>
-          <div className="etude-card-desc">
-            前の Movement をクリアして解放 ・ または飛び級試験で S 取得
+          <div className="etude-card-desc movement-unlock-desc">
+            ロック中
           </div>
           <div className="etude-card-meta">
             <button
@@ -284,6 +341,58 @@ const MEDAL_LABEL: Record<Medal, string> = {
   bronze: '銅',
 };
 
+/**
+ * Help modal explaining the two paths to unlock a Movement. Rendered
+ * via React Portal into document.body so the dim backdrop covers the
+ * whole viewport (the screen's transform animation otherwise creates
+ * a containing block that clips `position: fixed`). One modal serves
+ * every locked card on the screen — repeating the conditions inside
+ * each card was cluttering the level list.
+ */
+function UnlockHelpModal({ onClose }: { onClose: () => void }) {
+  if (typeof document === 'undefined') return null;
+  return createPortal(
+    <div
+      className="select-help-backdrop"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="unlock-help-title"
+      onClick={onClose}
+    >
+      <div className="select-help-card" onClick={(e) => e.stopPropagation()}>
+        <h2 id="unlock-help-title" className="select-help-title">
+          解放のしくみ
+        </h2>
+        <p className="select-help-body">
+          各 Movement は Etude 5 つと Final 1 つで構成。 Final が次の Movement への扉になっています。
+        </p>
+        <ul className="select-help-list">
+          <li>
+            🎯 Movement 内の Etude を <strong>3 つ以上 A ランク以上</strong> でクリアすると、 その Movement の <strong>Final</strong> が解放
+          </li>
+          <li>
+            🚪 <strong>Final をクリア (B ランク以上)</strong> すると、 次の Movement の Etude が解放
+          </li>
+          <li>
+            ⭐ ロックされた Movement の <strong>飛び級試験で S</strong> を取得すると、 <strong>その Movement の Etude が解放</strong>
+            。 間に飛び越した Movement は Final ごとクリア扱い
+          </li>
+        </ul>
+        <p className="select-help-note">
+          ※ 飛び級成功した Movement 自体の Final は、 通常通り Etude 3 つ A 以上でクリアしてから挑戦してください。 そこを Final クリアすると次の Movement が解放されます。
+        </p>
+        <p className="select-help-note">
+          ※ 飛び級試験は、 ロックされた Movement のカードからいつでも挑戦できます。 S 未満では何も解放されません。
+        </p>
+        <button type="button" className="primary select-help-close" onClick={onClose}>
+          OK
+        </button>
+      </div>
+    </div>,
+    document.body,
+  );
+}
+
 function MedalChip({ medal }: { medal: Medal }) {
   return (
     <span
@@ -302,11 +411,18 @@ function MedalChip({ medal }: { medal: Medal }) {
 interface EtudeListProps {
   group: MovementGroup;
   bests: Record<string, BestRecord>;
+  /**
+   * Whether this Movement's Final is currently unlocked for normal
+   * play (= 3+ etudes A+, or a prior skip-test S already cleared it).
+   * Etudes 1-5 are always playable when the Movement itself is open;
+   * the Final is the only thing that can be greyed out here.
+   */
+  finalUnlocked: boolean;
   onStart: (id: string) => void;
   onBack: () => void;
 }
 
-function EtudeListView({ group, bests, onStart, onBack }: EtudeListProps) {
+function EtudeListView({ group, bests, finalUnlocked, onStart, onBack }: EtudeListProps) {
   return (
     <main className="screen screen-select">
       <button className="secondary select-back" onClick={onBack}>
@@ -314,11 +430,19 @@ function EtudeListView({ group, bests, onStart, onBack }: EtudeListProps) {
       </button>
       <h1 className="select-title">Movement {group.movement}</h1>
       <ul className="etude-list">
-        {group.stages.map((stage) => (
-          <li key={stage.id}>
-            <EtudeCard stage={stage} best={bests[stage.id]} onStart={onStart} />
-          </li>
-        ))}
+        {group.stages.map((stage) => {
+          const locked = stage.isFinal === true && !finalUnlocked;
+          return (
+            <li key={stage.id}>
+              <EtudeCard
+                stage={stage}
+                best={bests[stage.id]}
+                locked={locked}
+                onStart={onStart}
+              />
+            </li>
+          );
+        })}
       </ul>
     </main>
   );
@@ -327,10 +451,36 @@ function EtudeListView({ group, bests, onStart, onBack }: EtudeListProps) {
 interface EtudeCardProps {
   stage: EtudeWithMovementMeta;
   best: BestRecord | undefined;
+  locked: boolean;
   onStart: (id: string) => void;
 }
 
-function EtudeCard({ stage, best, onStart }: EtudeCardProps) {
+function EtudeCard({ stage, best, locked, onStart }: EtudeCardProps) {
+  if (locked) {
+    // Locked Final variant — etude list shows it greyed with the
+    // unlock condition so the player isn't left guessing why ★ is
+    // missing from the lineup. No play handler attached.
+    return (
+      <div
+        className="etude-card etude-card-locked etude-card-final-locked"
+        style={{ borderColor: stage.themeColor }}
+        aria-label={`${stage.name} (ロック中)`}
+      >
+        <span className="etude-card-stripe" style={{ background: stage.themeColor }} />
+        <span className="etude-card-glyph etude-card-glyph-locked" aria-hidden="true">
+          🔒
+        </span>
+        <div className="etude-card-body">
+          <div className="etude-card-head">
+            <span className="etude-card-name">{stage.name}</span>
+          </div>
+          <div className="etude-card-desc">
+            Etude を {FINAL_UNLOCK_THRESHOLD} つ以上 A ランク以上 でクリアすると解放
+          </div>
+        </div>
+      </div>
+    );
+  }
   return (
     <button
       className="etude-card"

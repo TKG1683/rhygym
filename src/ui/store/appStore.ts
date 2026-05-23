@@ -9,6 +9,27 @@ import {
   type MetronomeAccents,
 } from '../../core/storage/localStore';
 
+const AUTO_MODE_KEY = 'rhygym.autoMode';
+
+function readAutoMode(): boolean {
+  if (typeof localStorage === 'undefined') return false;
+  try {
+    return localStorage.getItem(AUTO_MODE_KEY) === '1';
+  } catch {
+    return false;
+  }
+}
+
+function writeAutoMode(enabled: boolean): void {
+  if (typeof localStorage === 'undefined') return;
+  try {
+    if (enabled) localStorage.setItem(AUTO_MODE_KEY, '1');
+    else localStorage.removeItem(AUTO_MODE_KEY);
+  } catch {
+    /* ignore quota / private-mode errors — debug flag, not critical */
+  }
+}
+
 export type EtudesLoadState = 'idle' | 'loading' | 'ready' | 'error';
 
 export type Screen = 'title' | 'select' | 'game' | 'result' | 'calibration' | 'tutorial';
@@ -74,6 +95,25 @@ interface AppState {
    */
   selectInitialMovement: number | null;
   /**
+   * True when the current run was started via the locked Movement
+   * card's 飛び級試験 button (#31) rather than the normal etude list
+   * entry. ResultScreen reads this to swap "Etude 一覧へ" for
+   * "Movement 一覧へ" — the player came from the level list, not
+   * an etude list, so dropping them back into a (possibly still-
+   * locked) Movement's etude list felt off.
+   */
+  viaSkipTest: boolean;
+  /**
+   * Debug-only "Auto Mode" — when on, GameView auto-taps every note
+   * at its expected time after the player's first start tap, so the
+   * run lands rank S. Activated by a hidden 5-rapid-click gesture on
+   * the Title screen's muscle character (#TBD). Persisted in
+   * localStorage so the flag survives reload; the on-screen badge
+   * makes it obvious when active to avoid "why am I always perfect"
+   * confusion.
+   */
+  autoMode: boolean;
+  /**
    * Per-time-sig accent overrides for the metronome. Loaded from
    * localStorage on init; updates propagate back to storage so the
    * player's preferences survive reload. Missing keys fall back to the
@@ -104,6 +144,8 @@ interface AppState {
   setEtudesLoadError: (error: string | null) => void;
   setCalibrationReturnScreen: (screen: Screen | null) => void;
   setSelectInitialMovement: (movement: number | null) => void;
+  setViaSkipTest: (via: boolean) => void;
+  setAutoMode: (enabled: boolean) => void;
   setMetronomeAccentForTs: (tsKey: string, pattern: boolean[]) => void;
   resetMetronomeAccentForTs: (tsKey: string) => void;
 }
@@ -127,6 +169,8 @@ export const useAppStore = create<AppState>((set) => ({
   etudesLoadError: null,
   calibrationReturnScreen: null,
   selectInitialMovement: null,
+  viaSkipTest: false,
+  autoMode: readAutoMode(),
   metronomeAccents: getMetronomeAccents(),
   goto: (screen) => {
     // Push the destination so the OS back button steps backwards
@@ -151,6 +195,11 @@ export const useAppStore = create<AppState>((set) => ({
   setEtudesLoadError: (error) => set({ etudesLoadError: error }),
   setCalibrationReturnScreen: (screen) => set({ calibrationReturnScreen: screen }),
   setSelectInitialMovement: (level) => set({ selectInitialMovement: level }),
+  setViaSkipTest: (via) => set({ viaSkipTest: via }),
+  setAutoMode: (enabled) => {
+    writeAutoMode(enabled);
+    set({ autoMode: enabled });
+  },
   setMetronomeAccentForTs: (tsKey, pattern) =>
     set((state) => {
       const next = { ...state.metronomeAccents, [tsKey]: pattern };
