@@ -96,6 +96,7 @@ export function GameView({ stage, onComplete, tutorialMode = false }: Props) {
   const setLastRecords = useAppStore((s) => s.setLastRecords);
   const setLastPlayedBpm = useAppStore((s) => s.setLastPlayedBpm);
   const calibrationOffsetSec = useAppStore((s) => s.calibrationOffsetSec);
+  const autoMode = useAppStore((s) => s.autoMode);
   const goto = useAppStore((s) => s.goto);
   const loadedEtudes = useAppStore((s) => s.loadedEtudes);
   const setSelectInitialMovement = useAppStore((s) => s.setSelectInitialMovement);
@@ -526,6 +527,38 @@ export function GameView({ stage, onComplete, tutorialMode = false }: Props) {
     });
   }, [phase, candidates, audioContext, setLastResult, setLastEtude, setLastRecords, setLastPlayedBpm, goto, stage, adjustedScore, converter, effectiveBpm, onComplete]);
 
+  // Auto Mode (debug) — after the player's manual start tap flips the
+  // run into `playing`, schedule a perfectly-timed synthetic tap for
+  // every remaining note so the run lands rank S. Cleanup cancels any
+  // pending taps on retry / abort / end-of-game (phase change), so the
+  // scheduled callbacks can't fire into a torn-down judge state.
+  // setTimeout's ~4 ms jitter is well inside the ±50 ms PERFECT window,
+  // so every auto-tap is judged PERFECT.
+  useEffect(() => {
+    if (!autoMode || phase !== 'playing') return;
+    const ctx = audioContext;
+    if (!ctx) return;
+    const timeouts: number[] = [];
+    for (const c of candidates) {
+      if (judgedIdsRef.current.has(c.id)) continue;
+      // Invert handleTap's `tapSec = tapAudioTime - startAudioTimeRef -
+      // calibrationOffsetSec`: we just call judgeAndApply(c.sec)
+      // directly at the audio-clock time the note expects, which
+      // matches the candidate's centre and judges PERFECT.
+      const targetAudioTime = startAudioTimeRef.current + c.sec + calibrationOffsetSec;
+      const delayMs = Math.max(0, (targetAudioTime - ctx.currentTime) * 1000);
+      const id = window.setTimeout(() => judgeAndApply(c.sec), delayMs);
+      timeouts.push(id);
+    }
+    return () => {
+      for (const id of timeouts) window.clearTimeout(id);
+    };
+    // judgeAndApply is closured intentionally — re-running on every
+    // render would re-schedule taps mid-flight. The deps below capture
+    // the things that actually invalidate the schedule.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoMode, phase, candidates, audioContext, calibrationOffsetSec]);
+
   if (!audioContext) {
     return (
       <main className="screen">
@@ -551,6 +584,11 @@ export function GameView({ stage, onComplete, tutorialMode = false }: Props) {
             {belowPassThreshold && (
               <span className="bpm-warning-chip" role="status">
                 ⚠ 合格判定が出ません (最低 BPM: {stage.bpm})
+              </span>
+            )}
+            {autoMode && (
+              <span className="auto-mode-chip" role="status" aria-label="Auto モード有効">
+                🤖 現在は Auto モードです
               </span>
             )}
           </p>
