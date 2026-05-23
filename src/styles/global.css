@@ -1348,6 +1348,30 @@ input[type='range']:disabled {
   padding: 10px 16px;
 }
 
+/* X (Twitter) share row + button. Lives on its own line below the
+ * リトライ / Etude 一覧へ row so the player's eye lands on a clear
+ * "this posts your score" call-out. Sized larger than the inline
+ * secondary buttons since it's the only thing on its row. */
+.result-share-row {
+  width: 100%;
+  margin-top: var(--space-2);
+}
+
+.result-share-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  font-size: var(--fs-sm);
+  padding: 12px 22px;
+}
+
+.result-share-icon {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+}
+
 /* Title-screen first-run variant: same banner shell, but tighter and
  * carrying a dismiss × so a returning player can silence it once and
  * never see it again. */

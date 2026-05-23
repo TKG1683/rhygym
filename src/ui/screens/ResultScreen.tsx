@@ -14,6 +14,14 @@ import { useAppStore } from '../store/appStore';
 
 /** Rank ordering for "is this rank at least PASS_RANK_THRESHOLD?". */
 const RANK_ORDER = ['D', 'C', 'B', 'A', 'S'] as const;
+
+/**
+ * Production URL for the share intent. Hard-coded rather than read
+ * from `location.origin` so a share from a local dev session still
+ * links to the live app — sharing "http://localhost:5173/rhygym/"
+ * would be useless to whoever clicks the link.
+ */
+const SHARE_URL = 'https://tkg1683.github.io/rhygym/';
 function rankAtLeast(rank: string, min: string): boolean {
   return RANK_ORDER.indexOf(rank as (typeof RANK_ORDER)[number]) >=
     RANK_ORDER.indexOf(min as (typeof RANK_ORDER)[number]);
@@ -229,6 +237,53 @@ export function ResultScreen() {
     goto('game');
   };
 
+  // Share the run. Path picked by environment:
+  //  - Touch device (mobile / tablet) → Web Share API with a 1080×1080
+  //    image attached. The system share sheet is the native UX there
+  //    and lets the player pick X / IG / Discord / wherever.
+  //  - Desktop → X's post-intent URL in a new tab. The OS share sheet
+  //    on desktop feels intrusive vs the expected "open X" flow, and
+  //    most desktop browsers can't share files to X anyway. Text only.
+  const shareToX = async () => {
+    if (!stage || !result) return;
+    const text = `Rhygym「${stage.name}」で ${result.rank} ランク達成！ (スコア ${result.score})`;
+    const isTouchDevice =
+      typeof window !== 'undefined' &&
+      ('ontouchstart' in window || (navigator.maxTouchPoints ?? 0) > 0);
+
+    if (isTouchDevice) {
+      try {
+        const blob = await generateResultImage(stage.name, result);
+        if (blob) {
+          const file = new File([blob], 'rhygym-result.png', { type: 'image/png' });
+          if (
+            typeof navigator.canShare === 'function' &&
+            navigator.canShare({ files: [file] })
+          ) {
+            await navigator.share({
+              text: `${text} #Rhygym`,
+              url: SHARE_URL,
+              files: [file],
+            });
+            return;
+          }
+        }
+      } catch (err) {
+        // User cancelled the system share sheet → bail silently.
+        if ((err as Error)?.name === 'AbortError') return;
+        // Other failures fall through to the intent URL so the
+        // player still has a working share path.
+      }
+    }
+
+    // Desktop / fallback: open X's post-intent in a new tab.
+    const intent = new URL('https://x.com/intent/post');
+    intent.searchParams.set('text', text);
+    intent.searchParams.set('url', SHARE_URL);
+    intent.searchParams.set('hashtags', 'Rhygym');
+    window.open(intent.toString(), '_blank', 'noopener,noreferrer');
+  };
+
   if (!result || !stage) {
     return (
       <main className="screen">
@@ -340,16 +395,24 @@ export function ResultScreen() {
               </button>
             )}
           </div>
+          <div className="row result-share-row">
+            <ShareToXButton onClick={shareToX} />
+          </div>
         </>
       ) : (
-        <div className="row">
-          <button className="primary" onClick={() => goto('game')}>
-            リトライ
-          </button>
-          <button className="secondary" onClick={goEtudeSelect}>
-            Etude 一覧へ
-          </button>
-        </div>
+        <>
+          <div className="row">
+            <button className="primary" onClick={() => goto('game')}>
+              リトライ
+            </button>
+            <button className="secondary" onClick={goEtudeSelect}>
+              Etude 一覧へ
+            </button>
+          </div>
+          <div className="row result-share-row">
+            <ShareToXButton onClick={shareToX} />
+          </div>
+        </>
       )}
       {/* When the drift banner is up it already carries a calibration
        * CTA, so the permanent funnel button would just be redundant. */}
@@ -376,4 +439,210 @@ function formatBiasMs(ms: number): string {
   if (rounded === 0) return '±0ms';
   if (rounded > 0) return `+${rounded}ms (やや遅め)`;
   return `${rounded}ms (やや早め)`;
+}
+
+/**
+ * X (formerly Twitter) brand-style share button. Inline SVG for the
+ * 𝕏 mark — keeps it crisp at any size and avoids a network fetch for
+ * a logo. Spelled-out label tells the player WHAT will be shared
+ * (the score), since "シェア" alone left some users unsure whether
+ * it'd post their result or just the app link.
+ */
+function ShareToXButton({ onClick }: { onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      className="secondary result-share-btn"
+      onClick={onClick}
+      aria-label="X (旧 Twitter) にスコアを共有する"
+    >
+      <svg className="result-share-icon" viewBox="0 0 24 24" aria-hidden="true">
+        <path
+          fill="currentColor"
+          d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231L18.244 2.25zm-1.161 17.52h1.833L7.084 4.126H5.117L17.083 19.77z"
+        />
+      </svg>
+      <span>スコアを共有する</span>
+    </button>
+  );
+}
+
+/**
+ * Build a 1080×1080 PNG of the run's headline numbers — stage name,
+ * rank in a tier-colored slab, score, accuracy and breakdown — so the
+ * X post carries a visual hook instead of just a sentence. Pure
+ * Canvas, no DOM dependency, so generation runs the same in any
+ * browser. Returns null if the canvas context can't be created (jsdom
+ * tests, ancient browsers) — caller falls back to text-only share.
+ */
+const RANK_FILL: Record<string, string> = {
+  S: '#d4a017',
+  A: '#3a8dde',
+  B: '#6aa84f',
+  C: '#b58c50',
+  D: '#8a6b4a',
+};
+
+async function generateResultImage(
+  stageName: string,
+  result: { rank: string; score: number; accuracy: number; perfect: number; good: number; miss: number },
+): Promise<Blob | null> {
+  const SIZE = 1080;
+  const canvas = document.createElement('canvas');
+  canvas.width = SIZE;
+  canvas.height = SIZE;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return null;
+
+  // Brand-yellow background + accent stripe across the top so the
+  // card reads as "Rhygym" at a glance even thumbnailed in a feed.
+  ctx.fillStyle = '#FFD24A';
+  ctx.fillRect(0, 0, SIZE, SIZE);
+  ctx.fillStyle = '#E8612E';
+  ctx.fillRect(0, 0, SIZE, 16);
+
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillStyle = '#2A1B06';
+
+  // Wordmark
+  ctx.font = '800 96px "Poppins", "Noto Sans JP", sans-serif';
+  ctx.fillText('♪ Rhygym 🏋', SIZE / 2, 150);
+
+  // Stage name
+  ctx.font = '500 56px "Noto Sans JP", sans-serif';
+  ctx.fillStyle = 'rgba(42, 27, 6, 0.85)';
+  ctx.fillText(stageName, SIZE / 2, 250);
+
+  // Rank chip — same brand badge as the on-screen ResultScreen: tier
+  // base colour + sheen gradient + inset highlight/shadow stack +
+  // drop shadow, with the letter floating on top with a soft drop
+  // shadow of its own. Centred horizontally; vertical anchor places
+  // the chip in the headline slot between the stage name and score.
+  const CHIP_SIZE = 380;
+  const CHIP_X = (SIZE - CHIP_SIZE) / 2;
+  const CHIP_Y = 360;
+  drawRankChip(ctx, CHIP_X, CHIP_Y, CHIP_SIZE, result.rank);
+
+  // Score (big) — sits below the chip with a clear visual gap.
+  ctx.fillStyle = '#2A1B06';
+  ctx.font = '800 120px "Poppins", sans-serif';
+  ctx.fillText(String(result.score), SIZE / 2, 830);
+
+  // Accuracy
+  ctx.font = '500 44px "Noto Sans JP", sans-serif';
+  ctx.fillStyle = 'rgba(42, 27, 6, 0.7)';
+  ctx.fillText(`正確率 ${(result.accuracy * 100).toFixed(1)}%`, SIZE / 2, 910);
+
+  // Breakdown row (PERFECT / GOOD / MISS)
+  ctx.font = '600 40px "Noto Sans JP", sans-serif';
+  ctx.fillStyle = '#2A1B06';
+  ctx.fillText(
+    `PERFECT ${result.perfect}   GOOD ${result.good}   MISS ${result.miss}`,
+    SIZE / 2,
+    975,
+  );
+
+  // Footer / URL
+  ctx.font = '500 32px "Noto Sans JP", sans-serif';
+  ctx.fillStyle = 'rgba(42, 27, 6, 0.55)';
+  ctx.fillText('tkg1683.github.io/rhygym', SIZE / 2, 1030);
+
+  return new Promise((resolve) => {
+    canvas.toBlob((blob) => resolve(blob), 'image/png');
+  });
+}
+
+/**
+ * Path helper — rounded rectangle compatible with browsers that ship
+ * before the native `roundRect` API (Safari <16 etc.). Defines the
+ * path on the context; caller fills / strokes it.
+ */
+function roundRectPath(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  r: number,
+): void {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.lineTo(x + w - r, y);
+  ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+  ctx.lineTo(x + w, y + h - r);
+  ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+  ctx.lineTo(x + r, y + h);
+  ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+  ctx.lineTo(x, y + r);
+  ctx.quadraticCurveTo(x, y, x + r, y);
+  ctx.closePath();
+}
+
+/**
+ * Replicate the on-screen .result-rank-chip badge in canvas: tier
+ * colour base + diagonal sheen gradient + inset white-top / dark-
+ * bottom highlights + outer drop shadow, with the rank letter
+ * floating on top. Mirrors the CSS rule pixel-for-pixel as closely
+ * as Canvas allows so the shared image reads as "same badge, just
+ * exported".
+ */
+function drawRankChip(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  size: number,
+  rank: string,
+): void {
+  const radius = Math.round(size * 0.21); // 28/132 ≈ 0.21
+  const base = RANK_FILL[rank] ?? '#8a6b4a';
+
+  // 1. Drop shadow + base fill
+  ctx.save();
+  ctx.shadowOffsetY = 10;
+  ctx.shadowBlur = 22;
+  ctx.shadowColor = 'rgba(0, 0, 0, 0.22)';
+  ctx.fillStyle = base;
+  roundRectPath(ctx, x, y, size, size, radius);
+  ctx.fill();
+  ctx.restore();
+
+  // 2. Diagonal sheen gradient — matches the 5-stop CSS gradient.
+  const grad = ctx.createLinearGradient(x, y, x + size, y + size);
+  grad.addColorStop(0,    'rgba(255, 255, 255, 0.60)');
+  grad.addColorStop(0.28, 'rgba(255, 255, 255, 0.10)');
+  grad.addColorStop(0.55, 'rgba(0, 0, 0, 0.18)');
+  grad.addColorStop(0.78, 'rgba(255, 255, 255, 0.22)');
+  grad.addColorStop(1,    'rgba(0, 0, 0, 0.30)');
+  ctx.fillStyle = grad;
+  roundRectPath(ctx, x, y, size, size, radius);
+  ctx.fill();
+
+  // 3. Inset edge stroke (subtle dark rim) — matches
+  //    `inset 0 0 0 2px rgba(0, 0, 0, 0.18)`.
+  ctx.strokeStyle = 'rgba(0, 0, 0, 0.18)';
+  ctx.lineWidth = 4;
+  roundRectPath(ctx, x + 2, y + 2, size - 4, size - 4, radius - 2);
+  ctx.stroke();
+
+  // 4. Top highlight — `inset 0 2px 1px rgba(255, 255, 255, 0.85)`.
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.6)';
+  ctx.lineWidth = 3;
+  roundRectPath(ctx, x + 3, y + 3, size - 6, size - 6, radius - 3);
+  // Only stroke the top edge by clipping; cheaper to draw thinner all
+  // around so the bottom inherits a soft glow too.
+  ctx.stroke();
+
+  // 5. The rank letter itself — large weight 800, cream fill, soft
+  //    drop shadow.
+  ctx.save();
+  ctx.fillStyle = '#fffaef'; // --text-on-dark
+  ctx.font = `800 ${Math.round(size * 0.62)}px "Poppins", "Noto Sans JP", sans-serif`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.shadowOffsetY = 3;
+  ctx.shadowBlur = 4;
+  ctx.shadowColor = 'rgba(0, 0, 0, 0.45)';
+  ctx.fillText(rank, x + size / 2, y + size / 2 + size * 0.02);
+  ctx.restore();
 }
