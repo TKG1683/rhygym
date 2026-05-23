@@ -68,6 +68,22 @@ export function TitleScreen() {
     goto('calibration');
   };
 
+  // Tutorial needs an AudioContext too (it embeds a real GameView ride).
+  // Mirror Start's user-gesture audio init so iOS/Android don't silently
+  // refuse to play the metronome on the tutorial's first beat.
+  const goTutorial = () => {
+    let ctx = audioContext;
+    if (!ctx) {
+      ctx = createAudioContext();
+      setAudioContext(ctx);
+    }
+    if (ctx.state === 'suspended') {
+      void ctx.resume();
+    }
+    warmUpAudio(ctx);
+    goto('tutorial');
+  };
+
   return (
     <main className="screen screen-title">
       <div className="title-logo" aria-label="Rhygym">
@@ -85,6 +101,9 @@ export function TitleScreen() {
       <p className="tagline">楽譜を読み、タップでリズムを叩け。</p>
       <button className="primary" onClick={handleStart}>
         Start
+      </button>
+      <button className="secondary" onClick={goTutorial}>
+        遊び方
       </button>
       <button className="secondary" onClick={goCalibrate}>
         キャリブレーション

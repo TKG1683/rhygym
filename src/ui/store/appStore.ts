@@ -11,7 +11,7 @@ import {
 
 export type EtudesLoadState = 'idle' | 'loading' | 'ready' | 'error';
 
-export type Screen = 'title' | 'select' | 'game' | 'result' | 'calibration';
+export type Screen = 'title' | 'select' | 'game' | 'result' | 'calibration' | 'tutorial';
 
 interface AppState {
   screen: Screen;

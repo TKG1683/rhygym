@@ -34,6 +34,7 @@ import {
   computeResult,
   findExpiredNotes,
   judgeTap,
+  type GameResult,
   type Judgement,
   type JudgementRecord,
   type NoteCandidate,
@@ -67,9 +68,27 @@ const BPM_STEP = 1;
 
 interface Props {
   stage: Etude;
+  /**
+   * If provided, called with the run's computed result instead of the
+   * default "auto-navigate to Result" behaviour. Used by TutorialScreen
+   * (#26) to catch the end-of-session without exposing the player to
+   * the full Result UI mid-walkthrough; the result is forwarded so the
+   * caller can branch their post-run copy on how well the player did
+   * (e.g. tutorial outro adapts to a heavy-MISS run). The callback
+   * also suppresses the writes to lastResult/lastEtude/lastRecords/
+   * lastPlayedBpm — a tutorial run shouldn't pollute "your most
+   * recent play" state.
+   */
+  onComplete?: (result: GameResult) => void;
+  /**
+   * Turn on tutorial-only UI affordances — currently just the "TAP"
+   * hint over the count when the player is in a tappable "1" window.
+   * Production stages stay clean of this guide.
+   */
+  tutorialMode?: boolean;
 }
 
-export function GameView({ stage }: Props) {
+export function GameView({ stage, onComplete, tutorialMode = false }: Props) {
   const audioContext = useAppStore((s) => s.audioContext);
   const setLastResult = useAppStore((s) => s.setLastResult);
   const setLastEtude = useAppStore((s) => s.setLastEtude);
@@ -357,13 +376,14 @@ export function GameView({ stage }: Props) {
 
   const handleTap = (tapAudioTime: number) => {
     if (phase === 'waiting') {
-      // Snap the tap to the nearest FreeMetronome downbeat — that
-      // snapped instant is the song's beat 1. Snapping to *downbeats*
-      // (rather than the older nearest-beat snap) keeps variable-meter
-      // pieces musically coherent: a tap landing on a weak beat no
-      // longer reframes the upcoming time-signature change. See
-      // issue #81 / [[feedback_tap_to_downbeat]]. The ConductorBaton
-      // is the visual cue for *when* the downbeat is.
+      // The conductor's count digit shows "1" only while the player is
+      // *inside* the first beat of a measure (and visibly cycles 2/3/4
+      // for the rest). Match the rule the tutorial advertises ─ tap on
+      // "1" to start ─ by accepting taps only inside that "1" window
+      // (with a small anticipation slack so a hair-early tap still
+      // counts). Outside the window we silently absorb the tap, which
+      // reads as "the count wasn't on 1 yet, try again on the next
+      // bar". See issue #81 / [[feedback_tap_to_downbeat]].
       const fm = freeMetronomeRef.current;
       const sch = schedulerRef.current;
       const ctx = audioContext;
@@ -373,11 +393,39 @@ export function GameView({ stage }: Props) {
       const beatSec = (60 / internalBpm) * (4 / ts.denominator);
       const measureSec = beatSec * ts.numerator;
       const sinceFmStart = tapAudioTime - fm.startTimeAt;
-      // Round to the nearest downbeat index — Math.round, not floor,
-      // so a tap anywhere in the second half of a measure snaps
-      // forward to the next downbeat instead of back to the previous.
-      const measureIndex = Math.max(0, Math.round(sinceFmStart / measureSec));
-      const downbeatTime = fm.startTimeAt + measureIndex * measureSec;
+      if (sinceFmStart < 0) return; // FM still in its warm-up lead
+      // Offset from the previous downbeat (= count "1" moment).
+      // 0 = right on "1"; approaches measureSec just before the next "1".
+      const offsetFromDownbeat =
+        ((sinceFmStart % measureSec) + measureSec) % measureSec;
+      // Tap acceptance window:
+      //  - During the "1" display (offset in [0, beatSec)) → snap back
+      //    to the current downbeat (the "1" the player saw and aimed at).
+      //  - Just before the next downbeat ("1" about to flip in) → snap
+      //    forward. ANTICIPATION_SEC covers human visual-reaction lead
+      //    so a player who taps the moment they see "1" coming in
+      //    isn't penalised for being a hair early.
+      //  - Anywhere else (count showing 2/3/4/…) → ignore the tap;
+      //    matches what the tutorial promises and lets variable-meter
+      //    pieces stay musically coherent.
+      const ANTICIPATION_SEC = 0.08;
+      let downbeatTime: number;
+      let targetMeasureIndex: number;
+      if (offsetFromDownbeat < beatSec) {
+        downbeatTime = tapAudioTime - offsetFromDownbeat;
+        targetMeasureIndex = Math.floor(sinceFmStart / measureSec);
+      } else if (offsetFromDownbeat > measureSec - ANTICIPATION_SEC) {
+        downbeatTime = tapAudioTime + (measureSec - offsetFromDownbeat);
+        targetMeasureIndex = Math.floor(sinceFmStart / measureSec) + 1;
+      } else {
+        return;
+      }
+      // Skip the very first downbeat (index 0). The FM warm-up + first
+      // count cycle is the player's "ready up" beat — accepting a tap
+      // there would punish anyone whose finger was still on the screen
+      // from opening the stage. The player waits one bar, then taps on
+      // any subsequent "1".
+      if (targetMeasureIndex < 1) return;
       startAudioTimeRef.current = downbeatTime;
       // FM clicks beyond the snap downbeat are disconnect()ed; the
       // scheduler's first click is queued at downbeatTime so the pulse
@@ -449,23 +497,36 @@ export function GameView({ stage }: Props) {
           schedulerRef.current?.stop();
           freeMetronomeRef.current?.stop();
 
-          const finalRecords = [...verdictsRef.current];
-          setLastResult(computeResult(finalRecords));
-          setLastEtude(stage);
-          setLastRecords(finalRecords);
-          // Pin the BPM the run was actually played at so ResultScreen
-          // can decide whether the run was below the stage's pass
-          // threshold even if the player nudges the slider afterwards.
-          setLastPlayedBpm(effectiveBpm);
           setPhase('done');
           // 1.5 s breathing room so the last judgement effect, the
           // tail of the final click, and a moment of silence all
-          // register before we cut to Result.
-          setTimeout(() => goto('result'), 1500);
+          // register before the post-run UI takes over.
+          if (onComplete) {
+            // Tutorial / embed mode — let the caller decide what comes
+            // next. Skip the "last run" store writes so a tutorial
+            // session doesn't show up on ResultScreen if the player
+            // navigates there separately later. Pass the computed
+            // result so the caller can branch its post-run copy on
+            // how well the player did (e.g. tutorial outro adapts
+            // when the player MISSed everything).
+            const finalRecords = [...verdictsRef.current];
+            const result = computeResult(finalRecords);
+            setTimeout(() => onComplete(result), 1500);
+          } else {
+            const finalRecords = [...verdictsRef.current];
+            setLastResult(computeResult(finalRecords));
+            setLastEtude(stage);
+            setLastRecords(finalRecords);
+            // Pin the BPM the run was actually played at so ResultScreen
+            // can decide whether the run was below the stage's pass
+            // threshold even if the player nudges the slider afterwards.
+            setLastPlayedBpm(effectiveBpm);
+            setTimeout(() => goto('result'), 1500);
+          }
         }
       },
     });
-  }, [phase, candidates, audioContext, setLastResult, setLastEtude, setLastRecords, setLastPlayedBpm, goto, stage, adjustedScore, converter, effectiveBpm]);
+  }, [phase, candidates, audioContext, setLastResult, setLastEtude, setLastRecords, setLastPlayedBpm, goto, stage, adjustedScore, converter, effectiveBpm, onComplete]);
 
   if (!audioContext) {
     return (
@@ -548,6 +609,7 @@ export function GameView({ stage }: Props) {
             converter={converter}
             verdict={verdict}
             triggerId={triggerId}
+            tutorialMode={tutorialMode}
           />
         )}
       </TapArea>
