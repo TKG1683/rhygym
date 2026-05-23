@@ -5,8 +5,21 @@ import {
   PASS_RANK_THRESHOLD,
 } from '../../core/judgement/score';
 import { PPQ } from '../../core/model';
+import {
+  evaluateMaxUnlocked,
+  evaluateProgression,
+  type MovementForProgression,
+} from '../../core/progress/progression';
 import { ETUDES, type EtudeWithMovementMeta } from '../../core/score/etudes';
-import { getBest, isNewBest, setBest } from '../../core/storage/localStore';
+import {
+  addSkipTestFinal,
+  getAllBests,
+  getBest,
+  getSkipTestFinals,
+  isNewBest,
+  removeSkipTestFinal,
+  setBest,
+} from '../../core/storage/localStore';
 import { TickTimeConverter } from '../../core/timing/tickTime';
 import { TimingPlot } from '../game/TimingPlot';
 import { ScoreView } from '../vexflow/ScoreView';
@@ -80,6 +93,7 @@ export function ResultScreen() {
   const loadedEtudes = useAppStore((s) => s.loadedEtudes);
   const setCalibrationReturnScreen = useAppStore((s) => s.setCalibrationReturnScreen);
   const setSelectInitialMovement = useAppStore((s) => s.setSelectInitialMovement);
+  const viaSkipTest = useAppStore((s) => s.viaSkipTest);
   const calibrated = calibrationOffsetSec !== 0;
 
   // Mark this screen as the return target so calibration can bring the
@@ -100,6 +114,14 @@ export function ResultScreen() {
       const meta = roster.find((s) => s.id === stage.id);
       if (meta) setSelectInitialMovement(meta.movement);
     }
+    goto('select');
+  };
+  // Skip-test variant — go straight to the top-level Movement list
+  // (don't pre-open the played stage's etude list). The player came
+  // in from the locked card on the level list, so this returns them
+  // to that same surface so they can see the new unlock state.
+  const goMovementList = () => {
+    setSelectInitialMovement(null);
     goto('select');
   };
 
@@ -190,6 +212,129 @@ export function ResultScreen() {
       ? isNewBest({ etudeId: stage.id, score: result.score })
       : false;
 
+  // Movement unlock notification (#31 follow-up). Snapshot the bests
+  // store at mount, simulate "what would unlock after this run", and
+  // compare to the pre-run unlock state. If the player just bumped
+  // their max-unlocked Movement, we render a celebratory banner so
+  // the unlock is visible at the moment the player earns it instead
+  // of only being discoverable on the next StageSelect visit.
+  //
+  // bestsAtMount is captured once so the comparison is stable across
+  // re-renders — the setBest useEffect below mutates localStorage,
+  // but the in-React snapshot lets us reason about "before vs after"
+  // without re-querying mid-render.
+  const bestsAtMount = useMemo(() => getAllBests(), []);
+  // Snapshot the skip-test markers at mount too so the unlock-banner
+  // simulation reasons about the same data the StageSelect will see
+  // when we navigate back. We mutate the underlying localStorage in
+  // the setBest useEffect below; this snapshot is the pre-mutation
+  // view used for "before vs after" diff.
+  const skipTestFinalsAtMount = useMemo(() => getSkipTestFinals(), []);
+  const movementGroupsForUnlock = useMemo<MovementForProgression[]>(() => {
+    const roster = loadedEtudes ?? ETUDES;
+    const byLevel = new Map<number, MovementForProgression>();
+    for (const s of roster) {
+      const entry =
+        byLevel.get(s.movement) ?? { movement: s.movement, stages: [] as MovementForProgression['stages'] };
+      (entry.stages as Array<{ id: string; isFinal?: boolean }>).push({
+        id: s.id,
+        isFinal: s.isFinal,
+      });
+      byLevel.set(s.movement, entry);
+    }
+    return Array.from(byLevel.values()).sort((a, b) => a.movement - b.movement);
+  }, [loadedEtudes]);
+  const simulatedBests = useMemo(() => {
+    if (!stage || !result || belowPassThreshold) return null;
+    // Project the post-run bests state: this run becomes the new best
+    // only if there wasn't a higher-scoring previous entry. Lower-
+    // scoring runs can still unlock when the *rank* is higher than
+    // the old best (e.g., old B → new A), so compare rank too.
+    const existing = bestsAtMount[stage.id];
+    const willPromote =
+      !existing ||
+      result.score > existing.score ||
+      rankAtLeast(result.rank, 'A') && !rankAtLeast(existing.rank, 'A');
+    if (!willPromote) return null;
+    return {
+      ...bestsAtMount,
+      [stage.id]: {
+        etudeId: stage.id,
+        score: result.score,
+        rank: result.rank,
+        achievedAt: new Date().toISOString(),
+      },
+    };
+  }, [stage, result, belowPassThreshold, bestsAtMount]);
+
+  // Project the post-run skip-test marker set. This run mutates the
+  // markers exactly the same way `setBest` does in the useEffect
+  // below — keep them in lockstep so the simulated "after" state
+  // reflects what StageSelect will see on the next visit.
+  const simulatedSkipTestFinals = useMemo<ReadonlySet<string>>(() => {
+    if (!stage || !result) return skipTestFinalsAtMount;
+    if (!stage.isFinal) return skipTestFinalsAtMount;
+    if (viaSkipTest && result.rank === 'S') {
+      const next = new Set(skipTestFinalsAtMount);
+      next.add(stage.id);
+      return next;
+    }
+    if (!viaSkipTest && rankAtLeast(result.rank, 'B')) {
+      if (!skipTestFinalsAtMount.has(stage.id)) return skipTestFinalsAtMount;
+      const next = new Set(skipTestFinalsAtMount);
+      next.delete(stage.id);
+      return next;
+    }
+    return skipTestFinalsAtMount;
+  }, [stage, result, viaSkipTest, skipTestFinalsAtMount]);
+
+  const unlockChange = useMemo(() => {
+    if (!simulatedBests) return null;
+    const before = evaluateMaxUnlocked(bestsAtMount, movementGroupsForUnlock, {
+      skipTestFinals: skipTestFinalsAtMount,
+    });
+    const after = evaluateMaxUnlocked(simulatedBests, movementGroupsForUnlock, {
+      skipTestFinals: simulatedSkipTestFinals,
+    });
+    if (after <= before) return null;
+    return { from: before, to: after };
+  }, [
+    simulatedBests,
+    bestsAtMount,
+    movementGroupsForUnlock,
+    skipTestFinalsAtMount,
+    simulatedSkipTestFinals,
+  ]);
+
+  // Final-unlock banner — fires when this run was the etude clear that
+  // pushed the Movement past the 3-etude-A+ threshold (or, after a
+  // skip-test, finished the etude grind that exposes M's own Final
+  // for the first time). Guards with `stage.isFinal` so a Final play
+  // doesn't trigger its own "Final unlocked" banner.
+  const finalUnlockChange = useMemo(() => {
+    if (!simulatedBests || !stage || stage.isFinal) return null;
+    const beforeState = evaluateProgression(bestsAtMount, movementGroupsForUnlock, {
+      skipTestFinals: skipTestFinalsAtMount,
+    });
+    const afterState = evaluateProgression(simulatedBests, movementGroupsForUnlock, {
+      skipTestFinals: simulatedSkipTestFinals,
+    });
+    const roster = loadedEtudes ?? ETUDES;
+    const movement = roster.find((s) => s.id === stage.id)?.movement;
+    if (movement == null) return null;
+    if (beforeState.finalsUnlocked.has(movement)) return null;
+    if (!afterState.finalsUnlocked.has(movement)) return null;
+    return { movement };
+  }, [
+    simulatedBests,
+    stage,
+    bestsAtMount,
+    movementGroupsForUnlock,
+    loadedEtudes,
+    skipTestFinalsAtMount,
+    simulatedSkipTestFinals,
+  ]);
+
   useEffect(() => {
     if (!stage || !result || !newBest) return;
     // Defensive — newBest is already gated on belowPassThreshold above,
@@ -203,6 +348,22 @@ export function ResultScreen() {
       achievedAt: new Date().toISOString(),
     });
   }, [stage, result, newBest, belowPassThreshold]);
+
+  // Sync the skip-test marker set whenever this run was a Final play.
+  // Independent of `newBest` — a normal-mode B+ replay that scores
+  // lower than the existing skip-test S best still "consumes" the
+  // skip-test marker (the player has now demonstrated the normal
+  // path), so M+1 should unlock even though `best` didn't change.
+  useEffect(() => {
+    if (!stage || !result) return;
+    if (!stage.isFinal) return;
+    if (belowPassThreshold) return; // sub-pass plays don't count for unlocks
+    if (viaSkipTest && result.rank === 'S') {
+      addSkipTestFinal(stage.id);
+    } else if (!viaSkipTest && rankAtLeast(result.rank, 'B')) {
+      removeSkipTestFinal(stage.id);
+    }
+  }, [stage, result, viaSkipTest, belowPassThreshold]);
 
   // Drift large enough to suggest (re-)calibration. Reuses the same
   // mean-signed-error already computed for the timing-stats line so we
@@ -361,6 +522,24 @@ export function ResultScreen() {
         <span className="r-good">GOOD {result.good}</span>
         <span className="r-miss">MISS {result.miss}</span>
       </div>
+      {unlockChange && (
+        <div className="unlock-banner" role="status">
+          <span className="unlock-banner-icon" aria-hidden="true">🎉</span>
+          <span className="unlock-banner-text">
+            {unlockChange.to === unlockChange.from + 1
+              ? `Movement ${unlockChange.to} が解放されました！`
+              : `Movement ${unlockChange.from + 1}–${unlockChange.to} が解放されました！`}
+          </span>
+        </div>
+      )}
+      {finalUnlockChange && (
+        <div className="unlock-banner" role="status">
+          <span className="unlock-banner-icon" aria-hidden="true">🚪</span>
+          <span className="unlock-banner-text">
+            Movement {finalUnlockChange.movement} の Final が解放されました！
+          </span>
+        </div>
+      )}
       {driftSuggestion !== null && (
         <div className="calib-suggest-banner">
           <p className="calib-suggest-text">
@@ -374,7 +553,41 @@ export function ResultScreen() {
         </div>
       )}
 
-      {passed ? (
+      {viaSkipTest ? (
+        // Skip-test (飛び級) variant — neither the etude list nor the
+        // "次の Etude" framing makes sense here (the player came in
+        // from a locked Movement card, not an etude list). Offer
+        // retry + return to Movement list only.
+        passed ? (
+          <>
+            <button className="primary next-etude-cta" onClick={goMovementList}>
+              Movement 一覧へ
+            </button>
+            <div className="row result-secondary-row">
+              <button className="secondary result-secondary-btn" onClick={() => goto('game')}>
+                リトライ
+              </button>
+            </div>
+            <div className="row result-share-row">
+              <ShareToXButton onClick={shareToX} />
+            </div>
+          </>
+        ) : (
+          <>
+            <div className="row">
+              <button className="primary" onClick={() => goto('game')}>
+                リトライ
+              </button>
+              <button className="secondary" onClick={goMovementList}>
+                Movement 一覧へ
+              </button>
+            </div>
+            <div className="row result-share-row">
+              <ShareToXButton onClick={shareToX} />
+            </div>
+          </>
+        )
+      ) : passed ? (
         <>
           {nextEtude ? (
             <button className="primary next-etude-cta" onClick={goNext}>

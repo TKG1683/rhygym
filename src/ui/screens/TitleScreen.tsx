@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { createAudioContext } from '../../core/audio/audioContext';
 import {
   getAllBests,
@@ -7,12 +7,49 @@ import {
 } from '../../core/storage/localStore';
 import { useAppStore } from '../store/appStore';
 
+// Hidden Auto-Mode toggle (debug): N rapid clicks on the muscle icon
+// within MUSCLE_TAP_WINDOW_MS toggles autoMode. Keep the count + window
+// small enough to be discoverable on purpose but well outside the
+// normal range of accidental taps.
+const MUSCLE_TAP_COUNT_TO_TOGGLE = 5;
+const MUSCLE_TAP_WINDOW_MS = 1500;
+// How long the "AUTO モード ON/OFF" feedback toast stays on screen
+// after the toggle. Long enough to read, short enough not to linger.
+const AUTOMODE_TOAST_MS = 2200;
+
 export function TitleScreen() {
   const goto = useAppStore((s) => s.goto);
   const audioContext = useAppStore((s) => s.audioContext);
   const setAudioContext = useAppStore((s) => s.setAudioContext);
   const calibrationOffsetSec = useAppStore((s) => s.calibrationOffsetSec);
+  const autoMode = useAppStore((s) => s.autoMode);
+  const setAutoMode = useAppStore((s) => s.setAutoMode);
   const calibrated = calibrationOffsetSec !== 0;
+
+  // Rolling timestamp list — keep only taps within the rolling window
+  // so a slow drum-roll over 10 s doesn't accidentally trip the
+  // toggle. Cleared on toggle so a subsequent burst starts counting
+  // from scratch.
+  const muscleTapTimesRef = useRef<number[]>([]);
+  const [toast, setToast] = useState<string | null>(null);
+  useEffect(() => {
+    if (!toast) return;
+    const id = window.setTimeout(() => setToast(null), AUTOMODE_TOAST_MS);
+    return () => window.clearTimeout(id);
+  }, [toast]);
+
+  const handleMuscleTap = () => {
+    const now = performance.now();
+    const recentTaps = muscleTapTimesRef.current.filter((t) => now - t < MUSCLE_TAP_WINDOW_MS);
+    recentTaps.push(now);
+    muscleTapTimesRef.current = recentTaps;
+    if (recentTaps.length >= MUSCLE_TAP_COUNT_TO_TOGGLE) {
+      muscleTapTimesRef.current = [];
+      const next = !autoMode;
+      setAutoMode(next);
+      setToast(next ? '🤖 Auto モード ON' : 'Auto モード OFF');
+    }
+  };
 
   // First-run nudge: only for players who haven't calibrated AND
   // haven't played anything yet AND haven't explicitly dismissed it.
@@ -94,10 +131,21 @@ export function TitleScreen() {
           <span className="title-logo-name">Rhygym</span>
           <span className="title-logo-sub">リジム</span>
         </span>
-        <span className="title-logo-icon title-logo-icon-right" aria-hidden="true">
+        <button
+          type="button"
+          className={`title-logo-icon title-logo-icon-right title-logo-muscle${autoMode ? ' title-logo-muscle-auto' : ''}`}
+          aria-label={autoMode ? 'Auto モードを切り替える (現在: ON)' : 'Auto モードを切り替える'}
+          onClick={handleMuscleTap}
+        >
           🏋
-        </span>
+          {autoMode && <span className="title-logo-muscle-badge" aria-hidden="true">AUTO</span>}
+        </button>
       </div>
+      {toast && (
+        <div className="auto-mode-toast" role="status" aria-live="polite">
+          {toast}
+        </div>
+      )}
       <p className="tagline">楽譜を読み、タップでリズムを叩け。</p>
       <button className="primary" onClick={handleStart}>
         Start
