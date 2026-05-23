@@ -514,21 +514,25 @@ async function generateResultImage(
   ctx.fillStyle = 'rgba(42, 27, 6, 0.85)';
   ctx.fillText(stageName, SIZE / 2, 250);
 
-  // Rank — the headline. Coloured slab so it pops at thumbnail size.
-  const rankColor = RANK_FILL[result.rank] ?? '#2A1B06';
-  ctx.fillStyle = rankColor;
-  ctx.font = '900 400px "Poppins", sans-serif';
-  ctx.fillText(result.rank, SIZE / 2, 560);
+  // Rank chip — same brand badge as the on-screen ResultScreen: tier
+  // base colour + sheen gradient + inset highlight/shadow stack +
+  // drop shadow, with the letter floating on top with a soft drop
+  // shadow of its own. Centred horizontally; vertical anchor places
+  // the chip in the headline slot between the stage name and score.
+  const CHIP_SIZE = 380;
+  const CHIP_X = (SIZE - CHIP_SIZE) / 2;
+  const CHIP_Y = 360;
+  drawRankChip(ctx, CHIP_X, CHIP_Y, CHIP_SIZE, result.rank);
 
-  // Score (big)
+  // Score (big) — sits below the chip with a clear visual gap.
   ctx.fillStyle = '#2A1B06';
   ctx.font = '800 120px "Poppins", sans-serif';
-  ctx.fillText(String(result.score), SIZE / 2, 810);
+  ctx.fillText(String(result.score), SIZE / 2, 830);
 
   // Accuracy
   ctx.font = '500 44px "Noto Sans JP", sans-serif';
   ctx.fillStyle = 'rgba(42, 27, 6, 0.7)';
-  ctx.fillText(`正確率 ${(result.accuracy * 100).toFixed(1)}%`, SIZE / 2, 890);
+  ctx.fillText(`正確率 ${(result.accuracy * 100).toFixed(1)}%`, SIZE / 2, 910);
 
   // Breakdown row (PERFECT / GOOD / MISS)
   ctx.font = '600 40px "Noto Sans JP", sans-serif';
@@ -536,7 +540,7 @@ async function generateResultImage(
   ctx.fillText(
     `PERFECT ${result.perfect}   GOOD ${result.good}   MISS ${result.miss}`,
     SIZE / 2,
-    955,
+    975,
   );
 
   // Footer / URL
@@ -547,4 +551,98 @@ async function generateResultImage(
   return new Promise((resolve) => {
     canvas.toBlob((blob) => resolve(blob), 'image/png');
   });
+}
+
+/**
+ * Path helper — rounded rectangle compatible with browsers that ship
+ * before the native `roundRect` API (Safari <16 etc.). Defines the
+ * path on the context; caller fills / strokes it.
+ */
+function roundRectPath(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  r: number,
+): void {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.lineTo(x + w - r, y);
+  ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+  ctx.lineTo(x + w, y + h - r);
+  ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+  ctx.lineTo(x + r, y + h);
+  ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+  ctx.lineTo(x, y + r);
+  ctx.quadraticCurveTo(x, y, x + r, y);
+  ctx.closePath();
+}
+
+/**
+ * Replicate the on-screen .result-rank-chip badge in canvas: tier
+ * colour base + diagonal sheen gradient + inset white-top / dark-
+ * bottom highlights + outer drop shadow, with the rank letter
+ * floating on top. Mirrors the CSS rule pixel-for-pixel as closely
+ * as Canvas allows so the shared image reads as "same badge, just
+ * exported".
+ */
+function drawRankChip(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  size: number,
+  rank: string,
+): void {
+  const radius = Math.round(size * 0.21); // 28/132 ≈ 0.21
+  const base = RANK_FILL[rank] ?? '#8a6b4a';
+
+  // 1. Drop shadow + base fill
+  ctx.save();
+  ctx.shadowOffsetY = 10;
+  ctx.shadowBlur = 22;
+  ctx.shadowColor = 'rgba(0, 0, 0, 0.22)';
+  ctx.fillStyle = base;
+  roundRectPath(ctx, x, y, size, size, radius);
+  ctx.fill();
+  ctx.restore();
+
+  // 2. Diagonal sheen gradient — matches the 5-stop CSS gradient.
+  const grad = ctx.createLinearGradient(x, y, x + size, y + size);
+  grad.addColorStop(0,    'rgba(255, 255, 255, 0.60)');
+  grad.addColorStop(0.28, 'rgba(255, 255, 255, 0.10)');
+  grad.addColorStop(0.55, 'rgba(0, 0, 0, 0.18)');
+  grad.addColorStop(0.78, 'rgba(255, 255, 255, 0.22)');
+  grad.addColorStop(1,    'rgba(0, 0, 0, 0.30)');
+  ctx.fillStyle = grad;
+  roundRectPath(ctx, x, y, size, size, radius);
+  ctx.fill();
+
+  // 3. Inset edge stroke (subtle dark rim) — matches
+  //    `inset 0 0 0 2px rgba(0, 0, 0, 0.18)`.
+  ctx.strokeStyle = 'rgba(0, 0, 0, 0.18)';
+  ctx.lineWidth = 4;
+  roundRectPath(ctx, x + 2, y + 2, size - 4, size - 4, radius - 2);
+  ctx.stroke();
+
+  // 4. Top highlight — `inset 0 2px 1px rgba(255, 255, 255, 0.85)`.
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.6)';
+  ctx.lineWidth = 3;
+  roundRectPath(ctx, x + 3, y + 3, size - 6, size - 6, radius - 3);
+  // Only stroke the top edge by clipping; cheaper to draw thinner all
+  // around so the bottom inherits a soft glow too.
+  ctx.stroke();
+
+  // 5. The rank letter itself — large weight 800, cream fill, soft
+  //    drop shadow.
+  ctx.save();
+  ctx.fillStyle = '#fffaef'; // --text-on-dark
+  ctx.font = `800 ${Math.round(size * 0.62)}px "Poppins", "Noto Sans JP", sans-serif`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.shadowOffsetY = 3;
+  ctx.shadowBlur = 4;
+  ctx.shadowColor = 'rgba(0, 0, 0, 0.45)';
+  ctx.fillText(rank, x + size / 2, y + size / 2 + size * 0.02);
+  ctx.restore();
 }
