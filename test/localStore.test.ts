@@ -22,7 +22,7 @@ afterEach(() => {
 
 const sample: BestRecord = {
   etudeId: 'movement-1-etude-1',
-  difficulty: 'NORMAL',
+  difficulty: 'ESPRESSIVO',
   score: 8500,
   rank: 'A',
   achievedAt: '2026-05-17T12:00:00.000Z',
@@ -34,12 +34,12 @@ describe('localStore — empty state', () => {
   });
 
   it('getBest returns null for an unknown étude', () => {
-    expect(getBest('anything', 'NORMAL')).toBeNull();
+    expect(getBest('anything', 'ESPRESSIVO')).toBeNull();
   });
 
   it('isNewBest is true when there is no existing record', () => {
     expect(
-      isNewBest({ etudeId: 'movement-1-etude-1', difficulty: 'NORMAL', score: 0 }),
+      isNewBest({ etudeId: 'movement-1-etude-1', difficulty: 'ESPRESSIVO', score: 0 }),
     ).toBe(true);
   });
 });
@@ -47,7 +47,7 @@ describe('localStore — empty state', () => {
 describe('localStore — write/read round-trip', () => {
   it('setBest then getBest round-trips the record', () => {
     setBest(sample);
-    expect(getBest('movement-1-etude-1', 'NORMAL')).toEqual(sample);
+    expect(getBest('movement-1-etude-1', 'ESPRESSIVO')).toEqual(sample);
   });
 
   it('getAllBests returns every saved record keyed by etudeId/difficulty', () => {
@@ -58,21 +58,21 @@ describe('localStore — write/read round-trip', () => {
       'movement-1-etude-1',
       'movement-1-etude-2',
     ]);
-    expect(all['movement-1-etude-2']!.NORMAL!.score).toBe(7000);
+    expect(all['movement-1-etude-2']!.ESPRESSIVO!.score).toBe(7000);
   });
 
   it('setBest overwrites a previous entry for the same étude/difficulty', () => {
     setBest(sample);
     setBest({ ...sample, score: 9999, rank: 'S' });
-    expect(getBest('movement-1-etude-1', 'NORMAL')!.score).toBe(9999);
-    expect(getBest('movement-1-etude-1', 'NORMAL')!.rank).toBe('S');
+    expect(getBest('movement-1-etude-1', 'ESPRESSIVO')!.score).toBe(9999);
+    expect(getBest('movement-1-etude-1', 'ESPRESSIVO')!.rank).toBe('S');
   });
 
-  it('BEGINNER and NORMAL records for the same étude are kept independently (#20)', () => {
-    setBest(sample); // NORMAL A
-    setBest({ ...sample, difficulty: 'BEGINNER', score: 9500, rank: 'S' });
-    expect(getBest('movement-1-etude-1', 'NORMAL')!.rank).toBe('A');
-    expect(getBest('movement-1-etude-1', 'BEGINNER')!.rank).toBe('S');
+  it('DOLCE and ESPRESSIVO records for the same étude are kept independently (#20)', () => {
+    setBest(sample); // ESPRESSIVO A
+    setBest({ ...sample, difficulty: 'DOLCE', score: 9500, rank: 'S' });
+    expect(getBest('movement-1-etude-1', 'ESPRESSIVO')!.rank).toBe('A');
+    expect(getBest('movement-1-etude-1', 'DOLCE')!.rank).toBe('S');
   });
 });
 
@@ -80,41 +80,41 @@ describe('localStore — isNewBest', () => {
   it('true when candidate beats existing', () => {
     setBest(sample); // 8500 NORMAL
     expect(
-      isNewBest({ etudeId: 'movement-1-etude-1', difficulty: 'NORMAL', score: 8501 }),
+      isNewBest({ etudeId: 'movement-1-etude-1', difficulty: 'ESPRESSIVO', score: 8501 }),
     ).toBe(true);
   });
 
   it('false when candidate equals existing (strict greater-than)', () => {
     setBest(sample);
     expect(
-      isNewBest({ etudeId: 'movement-1-etude-1', difficulty: 'NORMAL', score: 8500 }),
+      isNewBest({ etudeId: 'movement-1-etude-1', difficulty: 'ESPRESSIVO', score: 8500 }),
     ).toBe(false);
   });
 
   it('false when candidate loses to existing', () => {
     setBest(sample);
     expect(
-      isNewBest({ etudeId: 'movement-1-etude-1', difficulty: 'NORMAL', score: 8000 }),
+      isNewBest({ etudeId: 'movement-1-etude-1', difficulty: 'ESPRESSIVO', score: 8000 }),
     ).toBe(false);
   });
 
-  it('isNewBest is per-difficulty: a NORMAL best does not gate BEGINNER (#20)', () => {
-    setBest(sample); // NORMAL A 8500
+  it('isNewBest is per-difficulty: an ESPRESSIVO best does not gate DOLCE (#20)', () => {
+    setBest(sample); // ESPRESSIVO A 8500
     expect(
-      isNewBest({ etudeId: 'movement-1-etude-1', difficulty: 'BEGINNER', score: 0 }),
+      isNewBest({ etudeId: 'movement-1-etude-1', difficulty: 'DOLCE', score: 0 }),
     ).toBe(true);
   });
 });
 
 describe('localStore — corruption tolerance', () => {
   it('returns {} when the stored value is garbage', () => {
-    localStorage.setItem('rhygym:best:v3', '{not valid json');
+    localStorage.setItem('rhygym:best:v4', '{not valid json');
     expect(getAllBests()).toEqual({});
-    expect(getBest('movement-1-etude-1', 'NORMAL')).toBeNull();
+    expect(getBest('movement-1-etude-1', 'ESPRESSIVO')).toBeNull();
   });
 
   it('returns {} when the stored value is the wrong shape (array)', () => {
-    localStorage.setItem('rhygym:best:v3', '[]');
+    localStorage.setItem('rhygym:best:v4', '[]');
     expect(getAllBests()).toEqual({});
   });
 });
@@ -185,14 +185,14 @@ describe('localStore — v1 → v2 → v3 migrator chain', () => {
       'movement-10-etude-5',
       'movement-3-etude-2',
     ]);
-    expect(all['movement-3-etude-2']!.NORMAL).toEqual({
+    expect(all['movement-3-etude-2']!.ESPRESSIVO).toEqual({
       etudeId: 'movement-3-etude-2',
-      difficulty: 'NORMAL',
+      difficulty: 'ESPRESSIVO',
       score: 9000,
       rank: 'S',
       achievedAt: '2026-04-01T00:00:00.000Z',
     });
-    expect(all['movement-10-etude-5']!.NORMAL!.score).toBe(7777);
+    expect(all['movement-10-etude-5']!.ESPRESSIVO!.score).toBe(7777);
   });
 
   it('translates exam stageIds (level-N-exam → movement-N-final)', () => {
@@ -208,7 +208,7 @@ describe('localStore — v1 → v2 → v3 migrator chain', () => {
 
     const all = getAllBests();
     expect(Object.keys(all)).toEqual(['movement-1-final']);
-    expect(all['movement-1-final']!.NORMAL!.etudeId).toBe('movement-1-final');
+    expect(all['movement-1-final']!.ESPRESSIVO!.etudeId).toBe('movement-1-final');
   });
 
   it('clears the v1 / v2 keys after a successful migration chain', () => {
@@ -226,10 +226,10 @@ describe('localStore — v1 → v2 → v3 migrator chain', () => {
 
     expect(localStorage.getItem('rhygym:best:v1')).toBeNull();
     expect(localStorage.getItem('rhygym:best:v2')).toBeNull();
-    expect(localStorage.getItem('rhygym:best:v3')).not.toBeNull();
+    expect(localStorage.getItem('rhygym:best:v4')).not.toBeNull();
   });
 
-  it('is idempotent — second call observes v3 unchanged and does not re-translate', () => {
+  it('is idempotent — second call observes v4 unchanged and does not re-translate', () => {
     const v1 = {
       'level-5-1': {
         stageId: 'level-5-1',
@@ -246,7 +246,7 @@ describe('localStore — v1 → v2 → v3 migrator chain', () => {
     expect(Object.keys(second)).toEqual(['movement-5-etude-1']);
   });
 
-  it('does NOT touch v1 / v2 when v3 already exists', () => {
+  it('does NOT touch v1 / v2 / v3 when v4 already exists', () => {
     const v1 = {
       'level-1-1': {
         stageId: 'level-1-1',
@@ -255,11 +255,11 @@ describe('localStore — v1 → v2 → v3 migrator chain', () => {
         achievedAt: '2026-04-06T00:00:00.000Z',
       },
     };
-    const v3 = {
+    const v4 = {
       'movement-9-etude-3': {
-        NORMAL: {
+        ESPRESSIVO: {
           etudeId: 'movement-9-etude-3',
-          difficulty: 'NORMAL',
+          difficulty: 'ESPRESSIVO',
           score: 9876,
           rank: 'S',
           achievedAt: '2026-05-01T00:00:00.000Z',
@@ -267,11 +267,11 @@ describe('localStore — v1 → v2 → v3 migrator chain', () => {
       },
     };
     localStorage.setItem('rhygym:best:v1', JSON.stringify(v1));
-    localStorage.setItem('rhygym:best:v3', JSON.stringify(v3));
+    localStorage.setItem('rhygym:best:v4', JSON.stringify(v4));
 
     const all = getAllBests();
     expect(Object.keys(all)).toEqual(['movement-9-etude-3']);
-    // v1 untouched — bump is one-way, v3 is source of truth from now on.
+    // v1 untouched — bump is one-way, v4 is source of truth from now on.
     expect(localStorage.getItem('rhygym:best:v1')).not.toBeNull();
   });
 
@@ -282,7 +282,7 @@ describe('localStore — v1 → v2 → v3 migrator chain', () => {
     expect(localStorage.getItem('rhygym:best:v1')).toBeNull();
   });
 
-  it('migrates v2 (flat) → v3 (nested NORMAL slot)', () => {
+  it('migrates v2 (flat) → v3 → v4 (nested ESPRESSIVO slot)', () => {
     const v2 = {
       'movement-2-etude-1': {
         etudeId: 'movement-2-etude-1',
@@ -294,17 +294,62 @@ describe('localStore — v1 → v2 → v3 migrator chain', () => {
     localStorage.setItem('rhygym:best:v2', JSON.stringify(v2));
 
     const all = getAllBests();
-    expect(all['movement-2-etude-1']!.NORMAL).toEqual({
+    expect(all['movement-2-etude-1']!.ESPRESSIVO).toEqual({
       etudeId: 'movement-2-etude-1',
-      difficulty: 'NORMAL',
+      difficulty: 'ESPRESSIVO',
       score: 7500,
       rank: 'A',
       achievedAt: '2026-05-10T00:00:00.000Z',
     });
-    // BEGINNER slot stays empty — legacy v2 had no BEGINNER notion.
-    expect(all['movement-2-etude-1']!.BEGINNER).toBeUndefined();
+    // DOLCE / BRAVURA slots stay empty — legacy v2 only knew the
+    // pre-#54 NORMAL mode (renamed to ESPRESSIVO in v4).
+    expect(all['movement-2-etude-1']!.DOLCE).toBeUndefined();
+    expect(all['movement-2-etude-1']!.BRAVURA).toBeUndefined();
     expect(localStorage.getItem('rhygym:best:v2')).toBeNull();
-    expect(localStorage.getItem('rhygym:best:v3')).not.toBeNull();
+    expect(localStorage.getItem('rhygym:best:v4')).not.toBeNull();
+  });
+
+  it('migrates v3 (BEGINNER/NORMAL slots) → v4 (DOLCE/ESPRESSIVO slots) (#54)', () => {
+    const v3 = {
+      'movement-3-etude-1': {
+        BEGINNER: {
+          etudeId: 'movement-3-etude-1',
+          difficulty: 'BEGINNER',
+          score: 9000,
+          rank: 'S',
+          achievedAt: '2026-05-15T00:00:00.000Z',
+        },
+        NORMAL: {
+          etudeId: 'movement-3-etude-1',
+          difficulty: 'NORMAL',
+          score: 8000,
+          rank: 'A',
+          achievedAt: '2026-05-16T00:00:00.000Z',
+        },
+      },
+    };
+    localStorage.setItem('rhygym:best:v3', JSON.stringify(v3));
+
+    const all = getAllBests();
+    // BEGINNER → DOLCE, NORMAL → ESPRESSIVO. Difficulty fields on
+    // the records themselves get rewritten too.
+    expect(all['movement-3-etude-1']!.DOLCE).toEqual({
+      etudeId: 'movement-3-etude-1',
+      difficulty: 'DOLCE',
+      score: 9000,
+      rank: 'S',
+      achievedAt: '2026-05-15T00:00:00.000Z',
+    });
+    expect(all['movement-3-etude-1']!.ESPRESSIVO).toEqual({
+      etudeId: 'movement-3-etude-1',
+      difficulty: 'ESPRESSIVO',
+      score: 8000,
+      rank: 'A',
+      achievedAt: '2026-05-16T00:00:00.000Z',
+    });
+    expect(all['movement-3-etude-1']!.BRAVURA).toBeUndefined();
+    expect(localStorage.getItem('rhygym:best:v3')).toBeNull();
+    expect(localStorage.getItem('rhygym:best:v4')).not.toBeNull();
   });
 
   it('skips individual v1 entries whose fields are wrong, keeps the valid ones', () => {

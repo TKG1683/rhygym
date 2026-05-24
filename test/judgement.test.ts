@@ -1,12 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import {
-  BEGINNER_WINDOWS,
+  DOLCE_WINDOWS,
   computeResult,
   computeTimingStats,
   findExpiredNotes,
   GOOD_WINDOW_SEC,
   judgeTap,
-  NORMAL_WINDOWS,
+  ESPRESSIVO_WINDOWS,
   PERFECT_WINDOW_SEC,
   rankForAccuracy,
   windowsForDifficulty,
@@ -95,35 +95,43 @@ describe('findExpiredNotes', () => {
   });
 });
 
-describe('judgeTap — BEGINNER vs NORMAL windows (#20)', () => {
-  it('BEGINNER windows are wider than NORMAL (both axes)', () => {
-    expect(BEGINNER_WINDOWS.perfect).toBeGreaterThan(NORMAL_WINDOWS.perfect);
-    expect(BEGINNER_WINDOWS.good).toBeGreaterThan(NORMAL_WINDOWS.good);
+describe('judgeTap — DOLCE / ESPRESSIVO / BRAVURA windows (#20, #54)', () => {
+  it('DOLCE windows are wider than ESPRESSIVO (both axes)', () => {
+    expect(DOLCE_WINDOWS.perfect).toBeGreaterThan(ESPRESSIVO_WINDOWS.perfect);
+    expect(DOLCE_WINDOWS.good).toBeGreaterThan(ESPRESSIVO_WINDOWS.good);
   });
 
-  it('windowsForDifficulty returns the correct pair', () => {
-    expect(windowsForDifficulty('NORMAL')).toEqual(NORMAL_WINDOWS);
-    expect(windowsForDifficulty('BEGINNER')).toEqual(BEGINNER_WINDOWS);
+  it('BRAVURA shares timing tolerance with ESPRESSIVO (#54)', () => {
+    // The Bravura challenge is the silenced metronome, not tighter
+    // judgement — keeping the windows aligned lets records compare
+    // directly on raw timing even though earning Bravura is harder.
+    expect(windowsForDifficulty('BRAVURA')).toEqual(ESPRESSIVO_WINDOWS);
+  });
+
+  it('windowsForDifficulty returns the correct pair for each tier', () => {
+    expect(windowsForDifficulty('ESPRESSIVO')).toEqual(ESPRESSIVO_WINDOWS);
+    expect(windowsForDifficulty('DOLCE')).toEqual(DOLCE_WINDOWS);
+    expect(windowsForDifficulty('BRAVURA')).toEqual(ESPRESSIVO_WINDOWS);
   });
 
   it('tap just past NORMAL PERFECT is GOOD on NORMAL, PERFECT on BEGINNER', () => {
-    const tapSec = 1.0 + NORMAL_WINDOWS.perfect + 0.005; // 5 ms past NORMAL perfect
-    expect(judgeTap(tapSec, notes, NORMAL_WINDOWS)!.judgement).toBe('GOOD');
-    expect(judgeTap(tapSec, notes, BEGINNER_WINDOWS)!.judgement).toBe('PERFECT');
+    const tapSec = 1.0 + ESPRESSIVO_WINDOWS.perfect + 0.005; // 5 ms past NORMAL perfect
+    expect(judgeTap(tapSec, notes, ESPRESSIVO_WINDOWS)!.judgement).toBe('GOOD');
+    expect(judgeTap(tapSec, notes, DOLCE_WINDOWS)!.judgement).toBe('PERFECT');
   });
 
   it('tap past NORMAL GOOD is MISS on NORMAL, still GOOD on BEGINNER', () => {
-    const tapSec = 1.0 + NORMAL_WINDOWS.good + 0.01;
-    expect(judgeTap(tapSec, notes, NORMAL_WINDOWS)).toBeNull();
-    expect(judgeTap(tapSec, notes, BEGINNER_WINDOWS)?.judgement).toBe('GOOD');
+    const tapSec = 1.0 + ESPRESSIVO_WINDOWS.good + 0.01;
+    expect(judgeTap(tapSec, notes, ESPRESSIVO_WINDOWS)).toBeNull();
+    expect(judgeTap(tapSec, notes, DOLCE_WINDOWS)?.judgement).toBe('GOOD');
   });
 
   it('findExpiredNotes uses BEGINNER GOOD window when given BEGINNER', () => {
     // Just inside BEGINNER GOOD but past NORMAL GOOD → not yet
     // expired on BEGINNER, expired on NORMAL.
-    const audioSec = 1.0 + (NORMAL_WINDOWS.good + BEGINNER_WINDOWS.good) / 2;
-    expect(findExpiredNotes(audioSec, notes, BEGINNER_WINDOWS)).toEqual([]);
-    expect(findExpiredNotes(audioSec, notes, NORMAL_WINDOWS).map((c) => c.id)).toEqual([
+    const audioSec = 1.0 + (ESPRESSIVO_WINDOWS.good + DOLCE_WINDOWS.good) / 2;
+    expect(findExpiredNotes(audioSec, notes, DOLCE_WINDOWS)).toEqual([]);
+    expect(findExpiredNotes(audioSec, notes, ESPRESSIVO_WINDOWS).map((c) => c.id)).toEqual([
       'n0',
     ]);
   });
@@ -131,9 +139,9 @@ describe('judgeTap — BEGINNER vs NORMAL windows (#20)', () => {
   it('omitting the windows arg defaults to NORMAL (back-compat)', () => {
     // The pre-#20 signature was (tapSec, candidates) with NORMAL
     // hard-coded. Verify the default still behaves that way.
-    const tapSec = 1.0 + NORMAL_WINDOWS.good - 0.001;
+    const tapSec = 1.0 + ESPRESSIVO_WINDOWS.good - 0.001;
     expect(judgeTap(tapSec, notes)?.judgement).toBe('GOOD');
-    expect(judgeTap(tapSec, notes, NORMAL_WINDOWS)?.judgement).toBe('GOOD');
+    expect(judgeTap(tapSec, notes, ESPRESSIVO_WINDOWS)?.judgement).toBe('GOOD');
   });
 });
 

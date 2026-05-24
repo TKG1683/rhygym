@@ -309,10 +309,14 @@ export function GameView({ stage, onComplete, tutorialMode = false }: Props) {
     // at the right tick — that's how mid-piece meter changes (4/4 →
     // 5/8 etc.) get correctly accented. FreeMetronome handles the
     // waiting state with the opening meter only.
+    // Bravura mute (#54): keep the count-in metronome (handled by
+    // FreeMetronome in the waiting phase) but silence the in-game
+    // grid once the song actually starts. Dolce / Espressivo keep
+    // the click going as a backbone the player can lean on.
     const sch = new GameScheduler({
       score: adjustedScore,
       audioContext,
-      metronomeEnabled: true,
+      metronomeEnabled: difficulty !== 'BRAVURA',
       accentOverrides: metronomeAccents,
     });
     schedulerRef.current = sch;
@@ -324,6 +328,14 @@ export function GameView({ stage, onComplete, tutorialMode = false }: Props) {
       schedulerRef.current = null;
     };
   }, [audioContext, adjustedScore, effectiveBpm]);
+
+  // Keep the scheduler's metronomeEnabled flag in sync if difficulty
+  // flips while the GameView is mounted (e.g., a future in-game
+  // toggle). The scheduler's setMetronome handles already-queued
+  // clicks gracefully (only new schedule() calls observe the change).
+  useEffect(() => {
+    schedulerRef.current?.setMetronome(difficulty !== 'BRAVURA');
+  }, [difficulty]);
 
   const showVerdict = (v: Judgement) => {
     setVerdict(v);
@@ -759,7 +771,7 @@ export function GameView({ stage, onComplete, tutorialMode = false }: Props) {
             noteElementsRef.current = els;
           }}
         />
-        {difficulty === 'BEGINNER' && (
+        {difficulty === 'DOLCE' && (
           <PlayheadLayer
             active={phase === 'playing'}
             audioContextRef={audioContextRef}
