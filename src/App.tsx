@@ -7,8 +7,17 @@ import { GameScreen } from './ui/screens/GameScreen';
 import { ResultScreen } from './ui/screens/ResultScreen';
 import { CalibrationScreen } from './ui/screens/CalibrationScreen';
 import { TutorialScreen } from './ui/screens/TutorialScreen';
+import { LessonIntroScreen } from './ui/screens/LessonIntroScreen';
 
-const VALID_SCREENS: readonly Screen[] = ['title', 'select', 'game', 'result', 'calibration', 'tutorial'];
+const VALID_SCREENS: readonly Screen[] = [
+  'title',
+  'select',
+  'game',
+  'result',
+  'calibration',
+  'tutorial',
+  'lesson-intro',
+];
 
 export default function App() {
   const screen = useAppStore((s) => s.screen);
@@ -80,5 +89,7 @@ export default function App() {
       return <CalibrationScreen />;
     case 'tutorial':
       return <TutorialScreen />;
+    case 'lesson-intro':
+      return <LessonIntroScreen />;
   }
 }

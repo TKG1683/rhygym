@@ -1,10 +1,25 @@
 import { useEffect, useRef } from 'react';
 import type { Score } from '../../core/model';
-import { renderScore, type NoteCoords } from './ScoreRenderer';
+import { renderScore, type MeasureBounds, type NoteCoords } from './ScoreRenderer';
 
 interface Props {
   score: Score;
   onRender?: (coords: Map<string, NoteCoords>) => void;
+  /**
+   * Called with the per-note SVG group elements after every render.
+   * Lets callers toggle CSS classes on individual notes without going
+   * through React (the assist-mode flash in #55 needs sub-frame
+   * latency). Re-fires on every re-render so the caller can re-attach
+   * to the new DOM nodes after a viewport resize.
+   */
+  onNoteElements?: (elements: Map<string, SVGElement>) => void;
+  /**
+   * Called with the per-measure geometric bounds after every render.
+   * Lets overlays (lesson-intro playhead, future judge-line) compute
+   * tick→pixel mapping at the *measure* level — constant-speed within
+   * each bar regardless of how VexFlow packed individual notes.
+   */
+  onMeasureBounds?: (bounds: readonly MeasureBounds[]) => void;
   /**
    * Pin layout to a specific measures-per-line target. Passed through to
    * the renderer so the layout doesn't drift across viewport widths
@@ -37,15 +52,21 @@ interface Props {
 export function ScoreView({
   score,
   onRender,
+  onNoteElements,
+  onMeasureBounds,
   measuresPerLine,
   measureWidths,
   maxHeightVh,
 }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const onRenderRef = useRef(onRender);
+  const onNoteElementsRef = useRef(onNoteElements);
+  const onMeasureBoundsRef = useRef(onMeasureBounds);
 
   useEffect(() => {
     onRenderRef.current = onRender;
+    onNoteElementsRef.current = onNoteElements;
+    onMeasureBoundsRef.current = onMeasureBounds;
   });
 
   useEffect(() => {
@@ -64,6 +85,8 @@ export function ScoreView({
           responsiveScaling: maxHeightVh != null,
         });
         onRenderRef.current?.(result.noteCoords);
+        onNoteElementsRef.current?.(result.noteElements);
+        onMeasureBoundsRef.current?.(result.measureBounds);
         if (maxHeightVh != null) {
           applyMaxHeightScale(container, maxHeightVh);
         }

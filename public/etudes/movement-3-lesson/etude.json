@@ -1,0 +1,10 @@
+{
+  "id": "movement-3-lesson",
+  "movement": 3,
+  "indexInMovement": 0,
+  "isLesson": true,
+  "name": "Movement 3-Lesson",
+  "description": "レッスン: 8分音符の基本",
+  "bpm": 70,
+  "themeColor": "#5fbbc4"
+}

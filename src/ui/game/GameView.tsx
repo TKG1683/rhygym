@@ -42,8 +42,9 @@ import {
 import type { Score, Etude } from '../../core/model';
 import { expandToCandidates } from '../../core/score/candidates';
 import { ETUDES } from '../../core/score/etudes';
+import { markLessonCompleted } from '../../core/storage/localStore';
 import { TickTimeConverter } from '../../core/timing/tickTime';
-import { defaultAccentPattern, tsKey } from '../../core/audio/metronome';
+import { defaultAccentPattern, scheduleClick, tsKey } from '../../core/audio/metronome';
 import { useAppStore } from '../store/appStore';
 import { ScoreView } from '../vexflow/ScoreView';
 import { ConductorBaton } from './ConductorBaton';
@@ -97,6 +98,8 @@ export function GameView({ stage, onComplete, tutorialMode = false }: Props) {
   const setLastPlayedBpm = useAppStore((s) => s.setLastPlayedBpm);
   const calibrationOffsetSec = useAppStore((s) => s.calibrationOffsetSec);
   const autoMode = useAppStore((s) => s.autoMode);
+  const assistMode = useAppStore((s) => s.assistMode);
+  const setLastWasAssist = useAppStore((s) => s.setLastWasAssist);
   const goto = useAppStore((s) => s.goto);
   const loadedEtudes = useAppStore((s) => s.loadedEtudes);
   const setSelectInitialMovement = useAppStore((s) => s.setSelectInitialMovement);
@@ -108,10 +111,16 @@ export function GameView({ stage, onComplete, tutorialMode = false }: Props) {
   // list (NOT the top-level Movement grid). Same idea as Result's
   // "Etude 一覧へ" — leaving in the middle should still leave them
   // inside the level they just abandoned so retrying is one tap.
+  //
+  // Special case: bailing out of a lesson play counts as "the player
+  // has acknowledged this lesson" — mark it completed so re-entering
+  // the Movement doesn't auto-prompt the intro again on every visit.
+  // The player can always replay via the lesson card in the etude list.
   const goEtudeList = () => {
     const roster = loadedEtudes ?? ETUDES;
     const meta = roster.find((s) => s.id === stage.id);
     if (meta) setSelectInitialMovement(meta.movement);
+    if (stage.isLesson) markLessonCompleted(stage.id);
     schedulerRef.current?.stop();
     freeMetronomeRef.current?.stop();
     goto('select');
@@ -215,6 +224,14 @@ export function GameView({ stage, onComplete, tutorialMode = false }: Props) {
    * `tapAudioTime - startAudioTimeRef.current`.
    */
   const startAudioTimeRef = useRef(0);
+
+  // Per-note SVG <g> elements indexed by source RhythmNote.id, captured
+  // from ScoreView's onNoteElements callback. Used by the assist-mode
+  // flash so the .assist-flash class can be toggled per-note without a
+  // React re-render. Stays in a ref because the effect that wires up
+  // the flash schedule needs the *latest* DOM (a viewport resize re-
+  // renders the staff) without re-running the whole schedule.
+  const noteElementsRef = useRef<Map<string, SVGElement>>(new Map());
 
   // Push accent-pattern changes into both audio drivers without tearing
   // the graph down — toggling a beat shouldn't cause a click drop-out.
@@ -520,12 +537,74 @@ export function GameView({ stage, onComplete, tutorialMode = false }: Props) {
             // can decide whether the run was below the stage's pass
             // threshold even if the player nudges the slider afterwards.
             setLastPlayedBpm(effectiveBpm);
+            // Pin "was this an assist run?" so ResultScreen can suppress
+            // best-score writes / failStreak updates even if the player
+            // toggles assistMode off after the fact (#55).
+            setLastWasAssist(assistMode);
             setTimeout(() => goto('result'), 1500);
           }
         }
       },
     });
-  }, [phase, candidates, audioContext, setLastResult, setLastEtude, setLastRecords, setLastPlayedBpm, goto, stage, adjustedScore, converter, effectiveBpm, onComplete]);
+  }, [phase, candidates, audioContext, setLastResult, setLastEtude, setLastRecords, setLastPlayedBpm, setLastWasAssist, goto, stage, adjustedScore, converter, effectiveBpm, onComplete, assistMode]);
+
+  // Assist Mode (#55) — once `playing`, schedule an extra metronome-
+  // style click at each note's onset (on top of the regular beat grid)
+  // AND flash the corresponding notehead in time with that click, so
+  // the player can hear AND see the "correct" rhythm. Strictly a
+  // learning aid — judgement still runs, but ResultScreen suppresses
+  // best-score / failStreak updates when `lastWasAssist` is true.
+  //
+  // Audio: scheduled directly through `scheduleClick` against the
+  // AudioContext clock so each extra click is sample-accurate; no
+  // BPM mutation (Rhygym is read-the-score, not tap-by-feel — see
+  // feedback_no_runtime_bpm_change).
+  // Visual: setTimeout + classList toggle, ~150 ms pulse. The CSS
+  // animation is intentionally subtle (see feedback_minimal_game_feel)
+  // — a quick fill flash, no screen-shake, no fireworks.
+  useEffect(() => {
+    if (!assistMode || phase !== 'playing') return;
+    const ctx = audioContext;
+    if (!ctx) return;
+    const FLASH_DURATION_MS = 180;
+    const ASSIST_CLICK_VOLUME = 0.5;
+    const timeouts: number[] = [];
+    for (const c of candidates) {
+      if (judgedIdsRef.current.has(c.id)) continue;
+      const targetAudioTime = startAudioTimeRef.current + c.sec;
+      // Extra click — emitted slightly softer than the accent click so
+      // it reads as a *guide* layered over the metronome rather than
+      // a competing pulse.
+      if (targetAudioTime >= ctx.currentTime) {
+        scheduleClick(ctx, targetAudioTime, false, ASSIST_CLICK_VOLUME);
+      }
+      // Visual flash — base id only (tremolo sub-onsets like
+      // `${id}-trem-N` don't have their own SVG element, but flashing
+      // the head once per stroke would just stack the same class on
+      // the same node anyway).
+      const baseId = c.id.includes('-trem-') ? c.id.split('-trem-')[0]! : c.id;
+      const delayMs = Math.max(0, (targetAudioTime - ctx.currentTime) * 1000);
+      const id = window.setTimeout(() => {
+        const el = noteElementsRef.current.get(baseId);
+        if (!el) return;
+        el.classList.add('assist-flash');
+        const removeId = window.setTimeout(() => {
+          el.classList.remove('assist-flash');
+        }, FLASH_DURATION_MS);
+        timeouts.push(removeId);
+      }, delayMs);
+      timeouts.push(id);
+    }
+    return () => {
+      for (const id of timeouts) window.clearTimeout(id);
+      // Drop any lingering flash class so a retry doesn't leave a stuck
+      // highlight on a note whose timeout hadn't yet fired.
+      for (const el of noteElementsRef.current.values()) {
+        el.classList.remove('assist-flash');
+      }
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [assistMode, phase, candidates, audioContext]);
 
   // Auto Mode (debug) — after the player's manual start tap flips the
   // run into `playing`, schedule a perfectly-timed synthetic tap for
@@ -591,6 +670,11 @@ export function GameView({ stage, onComplete, tutorialMode = false }: Props) {
                 🤖 現在は Auto モードです
               </span>
             )}
+            {assistMode && (
+              <span className="assist-badge" role="status" aria-label="アシストモード有効">
+                💡 アシスト中 (記録対象外)
+              </span>
+            )}
           </p>
         </div>
         <div className="row game-header-actions">
@@ -632,7 +716,14 @@ export function GameView({ stage, onComplete, tutorialMode = false }: Props) {
        * screen is the dedicated tap zone — large enough on its own
        * without needing the staff to double as tap target. */}
       <div className="score-view-wrapper game-score-wrapper">
-        <ScoreView score={adjustedScore} measuresPerLine={2} maxHeightVh={48} />
+        <ScoreView
+          score={adjustedScore}
+          measuresPerLine={2}
+          maxHeightVh={48}
+          onNoteElements={(els) => {
+            noteElementsRef.current = els;
+          }}
+        />
       </div>
       <TapArea ctx={audioContext} onTap={handleTap} className="game-tap-zone">
         {phase !== 'done' && (

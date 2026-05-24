@@ -72,7 +72,7 @@ export const NORMAL_CLEAR_THRESHOLD = FINAL_UNLOCK_THRESHOLD;
  */
 export interface MovementForProgression {
   movement: number;
-  stages: readonly { id: string; isFinal?: boolean }[];
+  stages: readonly { id: string; isFinal?: boolean; isLesson?: boolean }[];
 }
 
 export interface ProgressionState {
@@ -95,12 +95,17 @@ export interface ProgressionOptions {
 }
 
 function countClearedEtudes(
-  stages: readonly { id: string; isFinal?: boolean }[],
+  stages: readonly { id: string; isFinal?: boolean; isLesson?: boolean }[],
   bests: Record<string, BestRecord>,
 ): number {
   let count = 0;
   for (const s of stages) {
     if (s.isFinal) continue;
+    // Lessons (#53) are optional onboarding — they sit alongside the
+    // graded Etudes but must not count toward the 3-of-5 Final-unlock
+    // gate, otherwise adding them would silently move the cap from
+    // "3 etudes" to "3 etudes-or-lessons" and devalue the threshold.
+    if (s.isLesson) continue;
     const rank = bests[s.id]?.rank;
     if (rank !== undefined && ETUDE_CLEAR_RANKS.has(rank)) count++;
   }

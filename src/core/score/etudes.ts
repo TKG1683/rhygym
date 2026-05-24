@@ -27,10 +27,12 @@ interface EtudeMeta {
   movement: number;
   /** Accent color used on the card. Difficulty rises → hue shifts warmer/darker. */
   themeColor: string;
-  /** 1-based position within a Level's stage list. */
+  /** 0 for the Lesson, 1-based for graded Etudes / Final. */
   indexInMovement: number;
   /** True for the Level's skip-test stage. */
   isFinal?: boolean;
+  /** True for the optional Lesson stage (#53). */
+  isLesson?: boolean;
 }
 
 // Same palette as scripts/generate-etudes.ts so the fallback and the
@@ -58,10 +60,36 @@ const MOVEMENT_BPM: Record<number, number> = {
   6: 103, 7: 108, 8: 113, 9: 118, 10: 126,
 };
 
+/**
+ * Per-Lesson BPM — Movement BPM minus 20 (floor 60) so the optional
+ * onboarding stage runs at a noticeably gentler tempo than the graded
+ * Etudes. M8's lesson lives in 5/8 (eighth-pulse meter), so its BPM
+ * value is doubled to match the eighth-pulse convention already used
+ * by movement-8-etude-3/4. M4's lesson is intentionally kept in 4/4
+ * with dotted-quarter content (NOT 6/8) so the player meets the new
+ * dotted-quarter idea in isolation before the compound-meter switch.
+ */
+const LESSON_BPM: Record<number, number> = {
+  1: 60, 2: 67, 3: 70, 4: 72, 5: 78,
+  6: 83, 7: 88, 8: 186, 9: 98, 10: 86,
+};
+
 // One-line description for each Movement's 5 graded études + Final.
 // Authored so the MovementSelect cards have something more specific
 // than "Movement N — k".
 const ETUDE_DESCRIPTIONS: Record<string, string> = {
+  // Lessons (#53) — one per Movement, isolating the new element at a
+  // gentler tempo before the player tackles the graded Etudes.
+  'movement-1-lesson': 'レッスン: 4分・2分・全音符の基本',
+  'movement-2-lesson': 'レッスン: 4分休符の基本',
+  'movement-3-lesson': 'レッスン: 8分音符の基本',
+  'movement-4-lesson': 'レッスン: 付点4分音符の基本',
+  'movement-5-lesson': 'レッスン: 16分音符の基本',
+  'movement-6-lesson': 'レッスン: ヘミオラの基本',
+  'movement-7-lesson': 'レッスン: 3連符の基本',
+  'movement-8-lesson': 'レッスン: 5/8 拍子の基本',
+  'movement-9-lesson': 'レッスン: 5/4 拍子の基本',
+  'movement-10-lesson': 'レッスン: 拍子切替の基本',
   // Movement 1 — quarter / half / whole
   'movement-1-etude-1': '4分音符を歩く',
   'movement-1-etude-2': '2分音符の伸びを感じる',
@@ -136,13 +164,20 @@ const ETUDE_DESCRIPTIONS: Record<string, string> = {
 
 function buildMovementMetas(movement: number): EtudeMeta[] {
   const bpm = MOVEMENT_BPM[movement]!;
+  const lessonBpm = LESSON_BPM[movement]!;
   const color = COLOR[movement]!;
   const indices: Array<{
     idSuffix: string;
     indexInMovement: number;
     isFinal?: boolean;
+    isLesson?: boolean;
     minor: string;
   }> = [
+    // Lesson sits at indexInMovement = 0 so it always sorts to the
+    // top of the list (#53). The roster's manifest order also places
+    // it first; the index gives the in-Result "next stage" lookup
+    // (lesson + 1 = etude-1) a clean integer to hop on.
+    { idSuffix: 'lesson', indexInMovement: 0, isLesson: true, minor: 'L' },
     { idSuffix: 'etude-1', indexInMovement: 1, minor: '1' },
     { idSuffix: 'etude-2', indexInMovement: 2, minor: '2' },
     { idSuffix: 'etude-3', indexInMovement: 3, minor: '3' },
@@ -155,19 +190,22 @@ function buildMovementMetas(movement: number): EtudeMeta[] {
     // Final is no longer an étude — it's the Movement's Final, so it
     // gets its own label rather than an "Etude N-F" suffix. Hyphen
     // separators across the board for visual consistency.
-    const name = it.isFinal
-      ? `Movement ${movement}-Final`
-      : `Etude ${movement}-${it.minor}`;
+    const name = it.isLesson
+      ? `Movement ${movement}-Lesson`
+      : it.isFinal
+        ? `Movement ${movement}-Final`
+        : `Etude ${movement}-${it.minor}`;
     const meta: EtudeMeta = {
       id,
       name,
       description: ETUDE_DESCRIPTIONS[id] ?? name,
-      bpm,
+      bpm: it.isLesson ? lessonBpm : bpm,
       movement,
       themeColor: color,
       indexInMovement: it.indexInMovement,
     };
     if (it.isFinal) meta.isFinal = true;
+    if (it.isLesson) meta.isLesson = true;
     return meta;
   });
 }
@@ -202,6 +240,7 @@ export const ETUDES: readonly EtudeWithMovementMeta[] = ETUDE_METAS.map((m) => {
     },
   };
   if (m.isFinal) stage.isFinal = true;
+  if (m.isLesson) stage.isLesson = true;
   return stage;
 });
 

@@ -15,9 +15,13 @@ import {
   addSkipTestFinal,
   getAllBests,
   getBest,
+  getFailStreak,
   getSkipTestFinals,
+  incrementFailStreak,
   isNewBest,
+  markLessonCompleted,
   removeSkipTestFinal,
+  resetFailStreak,
   setBest,
 } from '../../core/storage/localStore';
 import { TickTimeConverter } from '../../core/timing/tickTime';
@@ -27,6 +31,15 @@ import { useAppStore } from '../store/appStore';
 
 /** Rank ordering for "is this rank at least PASS_RANK_THRESHOLD?". */
 const RANK_ORDER = ['D', 'C', 'B', 'A', 'S'] as const;
+
+/**
+ * Sub-pass-rank runs in a row that trigger the "アシストを試す" banner
+ * (#55). Three is the smallest count that's clearly "the player is
+ * stuck" rather than "the player had a bad day" — two failed runs is
+ * normal grinding, four felt long enough that some players gave up
+ * before the offer appeared.
+ */
+const ASSIST_OFFER_THRESHOLD = 3;
 
 /**
  * Production URL for the share intent. Hard-coded rather than read
@@ -58,6 +71,9 @@ function findNextEtude(
     return firstEtudeOfMovement(roster, current.movement + 1);
   }
   if (current.indexInMovement != null) {
+    // Lessons live at indexInMovement = 0; +1 lands on etude-1 of
+    // the same Movement, which is exactly the "okay, lesson done,
+    // go play the real thing" jump the player expects.
     const sameLevelNext = roster.find(
       (s) => s.movement === current.movement && s.indexInMovement === current.indexInMovement! + 1,
     );
@@ -78,8 +94,11 @@ function firstEtudeOfMovement(
 ): EtudeWithMovementMeta | null {
   const inLevel = roster.filter((s) => s.movement === movement);
   if (inLevel.length === 0) return null;
-  const withIndex = inLevel.find((s) => s.indexInMovement === 1);
-  return withIndex ?? inLevel[0] ?? null;
+  // Skip lessons (indexInMovement = 0) when asked for the "first
+  // playable etude of Movement M+1" — the next-Movement landing
+  // should drop the player onto a graded etude, not the lesson.
+  const withIndex = inLevel.find((s) => !s.isLesson && s.indexInMovement === 1);
+  return withIndex ?? inLevel.find((s) => !s.isLesson) ?? inLevel[0] ?? null;
 }
 
 export function ResultScreen() {
@@ -94,6 +113,8 @@ export function ResultScreen() {
   const setCalibrationReturnScreen = useAppStore((s) => s.setCalibrationReturnScreen);
   const setSelectInitialMovement = useAppStore((s) => s.setSelectInitialMovement);
   const viaSkipTest = useAppStore((s) => s.viaSkipTest);
+  const setAssistMode = useAppStore((s) => s.setAssistMode);
+  const lastWasAssist = useAppStore((s) => s.lastWasAssist);
   const calibrated = calibrationOffsetSec !== 0;
 
   // Mark this screen as the return target so calibration can bring the
@@ -207,8 +228,13 @@ export function ResultScreen() {
     lastPlayedBpm != null &&
     lastPlayedBpm < stage.bpm;
 
+  // Lessons (#53) are optional onboarding — they intentionally don't
+  // produce best records, so the "NEW BEST!" badge / setBest writes
+  // / unlock simulation all branch on this and skip lesson plays.
+  const isLessonPlay = stage?.isLesson === true;
+
   const newBest =
-    stage && result && !belowPassThreshold
+    stage && result && !belowPassThreshold && !isLessonPlay && !lastWasAssist
       ? isNewBest({ etudeId: stage.id, score: result.score })
       : false;
 
@@ -236,9 +262,15 @@ export function ResultScreen() {
     for (const s of roster) {
       const entry =
         byLevel.get(s.movement) ?? { movement: s.movement, stages: [] as MovementForProgression['stages'] };
-      (entry.stages as Array<{ id: string; isFinal?: boolean }>).push({
+      // Forward isLesson so progression's countClearedEtudes can
+      // exclude lessons from the 3-of-5 Final-unlock gate. Without
+      // this, a stray lesson best (shouldn't happen — we skip
+      // setBest on lessons — but defensive) could quietly satisfy
+      // the threshold and shift unlocks.
+      (entry.stages as Array<{ id: string; isFinal?: boolean; isLesson?: boolean }>).push({
         id: s.id,
         isFinal: s.isFinal,
+        isLesson: s.isLesson,
       });
       byLevel.set(s.movement, entry);
     }
@@ -246,6 +278,11 @@ export function ResultScreen() {
   }, [loadedEtudes]);
   const simulatedBests = useMemo(() => {
     if (!stage || !result || belowPassThreshold) return null;
+    // Lessons don't write bests (see setBest useEffect below), so
+    // they can't affect the unlock projection either — bail early.
+    if (isLessonPlay) return null;
+    // Assist-mode plays don't write bests either — same projection bail.
+    if (lastWasAssist) return null;
     // Project the post-run bests state: this run becomes the new best
     // only if there wasn't a higher-scoring previous entry. Lower-
     // scoring runs can still unlock when the *rank* is higher than
@@ -265,7 +302,7 @@ export function ResultScreen() {
         achievedAt: new Date().toISOString(),
       },
     };
-  }, [stage, result, belowPassThreshold, bestsAtMount]);
+  }, [stage, result, belowPassThreshold, isLessonPlay, lastWasAssist, bestsAtMount]);
 
   // Project the post-run skip-test marker set. This run mutates the
   // markers exactly the same way `setBest` does in the useEffect
@@ -274,6 +311,9 @@ export function ResultScreen() {
   const simulatedSkipTestFinals = useMemo<ReadonlySet<string>>(() => {
     if (!stage || !result) return skipTestFinalsAtMount;
     if (!stage.isFinal) return skipTestFinalsAtMount;
+    // Assist-mode plays don't progress the skip-test marker set —
+    // unlock state should reflect only true-skill clears (#55).
+    if (lastWasAssist) return skipTestFinalsAtMount;
     if (viaSkipTest && result.rank === 'S') {
       const next = new Set(skipTestFinalsAtMount);
       next.add(stage.id);
@@ -286,7 +326,7 @@ export function ResultScreen() {
       return next;
     }
     return skipTestFinalsAtMount;
-  }, [stage, result, viaSkipTest, skipTestFinalsAtMount]);
+  }, [stage, result, viaSkipTest, lastWasAssist, skipTestFinalsAtMount]);
 
   const unlockChange = useMemo(() => {
     if (!simulatedBests) return null;
@@ -337,17 +377,30 @@ export function ResultScreen() {
 
   useEffect(() => {
     if (!stage || !result || !newBest) return;
-    // Defensive — newBest is already gated on belowPassThreshold above,
-    // but spelling out the guard here makes the "don't promote a below-
-    // threshold run" rule readable next to the actual setBest call.
+    // Defensive — newBest is already gated on belowPassThreshold +
+    // isLessonPlay + lastWasAssist above, but spelling the guards out
+    // here makes the "don't promote a below-threshold / lesson /
+    // assisted run" rules readable next to the actual setBest call.
     if (belowPassThreshold) return;
+    if (isLessonPlay) return;
+    if (lastWasAssist) return;
     setBest({
       etudeId: stage.id,
       score: result.score,
       rank: result.rank,
       achievedAt: new Date().toISOString(),
     });
-  }, [stage, result, newBest, belowPassThreshold]);
+  }, [stage, result, newBest, belowPassThreshold, isLessonPlay, lastWasAssist]);
+
+  // Mark a lesson as completed the moment its Result loads (#53) —
+  // regardless of rank. The lesson is "an exercise the player did",
+  // not a graded clear, so reaching the Result screen is enough to
+  // stamp the ✓ on the etude list next time.
+  useEffect(() => {
+    if (!stage || !result) return;
+    if (!isLessonPlay) return;
+    markLessonCompleted(stage.id);
+  }, [stage, result, isLessonPlay]);
 
   // Sync the skip-test marker set whenever this run was a Final play.
   // Independent of `newBest` — a normal-mode B+ replay that scores
@@ -358,12 +411,78 @@ export function ResultScreen() {
     if (!stage || !result) return;
     if (!stage.isFinal) return;
     if (belowPassThreshold) return; // sub-pass plays don't count for unlocks
+    if (lastWasAssist) return; // assist plays don't count for unlocks (#55)
     if (viaSkipTest && result.rank === 'S') {
       addSkipTestFinal(stage.id);
     } else if (!viaSkipTest && rankAtLeast(result.rank, 'B')) {
       removeSkipTestFinal(stage.id);
     }
-  }, [stage, result, viaSkipTest, belowPassThreshold]);
+  }, [stage, result, viaSkipTest, belowPassThreshold, lastWasAssist]);
+
+  // Per-etude consecutive-fail streak (#55). Lives in localStorage so a
+  // page reload doesn't reset the counter and let the player avoid the
+  // assist offer by refreshing. We update *once* per mount via the
+  // failStreakUpdatedRef guard: a re-render must not re-increment, or a
+  // single B-rank run would balloon the counter on every state change.
+  const failStreakUpdatedRef = useRef(false);
+  const [failStreak, setFailStreak] = useState<number>(0);
+
+  useEffect(() => {
+    if (!stage || !result) return;
+    if (failStreakUpdatedRef.current) return;
+    failStreakUpdatedRef.current = true;
+    // Below-pass-threshold runs aren't "the player can't pass the étude"
+    // — they're "the player picked a slower BPM on purpose". Don't move
+    // the counter either direction so the assist offer is gated on
+    // genuine ranked attempts.
+    // Assist-mode plays similarly don't represent the un-aided ability,
+    // and lesson plays are an optional onboarding stage (not a fail
+    // attempt) — both are excluded from both increment and reset paths.
+    if (belowPassThreshold || lastWasAssist || isLessonPlay) {
+      setFailStreak(getFailStreak(stage.id));
+      return;
+    }
+    if (rankAtLeast(result.rank, PASS_RANK_THRESHOLD)) {
+      // A+ clear — the wall is broken, drop the counter back to zero
+      // so future fails on this étude start the assist clock fresh.
+      resetFailStreak(stage.id);
+      setFailStreak(0);
+    } else {
+      // B or lower → bump the streak and show the offer once it
+      // crosses ASSIST_OFFER_THRESHOLD.
+      const next = incrementFailStreak(stage.id);
+      setFailStreak(next);
+    }
+  }, [stage, result, belowPassThreshold, lastWasAssist, isLessonPlay]);
+
+  // Assist banner gating — only offer when:
+  //  - the just-finished run was NOT itself an assist play
+  //  - the player has hit ASSIST_OFFER_THRESHOLD consecutive sub-pass runs
+  //  - the player hasn't actually cleared (defensive — failStreak already
+  //    captures this, but the rank guard reads explicitly)
+  //  - this wasn't a lesson play (lessons aren't a fail context)
+  const offerAssist =
+    !lastWasAssist &&
+    !isLessonPlay &&
+    failStreak >= ASSIST_OFFER_THRESHOLD &&
+    !rankAtLeast(result?.rank ?? 'D', PASS_RANK_THRESHOLD);
+
+  // "アシストを試す" CTA — flip the global flag on, kick the player
+  // straight back into the Game screen with the same Etude. The Result
+  // useEffect above has already settled the failStreak / best-score
+  // accounting for the run that brought us here, so navigating away
+  // here is safe.
+  const goAssistRun = () => {
+    setAssistMode(true);
+    goto('game');
+  };
+  // "通常モードに戻る" CTA — turn assist off; the player either retries
+  // unaided or backs out of the Etude entirely. We do NOT toggle assist
+  // mode off automatically on an A+ assist clear: the player should be
+  // the one to decide they're ready to drop the training wheels.
+  const exitAssist = () => {
+    setAssistMode(false);
+  };
 
   // Drift large enough to suggest (re-)calibration. Reuses the same
   // mean-signed-error already computed for the timing-stats line so we
@@ -374,20 +493,25 @@ export function ResultScreen() {
     return Math.round(stats.meanDiffMs);
   }, [stats]);
 
-  // "Next stage" lookup — only relevant once we know the player cleared
-  // (rank A or higher). Resolved against the loaded roster (with the
-  // bundled ETUDES as a fallback for the same reasons GameScreen does).
+  // "Next stage" lookup — relevant once we know the player cleared
+  // (rank A or higher), OR if this was a lesson (which doesn't gate
+  // on rank — reaching the end is the win condition). Resolved
+  // against the loaded roster (with the bundled ETUDES as a fallback
+  // for the same reasons GameScreen does).
   const nextEtude = useMemo<EtudeWithMovementMeta | null>(() => {
     if (!stage || !result) return null;
-    if (!rankAtLeast(result.rank, PASS_RANK_THRESHOLD)) return null;
+    if (!isLessonPlay && !rankAtLeast(result.rank, PASS_RANK_THRESHOLD)) return null;
     const roster = loadedEtudes ?? ETUDES;
     const currentMeta = roster.find((s) => s.id === stage.id);
     if (!currentMeta) return null;
     return findNextEtude(roster, currentMeta);
-  }, [stage, result, loadedEtudes]);
+  }, [stage, result, loadedEtudes, isLessonPlay]);
 
+  // For routing-button purposes: lessons always "pass" (reaching the
+  // Result screen is the completion criterion); graded plays still
+  // need rank A+ to flip the "next etude" CTA over the retry one.
   const passed =
-    result != null && rankAtLeast(result.rank, PASS_RANK_THRESHOLD);
+    (result != null && rankAtLeast(result.rank, PASS_RANK_THRESHOLD)) || isLessonPlay;
   // If the player cleared the very last stage there's no "next" to go
   // to — the level-list itself becomes the celebration target.
   const endOfRoster = passed && nextEtude === null;
@@ -496,48 +620,92 @@ export function ResultScreen() {
         )}
       </section>
 
-      {belowPassThreshold && (
-        <div className="bpm-threshold-banner" role="status">
-          <p className="bpm-threshold-text">
-            このBPM ({lastPlayedBpm}) は合格基準 ({stage.bpm}) 未満のため、記録は残りません。
+      {/* Lesson plays get a completely different chrome: no rank chip,
+       *  no score number, no NEW BEST / unlock / belowPassThreshold —
+       *  none of those concepts apply to an exploratory practice run.
+       *  Just an acknowledgment + raw PERFECT/GOOD/MISS counts so the
+       *  player can self-assess without the graded-test framing. */}
+      {isLessonPlay ? (
+        <section className="lesson-result-header">
+          <div className="lesson-result-tag">📖 レッスン完了！</div>
+          <p className="lesson-result-stage-name">{stage.name}</p>
+          <p className="lesson-result-message">
+            リズムの感覚をつかむのが目的。 スコアには残らないから、 軽くタイミングを確認して次の Etude に進もう。
           </p>
+          <div className="lesson-result-breakdown">
+            <span className="r-perfect">タイミング◎ {result.perfect}</span>
+            <span className="r-good">タイミング○ {result.good}</span>
+            <span className="r-miss">タップ漏れ {result.miss}</span>
+          </div>
+        </section>
+      ) : (
+        <>
+          {belowPassThreshold && (
+            <div className="bpm-threshold-banner" role="status">
+              <p className="bpm-threshold-text">
+                このBPM ({lastPlayedBpm}) は合格基準 ({stage.bpm}) 未満のため、記録は残りません。
+              </p>
+            </div>
+          )}
+          {newBest && <p className="new-best-badge">NEW BEST!</p>}
+          <div
+            className={`result-rank-chip rank-${result.rank}`}
+            aria-label={`ランク ${result.rank}`}
+          >
+            <h1 className="result-rank">{result.rank}</h1>
+          </div>
+          <p className="result-score">{result.score}</p>
+          <p className="result-accuracy">正確率 {(result.accuracy * 100).toFixed(1)}%</p>
+          {prevBest && !newBest && (
+            <p className="muted">
+              自己ベスト: {prevBest.score} ({prevBest.rank})
+            </p>
+          )}
+          <div className="result-breakdown">
+            <span className="r-perfect">PERFECT {result.perfect}</span>
+            <span className="r-good">GOOD {result.good}</span>
+            <span className="r-miss">MISS {result.miss}</span>
+          </div>
+          {unlockChange && (
+            <div className="unlock-banner" role="status">
+              <span className="unlock-banner-icon" aria-hidden="true">🎉</span>
+              <span className="unlock-banner-text">
+                {unlockChange.to === unlockChange.from + 1
+                  ? `Movement ${unlockChange.to} が解放されました！`
+                  : `Movement ${unlockChange.from + 1}–${unlockChange.to} が解放されました！`}
+              </span>
+            </div>
+          )}
+          {finalUnlockChange && (
+            <div className="unlock-banner" role="status">
+              <span className="unlock-banner-icon" aria-hidden="true">🚪</span>
+              <span className="unlock-banner-text">
+                Movement {finalUnlockChange.movement} の Final が解放されました！
+              </span>
+            </div>
+          )}
+        </>
+      )}
+      {lastWasAssist && !isLessonPlay && (
+        <div className="assist-banner assist-banner-done" role="status">
+          <span className="assist-banner-icon" aria-hidden="true">💡</span>
+          <span className="assist-banner-text">
+            アシストプレイのため、スコアは記録されません。
+          </span>
+          <button type="button" className="primary assist-cta" onClick={exitAssist}>
+            通常モードに戻る
+          </button>
         </div>
       )}
-      {newBest && <p className="new-best-badge">NEW BEST!</p>}
-      <div
-        className={`result-rank-chip rank-${result.rank}`}
-        aria-label={`ランク ${result.rank}`}
-      >
-        <h1 className="result-rank">{result.rank}</h1>
-      </div>
-      <p className="result-score">{result.score}</p>
-      <p className="result-accuracy">正確率 {(result.accuracy * 100).toFixed(1)}%</p>
-      {prevBest && !newBest && (
-        <p className="muted">
-          自己ベスト: {prevBest.score} ({prevBest.rank})
-        </p>
-      )}
-      <div className="result-breakdown">
-        <span className="r-perfect">PERFECT {result.perfect}</span>
-        <span className="r-good">GOOD {result.good}</span>
-        <span className="r-miss">MISS {result.miss}</span>
-      </div>
-      {unlockChange && (
-        <div className="unlock-banner" role="status">
-          <span className="unlock-banner-icon" aria-hidden="true">🎉</span>
-          <span className="unlock-banner-text">
-            {unlockChange.to === unlockChange.from + 1
-              ? `Movement ${unlockChange.to} が解放されました！`
-              : `Movement ${unlockChange.from + 1}–${unlockChange.to} が解放されました！`}
+      {offerAssist && (
+        <div className="assist-banner assist-banner-offer" role="status">
+          <span className="assist-banner-icon" aria-hidden="true">💡</span>
+          <span className="assist-banner-text">
+            連続 {failStreak} 回不合格。アシストで「正解のリズム」を聴きながら練習してみる？
           </span>
-        </div>
-      )}
-      {finalUnlockChange && (
-        <div className="unlock-banner" role="status">
-          <span className="unlock-banner-icon" aria-hidden="true">🚪</span>
-          <span className="unlock-banner-text">
-            Movement {finalUnlockChange.movement} の Final が解放されました！
-          </span>
+          <button type="button" className="primary assist-cta" onClick={goAssistRun}>
+            アシストを試す
+          </button>
         </div>
       )}
       {driftSuggestion !== null && (
@@ -553,7 +721,35 @@ export function ResultScreen() {
         </div>
       )}
 
-      {viaSkipTest ? (
+      {isLessonPlay ? (
+        // Lesson variant — no "次の Etude へ" or rank-based branching.
+        // Primary CTA frames the next step as "go play the real thing"
+        // (etude-1 of this Movement); secondary actions let the player
+        // replay the lesson or back out to the etude list. No share
+        // button — sharing a "lesson result" wouldn't be meaningful
+        // when the run is intentionally un-scored.
+        <>
+          {nextEtude ? (
+            <button className="primary next-etude-cta" onClick={goNext}>
+              {nextEtude.name} に挑戦する →
+            </button>
+          ) : (
+            <button className="primary next-etude-cta" onClick={goEtudeSelect}>
+              Etude 一覧へ
+            </button>
+          )}
+          <div className="row result-secondary-row">
+            <button className="secondary result-secondary-btn" onClick={() => goto('game')}>
+              もう一度レッスン
+            </button>
+            {nextEtude && (
+              <button className="secondary result-secondary-btn" onClick={goEtudeSelect}>
+                Etude 一覧へ
+              </button>
+            )}
+          </div>
+        </>
+      ) : viaSkipTest ? (
         // Skip-test (飛び級) variant — neither the etude list nor the
         // "次の Etude" framing makes sense here (the player came in
         // from a locked Movement card, not an etude list). Offer

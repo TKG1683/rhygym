@@ -2,7 +2,12 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import {
   getAllBests,
   getBest,
+  getFailStreak,
+  getLessonsCompleted,
+  incrementFailStreak,
   isNewBest,
+  markLessonCompleted,
+  resetFailStreak,
   setBest,
   type BestRecord,
 } from '../src/core/storage/localStore';
@@ -88,6 +93,49 @@ describe('localStore — corruption tolerance', () => {
   it('returns {} when the stored value is the wrong shape (array)', () => {
     localStorage.setItem('rhygym:best:v2', '[]');
     expect(getAllBests()).toEqual({});
+  });
+});
+
+describe('localStore — lessons completed (#53)', () => {
+  it('returns empty set when nothing has been marked', () => {
+    expect(getLessonsCompleted().size).toBe(0);
+  });
+
+  it('marks a lesson and reads it back', () => {
+    markLessonCompleted('movement-1-lesson');
+    const set = getLessonsCompleted();
+    expect(set.has('movement-1-lesson')).toBe(true);
+    expect(set.size).toBe(1);
+  });
+
+  it('marking the same lesson twice is idempotent', () => {
+    markLessonCompleted('movement-3-lesson');
+    markLessonCompleted('movement-3-lesson');
+    expect(getLessonsCompleted().size).toBe(1);
+  });
+
+  it('preserves earlier completions when a new one is added', () => {
+    markLessonCompleted('movement-1-lesson');
+    markLessonCompleted('movement-2-lesson');
+    const set = getLessonsCompleted();
+    expect(set.has('movement-1-lesson')).toBe(true);
+    expect(set.has('movement-2-lesson')).toBe(true);
+  });
+
+  it('returns empty set on corrupt storage', () => {
+    localStorage.setItem('rhygym:lessonsCompleted:v1', '{garbage');
+    expect(getLessonsCompleted().size).toBe(0);
+  });
+
+  it('filters non-string entries from a wrong-shape array', () => {
+    localStorage.setItem(
+      'rhygym:lessonsCompleted:v1',
+      JSON.stringify(['movement-1-lesson', 42, null, 'movement-2-lesson']),
+    );
+    const set = getLessonsCompleted();
+    expect(set.size).toBe(2);
+    expect(set.has('movement-1-lesson')).toBe(true);
+    expect(set.has('movement-2-lesson')).toBe(true);
   });
 });
 
@@ -220,5 +268,57 @@ describe('localStore — v1 → v2 migrator', () => {
 
     const all = getAllBests();
     expect(Object.keys(all)).toEqual(['movement-4-etude-2']);
+  });
+});
+
+describe('localStore — failStreak (#55)', () => {
+  it('getFailStreak returns 0 for an unknown étude', () => {
+    expect(getFailStreak('movement-1-etude-1')).toBe(0);
+  });
+
+  it('incrementFailStreak counts up by one and returns the new value', () => {
+    expect(incrementFailStreak('movement-2-etude-3')).toBe(1);
+    expect(incrementFailStreak('movement-2-etude-3')).toBe(2);
+    expect(incrementFailStreak('movement-2-etude-3')).toBe(3);
+    expect(getFailStreak('movement-2-etude-3')).toBe(3);
+  });
+
+  it('resetFailStreak drops the counter back to zero', () => {
+    incrementFailStreak('movement-1-etude-1');
+    incrementFailStreak('movement-1-etude-1');
+    expect(getFailStreak('movement-1-etude-1')).toBe(2);
+    resetFailStreak('movement-1-etude-1');
+    expect(getFailStreak('movement-1-etude-1')).toBe(0);
+  });
+
+  it('counters are independent across etudeIds', () => {
+    incrementFailStreak('etude-a');
+    incrementFailStreak('etude-a');
+    incrementFailStreak('etude-b');
+    expect(getFailStreak('etude-a')).toBe(2);
+    expect(getFailStreak('etude-b')).toBe(1);
+    resetFailStreak('etude-a');
+    expect(getFailStreak('etude-a')).toBe(0);
+    expect(getFailStreak('etude-b')).toBe(1);
+  });
+
+  it('resetFailStreak on an unknown étude is a no-op', () => {
+    expect(() => resetFailStreak('never-touched')).not.toThrow();
+    expect(getFailStreak('never-touched')).toBe(0);
+  });
+
+  it('returns 0 when the stored value is garbage', () => {
+    localStorage.setItem('rhygym:failStreak:v1', '{not valid json');
+    expect(getFailStreak('any-etude')).toBe(0);
+  });
+
+  it('drops corrupted-value entries (non-number / negative) without throwing', () => {
+    localStorage.setItem(
+      'rhygym:failStreak:v1',
+      JSON.stringify({ a: 'oops', b: -3, c: 4 }),
+    );
+    expect(getFailStreak('a')).toBe(0);
+    expect(getFailStreak('b')).toBe(0);
+    expect(getFailStreak('c')).toBe(4);
   });
 });

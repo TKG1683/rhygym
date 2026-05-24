@@ -579,6 +579,23 @@ button.secondary:active {
   margin-left: 6px;
 }
 
+/* "アシスト中" chip on the game header (#55). Visually distinct from
+ * the Auto-Mode chip — softer blue/teal palette signals "guided
+ * practice, not a debug cheat". */
+.assist-badge {
+  display: inline-flex;
+  align-items: center;
+  font-size: var(--fs-xs);
+  padding: 2px 10px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #4fb6e4, #2f7fb8);
+  color: #fff;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  box-shadow: 0 2px 6px rgba(47, 127, 184, 0.32);
+  margin-left: 6px;
+}
+
 /* Title-screen muscle character is a button when reset as the Auto-
  * Mode hidden toggle. Strip the default <button> chrome so it still
  * reads as the decorative logo glyph; the cursor remains default
@@ -1332,6 +1349,107 @@ input[type='range']:disabled {
 .select-help-close {
   width: 100%;
   min-height: 44px;
+}
+
+/* ------------------------------------------------------------------ */
+/*  Lesson card (#53) — optional onboarding stage at the top of every */
+/*  Movement's Etude list. Renders with a 📖 corner glyph, a tinted   */
+/*  "レッスン" tag, and a side skip button that vanishes once done.   */
+/* ------------------------------------------------------------------ */
+.etude-card-lesson {
+  /* Tinted background so the lesson reads as "different category"
+   * vs. the graded Etudes/Final without competing with the theme
+   * stripe on the left edge. */
+  background: var(--highlight-band);
+  border-style: dashed;
+  display: flex;
+  align-items: stretch;
+  gap: 0;
+}
+
+/* The card body becomes a button itself so tapping anywhere outside
+ * the explicit skip button starts the lesson — the most likely
+ * intent of a player who scrolled to it. */
+.etude-card-lesson-body {
+  background: none;
+  border: none;
+  padding: 12px 14px;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+  min-height: auto;
+  z-index: 1;
+}
+
+.etude-card-glyph-lesson {
+  /* Slightly brighter than the default 0.12 glyph so the 📖 stays
+   * legible against the tinted lesson background. */
+  opacity: 0.45;
+  font-size: 44px;
+}
+
+/* "レッスン" tag inline with the stage name. Pill shape + accent
+ * color so it's immediately identifiable as a category tag. */
+.lesson-tag {
+  display: inline-block;
+  padding: 2px 10px;
+  margin-right: 8px;
+  border-radius: 999px;
+  background: var(--brand-accent);
+  color: var(--text-on-dark);
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  vertical-align: middle;
+}
+
+.lesson-name {
+  vertical-align: middle;
+}
+
+.lesson-completed-check {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: rgba(40, 140, 40, 0.18);
+  color: #1f6f1f;
+  font-size: var(--fs-xs);
+  font-weight: 800;
+  vertical-align: middle;
+}
+
+/* Inline "スキップ" button — sits flush to the right edge of the
+ * card so it doesn't crowd the body button. Disappears once the
+ * lesson is marked completed (the card body still starts the
+ * lesson, replays included). */
+.lesson-skip-btn {
+  align-self: stretch;
+  flex-shrink: 0;
+  padding: 0 18px;
+  border: none;
+  border-left: 1px dashed rgba(0, 0, 0, 0.15);
+  background: transparent;
+  color: var(--text-strong);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.12s ease;
+  min-height: auto;
+}
+
+.lesson-skip-btn:hover {
+  background: rgba(0, 0, 0, 0.06);
+}
+
+.lesson-skip-btn:active {
+  background: rgba(0, 0, 0, 0.12);
 }
 
 /* Skip-test sub-button on locked cards — the only actionable element
@@ -2093,4 +2211,395 @@ input[type='range']:disabled {
   .tutorial-modal-card {
     animation: none;
   }
+}
+
+/* Assist-mode banner on the Result screen (#55). Two flavours:
+ *  - .assist-banner-offer: shown after the consecutive-fail threshold,
+ *    inviting the player to try assist on the next run.
+ *  - .assist-banner-done: shown when the just-finished run was itself
+ *    an assist play, explaining why the score isn't recorded and
+ *    letting the player toggle back to normal mode.
+ * Palette matches .assist-badge so the assist surface reads as one
+ * cohesive feature. Layout is column-stack so the CTA sits beneath
+ * the explanation and stays tappable on narrow screens. */
+.assist-banner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  max-width: 480px;
+  margin: 8px auto;
+  padding: 12px 16px;
+  border-radius: var(--radius-md);
+  text-align: center;
+  border: 1px solid rgba(47, 127, 184, 0.35);
+  background: linear-gradient(135deg, rgba(79, 182, 228, 0.18), rgba(47, 127, 184, 0.18));
+}
+
+.assist-banner-icon {
+  font-size: 20px;
+  line-height: 1;
+}
+
+.assist-banner-text {
+  margin: 0;
+  font-size: var(--fs-sm);
+  line-height: 1.4;
+  color: var(--text-strong);
+}
+
+.assist-cta {
+  margin-top: 2px;
+}
+
+/* Per-notehead flash (#55 / lesson preview). Applied imperatively
+ * (no React re-render) for ~200 ms each time a note's onset passes.
+ *
+ * VexFlow puts the rendered <g> wrapper above several child elements
+ * that each carry their own `fill="..."` presentation attribute
+ * (notehead path, stem, beam, accidental). A `fill` rule on the
+ * wrapper alone doesn't propagate to those children because
+ * presentation attributes win over inherited CSS. The descendant
+ * selector + !important forces the override so the whole group
+ * actually changes color — without this the flash was invisible on
+ * the lesson preview screen because the noteheads kept their black
+ * fill the entire time.
+ *
+ * filter: drop-shadow is layered on the wrapper as a halo so the
+ * change reads even when the page background is dark / themed.
+ * prefers-reduced-motion swaps the animation for a static accent so
+ * the cue still lands without smooth animation. */
+.assist-flash {
+  animation: assist-flash-pulse 200ms ease-out both;
+}
+.assist-flash,
+.assist-flash * {
+  fill: #e8612e !important;
+  stroke: #e8612e;
+}
+
+@keyframes assist-flash-pulse {
+  0%   { filter: drop-shadow(0 0 6px rgba(232, 97, 46, 0.9)); }
+  100% { filter: drop-shadow(0 0 0 rgba(232, 97, 46, 0)); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .assist-flash {
+    animation: none;
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/*  Lesson Intro screen (#53 follow-up) — pre-play teaching screen.   */
+/* ------------------------------------------------------------------ */
+.screen-lesson-intro {
+  text-align: left;
+  align-items: stretch;
+  max-width: 640px;
+  margin: 0 auto;
+  padding: var(--space-4);
+  gap: var(--space-4);
+}
+
+.lesson-intro-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-md);
+  background: var(--surface-elevated);
+  border-left: 6px solid var(--brand-accent);
+}
+
+.lesson-intro-tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 12px;
+  border-radius: 999px;
+  background: var(--brand-accent);
+  color: var(--text-on-dark);
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+}
+
+.lesson-intro-movement-name {
+  margin: 0;
+  font-size: var(--fs-lg);
+}
+
+.lesson-intro-concept-title {
+  margin: 0 0 var(--space-2);
+  font-size: var(--fs-xl);
+  color: var(--text-strong);
+}
+
+.lesson-intro-body {
+  margin: 0;
+  line-height: 1.7;
+  font-size: var(--fs-md);
+  color: var(--text-strong);
+}
+
+.lesson-intro-elements {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.lesson-intro-element {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  border-radius: var(--radius-md);
+  background: var(--surface-elevated);
+  border: 1px solid var(--border-soft);
+}
+
+/* Glyph column — big, low-key serif so the music symbol reads as
+ * "subject of this card" without dominating the explanation text.
+ *
+ * Width is `min-width` + `max-width` rather than fixed: single-char
+ * glyphs (♩, 𝅗𝅥) take the same 64px visual slot for consistency
+ * across rows, while compound glyphs (`♩+♩.`, `𝅗𝅥+♩♩♩`, `4/4 →
+ * 3/4`) get the room they need without overflowing into the
+ * description column. The 45% cap keeps even unusually long
+ * glyphs from stealing the description's reading space, and the
+ * responsive font-size (`clamp`) scales the symbol down on narrow
+ * mobile widths so 4–6 character compounds still fit on one line. */
+.lesson-intro-element-glyph {
+  flex: 0 0 auto;
+  min-width: 64px;
+  max-width: 45%;
+  padding: 0 6px;
+  text-align: center;
+  font-family: serif;
+  font-size: clamp(26px, 4.5vw, 36px);
+  line-height: 1.1;
+  color: var(--text-strong);
+  /* Music characters and short labels stay on one line; overflow
+   * hidden is a backstop if a glyph somehow exceeds the cap. */
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.lesson-intro-element-text {
+  flex: 1;
+}
+
+.lesson-intro-element-name {
+  font-weight: 700;
+  font-size: var(--fs-md);
+  margin-bottom: 4px;
+  color: var(--text-strong);
+}
+
+.lesson-intro-element-desc {
+  font-size: var(--fs-sm);
+  line-height: 1.6;
+  color: var(--text-strong);
+  opacity: 0.85;
+}
+
+/* Demo section header row — title on the left, preview play button
+ * on the right. Wraps on narrow screens so the button stays tappable
+ * (drops below the title rather than getting squeezed). */
+.lesson-intro-demo-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+  margin-bottom: var(--space-2);
+}
+
+.lesson-intro-demo-title {
+  margin: 0;
+  font-size: var(--fs-md);
+  font-weight: 700;
+  color: var(--text-strong);
+}
+
+/* "お手本を聴く" / "停止" toggle button. Tighter than the standard
+ * .secondary chrome so it sits comfortably next to the section title
+ * without taking visual focus from the score preview underneath. */
+.lesson-intro-preview-btn {
+  padding: 6px 14px;
+  min-height: auto;
+  font-size: var(--fs-sm);
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.lesson-intro-preview-btn[aria-pressed="true"] {
+  /* Inverted accent palette while playing so the button reads
+   * unambiguously as "tap this to stop". */
+  background: var(--brand-accent);
+  color: var(--text-on-dark);
+  border-color: var(--brand-accent);
+}
+
+/* Frame the VexFlow preview so it reads as a sample, not the live
+ * playing surface. Soft background + dashed border separates it from
+ * graded etudes' fully-styled cards. */
+.lesson-intro-demo-frame {
+  padding: var(--space-2);
+  border-radius: var(--radius-sm);
+  background: #fff;
+  border: 1px dashed var(--border-soft);
+  overflow-x: auto;
+}
+
+.lesson-intro-demo-meta {
+  margin: var(--space-1) 0 0;
+  font-size: var(--fs-xs);
+  opacity: 0.7;
+  text-align: right;
+}
+
+/* Positioned parent for the absolute playhead overlay. Width / height
+ * are driven entirely by ScoreView's intrinsic dimensions — the wrap
+ * just establishes a coordinate origin that matches the score SVG. */
+.lesson-intro-staff-wrap {
+  position: relative;
+  display: inline-block;
+  min-width: 100%;
+}
+
+/* Playhead cursor — a vertical orange bar that slides horizontally
+ * across the score during preview playback. Driven via setTranslate
+ * inline style from the rAF loop, so opacity is the only CSS-managed
+ * state. Pointer-events off so it never interferes with score taps.
+ * `will-change: transform` hints the compositor; the bar moves every
+ * frame and we want it on its own GPU layer to avoid repaints. */
+.lesson-playhead {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 3px;
+  height: 44px;
+  background: var(--brand-accent);
+  border-radius: 2px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 120ms ease-out;
+  will-change: transform;
+  box-shadow: 0 0 6px rgba(232, 97, 46, 0.6);
+}
+
+.lesson-intro-hint {
+  margin: 0;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-sm);
+  background: var(--highlight-band);
+  font-size: var(--fs-sm);
+  line-height: 1.6;
+  color: var(--text-strong);
+}
+
+.lesson-intro-actions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+}
+
+.lesson-intro-start {
+  width: 100%;
+  min-height: 52px;
+  font-size: var(--fs-md);
+  font-weight: 700;
+}
+
+.lesson-intro-skip {
+  width: 100%;
+  min-height: 44px;
+  font-size: var(--fs-sm);
+}
+
+/* "📖 NEW" badge on Movement cards whose lesson hasn't been seen yet.
+ * Small accent pill so the player notices there's a teaching step
+ * waiting without it dominating the card. */
+.movement-lesson-new {
+  display: inline-flex;
+  align-items: center;
+  margin-left: 8px;
+  padding: 2px 10px;
+  border-radius: 999px;
+  background: var(--brand-accent);
+  color: var(--text-on-dark);
+  font-size: var(--fs-xs);
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  vertical-align: middle;
+  animation: lesson-new-pulse 2.4s ease-in-out infinite;
+}
+
+@keyframes lesson-new-pulse {
+  0%, 100% { transform: scale(1); }
+  50%      { transform: scale(1.06); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .movement-lesson-new {
+    animation: none;
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/*  Lesson Result chrome (#53 follow-up) — replaces the rank chip /   */
+/*  score / accuracy stack for lesson plays. Frames the run as an     */
+/*  exercise (no grade, no record) rather than a graded test.         */
+/* ------------------------------------------------------------------ */
+.lesson-result-header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+  width: 100%;
+  max-width: 520px;
+  margin: var(--space-2) auto;
+  padding: var(--space-4) var(--space-4) var(--space-3);
+  border-radius: var(--radius-md);
+  background: var(--highlight-band);
+  border: 1px dashed var(--brand-accent);
+  text-align: center;
+}
+
+.lesson-result-tag {
+  font-size: var(--fs-xl);
+  font-weight: 800;
+  color: var(--brand-accent);
+  letter-spacing: 0.04em;
+}
+
+.lesson-result-stage-name {
+  margin: 0;
+  font-size: var(--fs-md);
+  font-weight: 700;
+  color: var(--text-strong);
+}
+
+.lesson-result-message {
+  margin: 0;
+  font-size: var(--fs-sm);
+  line-height: 1.6;
+  color: var(--text-strong);
+  opacity: 0.85;
+  max-width: 440px;
+}
+
+/* Reuse the .r-perfect / .r-good / .r-miss color tokens from the
+ * graded breakdown but in a column-stacked, no-score layout so the
+ * counts read as raw timing feedback rather than a point breakdown. */
+.lesson-result-breakdown {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--space-3);
+  margin-top: var(--space-2);
+  font-size: var(--fs-sm);
+  font-weight: 700;
 }

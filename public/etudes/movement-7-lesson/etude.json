@@ -1,0 +1,10 @@
+{
+  "id": "movement-7-lesson",
+  "movement": 7,
+  "indexInMovement": 0,
+  "isLesson": true,
+  "name": "Movement 7-Lesson",
+  "description": "レッスン: 3連符の基本",
+  "bpm": 88,
+  "themeColor": "#c46cbf"
+}

@@ -2,7 +2,13 @@ import { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { ETUDES, type EtudeWithMovementMeta } from '../../core/score/etudes';
 import { evaluateProgression, FINAL_UNLOCK_THRESHOLD } from '../../core/progress/progression';
-import { getAllBests, getSkipTestFinals, type BestRecord } from '../../core/storage/localStore';
+import {
+  getAllBests,
+  getLessonsCompleted,
+  getSkipTestFinals,
+  markLessonCompleted,
+  type BestRecord,
+} from '../../core/storage/localStore';
 import type { Rank } from '../../core/judgement';
 import { useAppStore } from '../store/appStore';
 
@@ -22,11 +28,18 @@ type Medal = 'gold' | 'silver' | 'bronze';
  * progress.
  */
 function movementMedal(stages: readonly EtudeWithMovementMeta[], bests: Record<string, BestRecord>): Medal | null {
-  const total = stages.length;
+  // Medal accounting only ever considered the graded Etudes + Final
+  // — lessons (#53) are an optional onboarding aid and shouldn't
+  // change the "gold = every stage S" / "silver = every stage A+"
+  // bar that veterans have already cleared. Filter them out so a
+  // lesson sitting unplayed doesn't silently demote an existing
+  // gold medal.
+  const graded = stages.filter((s) => !s.isLesson);
+  const total = graded.length;
   if (total === 0) return null;
   let cleared = 0;
   let sCount = 0;
-  for (const s of stages) {
+  for (const s of graded) {
     const b = bests[s.id];
     if (!b) continue;
     if (CLEAR_RANKS.has(b.rank)) cleared++;
@@ -66,9 +79,19 @@ export function StageSelectScreen() {
   // Finals have a current best earned via skip-test only (no normal
   // clear yet). evaluateProgression uses it to gate M+1 unlocks.
   const skipTestFinals = useMemo(() => getSkipTestFinals(), []);
+  // Lessons completed set — drives the ✓ check on lesson cards and
+  // the skip-button visibility. Local React state so the skip
+  // button can update the list without a full screen remount.
+  const [lessonsCompleted, setLessonsCompleted] = useState<Set<string>>(
+    () => getLessonsCompleted(),
+  );
 
-  // Group stages by their level number, sorted ascending. Stages
-  // within a group keep their original (manifest / hardcoded) order.
+  // Group stages by their level number, sorted ascending. Within
+  // each Movement, stages are sorted by indexInMovement so the
+  // Lesson (idx 0) lands at the top regardless of manifest order
+  // and Etudes 1-5 + Final follow in numeric order. Falling back
+  // to a high integer keeps undefined indices from sinking before
+  // ordered siblings.
   const levelGroups = useMemo<MovementGroup[]>(() => {
     const byLevel = new Map<number, EtudeWithMovementMeta[]>();
     for (const stage of stages) {
@@ -81,7 +104,9 @@ export function StageSelectScreen() {
       .map(([movement, groupStages]) => ({
         movement,
         themeColor: groupStages[0]!.themeColor,
-        stages: groupStages,
+        stages: [...groupStages].sort(
+          (a, b) => (a.indexInMovement ?? 999) - (b.indexInMovement ?? 999),
+        ),
       }));
   }, [stages]);
 
@@ -151,6 +176,53 @@ export function StageSelectScreen() {
     goto('game');
   };
 
+  // "スキップ" handler on the lesson card — mark the lesson as
+  // completed (so the next visit shows the ✓ check) and jump the
+  // player straight into Etude 1 of the same Movement.
+  const skipLesson = (lessonId: string, movement: number) => {
+    markLessonCompleted(lessonId);
+    setLessonsCompleted((prev) => {
+      if (prev.has(lessonId)) return prev;
+      const next = new Set(prev);
+      next.add(lessonId);
+      return next;
+    });
+    const group = levelGroups.find((g) => g.movement === movement);
+    const etude1 = group?.stages.find(
+      (s) => !s.isLesson && !s.isFinal && s.indexInMovement === 1,
+    );
+    if (etude1) {
+      setViaSkipTest(false);
+      selectEtude(etude1.id);
+      goto('game');
+    }
+  };
+
+  // Lesson card tap → open the intro screen (NOT the Game directly).
+  // First-time players get the explanation; replay-curious players who
+  // already completed the lesson hit the same screen and can choose
+  // between re-reading the intro and replaying the lesson play.
+  const openLessonIntro = (lessonId: string) => {
+    setViaSkipTest(false);
+    selectEtude(lessonId);
+    goto('lesson-intro');
+  };
+
+  // MovementCard tap entry. If the player hasn't acknowledged this
+  // Movement's lesson yet, route them through the intro screen so the
+  // new rhythmic element gets explained before any playing happens.
+  // Already-completed lessons fall through to the etude list (current
+  // behaviour) — replays are available via the lesson card itself.
+  const openMovementWithLessonGate = (movement: number) => {
+    const group = levelGroups.find((g) => g.movement === movement);
+    const lesson = group?.stages.find((s) => s.isLesson);
+    if (lesson && !lessonsCompleted.has(lesson.id)) {
+      openLessonIntro(lesson.id);
+      return;
+    }
+    setOpenMovement(movement);
+  };
+
   if (openMovement !== null) {
     const group = levelGroups.find((g) => g.movement === openMovement);
     // Locked movements shouldn't be openable in the first place, but if
@@ -165,7 +237,10 @@ export function StageSelectScreen() {
         group={group}
         bests={bests}
         finalUnlocked={finalsUnlocked.has(group.movement)}
+        lessonsCompleted={lessonsCompleted}
         onStart={start}
+        onStartLesson={openLessonIntro}
+        onSkipLesson={skipLesson}
         onBack={() => setOpenMovement(null)}
       />
     );
@@ -176,9 +251,10 @@ export function StageSelectScreen() {
       groups={levelGroups}
       bests={bests}
       maxUnlocked={maxUnlocked}
+      lessonsCompleted={lessonsCompleted}
       loadingHint={etudesLoadState === 'loading' ? '譜面を読み込み中…' : null}
       fallbackHint={usingFallback ? '※ 譜面ファイル未配置のためデモ譜面で代替中' : null}
-      onOpenMovement={setOpenMovement}
+      onOpenMovement={openMovementWithLessonGate}
       onSkipTest={startSkipTest}
       onBack={() => goto('title')}
     />
@@ -193,6 +269,7 @@ interface MovementListProps {
   groups: readonly MovementGroup[];
   bests: Record<string, BestRecord>;
   maxUnlocked: number;
+  lessonsCompleted: ReadonlySet<string>;
   loadingHint: string | null;
   fallbackHint: string | null;
   onOpenMovement: (movement: number) => void;
@@ -204,6 +281,7 @@ function MovementListView({
   groups,
   bests,
   maxUnlocked,
+  lessonsCompleted,
   loadingHint,
   fallbackHint,
   onOpenMovement,
@@ -235,18 +313,31 @@ function MovementListView({
       {showUnlockHelp && <UnlockHelpModal onClose={() => setShowUnlockHelp(false)} />}
       <ul className="etude-list">
         {groups.map((group) => {
-          const cleared = group.stages.filter((s) =>
+          // Stage counts (cleared / total) only reflect graded etudes
+          // and the Final — lessons are an optional onboarding aid and
+          // shouldn't dilute the "X/6 cleared" progress signal.
+          const gradedStages = group.stages.filter((s) => !s.isLesson);
+          const cleared = gradedStages.filter((s) =>
             CLEAR_RANKS.has(bests[s.id]?.rank ?? 'D'),
           ).length;
           const locked = group.movement > maxUnlocked;
+          const lesson = group.stages.find((s) => s.isLesson);
+          // "📖 NEW" badge: only show when the Movement is unlocked
+          // AND the lesson hasn't been acknowledged yet. Locked
+          // Movements show the 🔒 variant instead — re-advertising
+          // the lesson on a card the player can't enter would be
+          // noise.
+          const lessonAvailable =
+            lesson != null && !locked && !lessonsCompleted.has(lesson.id);
           return (
             <li key={group.movement}>
               <MovementCard
                 group={group}
                 medal={movementMedal(group.stages, bests)}
                 cleared={cleared}
-                total={group.stages.length}
+                total={gradedStages.length}
                 locked={locked}
+                lessonAvailable={lessonAvailable}
                 onOpen={onOpenMovement}
                 onSkipTest={onSkipTest}
               />
@@ -267,6 +358,7 @@ interface MovementCardProps {
   cleared: number;
   total: number;
   locked: boolean;
+  lessonAvailable: boolean;
   onOpen: (movement: number) => void;
   onSkipTest: (movement: number) => void;
 }
@@ -277,6 +369,7 @@ function MovementCard({
   cleared,
   total,
   locked,
+  lessonAvailable,
   onOpen,
   onSkipTest,
 }: MovementCardProps) {
@@ -322,12 +415,19 @@ function MovementCard({
       <div className="etude-card-body">
         <div className="etude-card-head">
           <span className="etude-card-name">Movement {group.movement}</span>
+          {lessonAvailable && (
+            <span className="movement-lesson-new" aria-label="未受講のレッスンあり">
+              📖 NEW
+            </span>
+          )}
         </div>
         <div className="etude-card-desc">
           {cleared}/{total} クリア (A以上)
         </div>
         <div className="etude-card-meta">
-          <span className="etude-card-bpm">▶ 開く</span>
+          <span className="etude-card-bpm">
+            {lessonAvailable ? '▶ レッスン → 開く' : '▶ 開く'}
+          </span>
           {medal && <MedalChip medal={medal} />}
         </div>
       </div>
@@ -418,11 +518,23 @@ interface EtudeListProps {
    * the Final is the only thing that can be greyed out here.
    */
   finalUnlocked: boolean;
+  lessonsCompleted: ReadonlySet<string>;
   onStart: (id: string) => void;
+  onStartLesson: (lessonId: string) => void;
+  onSkipLesson: (lessonId: string, movement: number) => void;
   onBack: () => void;
 }
 
-function EtudeListView({ group, bests, finalUnlocked, onStart, onBack }: EtudeListProps) {
+function EtudeListView({
+  group,
+  bests,
+  finalUnlocked,
+  lessonsCompleted,
+  onStart,
+  onStartLesson,
+  onSkipLesson,
+  onBack,
+}: EtudeListProps) {
   return (
     <main className="screen screen-select">
       <button className="secondary select-back" onClick={onBack}>
@@ -431,6 +543,18 @@ function EtudeListView({ group, bests, finalUnlocked, onStart, onBack }: EtudeLi
       <h1 className="select-title">Movement {group.movement}</h1>
       <ul className="etude-list">
         {group.stages.map((stage) => {
+          if (stage.isLesson) {
+            return (
+              <li key={stage.id}>
+                <LessonCard
+                  stage={stage}
+                  completed={lessonsCompleted.has(stage.id)}
+                  onStart={onStartLesson}
+                  onSkip={() => onSkipLesson(stage.id, group.movement)}
+                />
+              </li>
+            );
+          }
           const locked = stage.isFinal === true && !finalUnlocked;
           return (
             <li key={stage.id}>
@@ -445,6 +569,73 @@ function EtudeListView({ group, bests, finalUnlocked, onStart, onBack }: EtudeLi
         })}
       </ul>
     </main>
+  );
+}
+
+interface LessonCardProps {
+  stage: EtudeWithMovementMeta;
+  completed: boolean;
+  onStart: (id: string) => void;
+  onSkip: () => void;
+}
+
+/**
+ * Lesson card variant (#53) — sits at the top of every Movement's
+ * etude list and runs the player through the Movement's signature
+ * element in isolation at a gentler tempo. Always playable; can be
+ * skipped via the inline "スキップ" button which marks completion
+ * and jumps straight to Etude 1. Once completed (or skipped), a
+ * "✓ 完了" badge replaces the skip button so it doesn't keep
+ * advertising itself to a player who's already past it.
+ */
+function LessonCard({ stage, completed, onStart, onSkip }: LessonCardProps) {
+  return (
+    <div
+      className="etude-card etude-card-lesson"
+      style={{ borderColor: stage.themeColor }}
+    >
+      <span className="etude-card-stripe" style={{ background: stage.themeColor }} />
+      <span className="etude-card-glyph etude-card-glyph-lesson" aria-hidden="true">
+        📖
+      </span>
+      <button
+        type="button"
+        className="etude-card-body etude-card-lesson-body"
+        onClick={() => onStart(stage.id)}
+        aria-label={`${stage.name} を始める`}
+      >
+        <div className="etude-card-head">
+          <span className="etude-card-name">
+            <span className="lesson-tag">レッスン</span>
+            <span className="lesson-name">{stage.name}</span>
+            {completed && (
+              <span className="lesson-completed-check" aria-label="完了済み">
+                ✓
+              </span>
+            )}
+          </span>
+        </div>
+        <div className="etude-card-desc">{stage.description}</div>
+        <div className="etude-card-meta">
+          <span className="etude-card-bpm" title="レッスン用のゆるめテンポ">
+            <span className="etude-card-bpm-label">レッスン BPM</span>
+            ♩ = {stage.bpm}
+          </span>
+        </div>
+      </button>
+      {!completed && (
+        <button
+          type="button"
+          className="lesson-skip-btn"
+          onClick={(e) => {
+            e.stopPropagation();
+            onSkip();
+          }}
+        >
+          スキップ →
+        </button>
+      )}
+    </div>
   );
 }
 
