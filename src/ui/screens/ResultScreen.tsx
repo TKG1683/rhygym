@@ -31,8 +31,24 @@ import { TimingPlot } from '../game/TimingPlot';
 import { ScoreView } from '../vexflow/ScoreView';
 import { useAppStore } from '../store/appStore';
 
+import type { Difficulty } from '../../core/model';
+
 /** Rank ordering for "is this rank at least PASS_RANK_THRESHOLD?". */
 const RANK_ORDER = ['D', 'C', 'B', 'A', 'S'] as const;
+
+/** Display label per difficulty for the Result chip / breadcrumbs. */
+const DIFFICULTY_LABELS: Record<Difficulty, string> = {
+  DOLCE: '🎀 Dolce',
+  ESPRESSIVO: '♩ Espressivo',
+  BRAVURA: '🔥 Bravura',
+};
+
+/** One-phrase hint for the Result difficulty chip. */
+const DIFFICULTY_RESULT_HINTS: Record<Difficulty, string> = {
+  DOLCE: '判定ゆるめ + プレイヘッド',
+  ESPRESSIVO: '判定タイト・標準',
+  BRAVURA: 'クリック前奏のみ・内部リズム',
+};
 
 /**
  * Project a v3 nested bests store down to one BestRecord per étude,
@@ -696,9 +712,9 @@ export function ResultScreen() {
           <p className="result-score">{result.score}</p>
           <p className="result-accuracy">正確率 {(result.accuracy * 100).toFixed(1)}%</p>
           <p className="result-difficulty-chip">
-            {difficulty === 'BEGINNER' ? '🔰 BEGINNER' : '♩ NORMAL'}{' '}
+            {DIFFICULTY_LABELS[difficulty]}{' '}
             <span className="result-difficulty-hint">
-              ({difficulty === 'BEGINNER' ? '判定ゆるめ' : '判定タイト'} ・ ベストは難易度別)
+              ({DIFFICULTY_RESULT_HINTS[difficulty]} ・ ベストは難易度別)
             </span>
           </p>
           {prevBest && !newBest && (

@@ -10,6 +10,7 @@ import {
   type BestRecord,
   type BestsByEtude,
 } from '../../core/storage/localStore';
+import type { Difficulty } from '../../core/model';
 import type { Rank } from '../../core/judgement';
 import { useAppStore } from '../store/appStore';
 
@@ -809,14 +810,33 @@ function isAsymmetricEtude(stage: EtudeWithMovementMeta): boolean {
 }
 
 /**
- * BEGINNER / NORMAL toggle (#20). Persists immediately via appStore.
- * Visible at the top of MovementListView and EtudeListView so the
- * player can flip it from either screen without diving into settings.
- * BEGINNER widens the judgement windows and turns on the playhead;
- * NORMAL is the original sight-reading default. The pill-style
- * segmented control matches Rhygym's tap-target convention (≥44px
- * height in the wrapper, large hit area per option).
+ * Dolce / Espressivo / Bravura toggle (#20 → #54). Three-tier
+ * difficulty segmented control. Visible at the top of MovementList
+ * and EtudeList so the player can flip modes from either screen.
+ *
+ * - **Dolce** (やさしく): widest judgement windows + moving playhead.
+ *   For first-time readers who need both audio and visual anchors.
+ * - **Espressivo** (表情豊かに): original Rhygym mode — tight
+ *   windows, no playhead, metronome always on.
+ * - **Bravura** (技巧をもって): tight windows, no playhead, and the
+ *   metronome falls silent once the song starts (count-in still
+ *   plays). Forces the player to hold their own pulse.
+ *
+ * Persists immediately via appStore. Best records are tracked per
+ * difficulty so each mode keeps its own grades.
  */
+const DIFFICULTY_OPTIONS: ReadonlyArray<{ value: Difficulty; label: string }> = [
+  { value: 'DOLCE', label: '🎀 Dolce' },
+  { value: 'ESPRESSIVO', label: '♩ Espressivo' },
+  { value: 'BRAVURA', label: '🔥 Bravura' },
+];
+
+const DIFFICULTY_HINTS: Record<Difficulty, string> = {
+  DOLCE: 'やさしく — 判定ゆるめ + 譜面に動くプレイヘッド表示',
+  ESPRESSIVO: '表情豊かに — 判定タイト・プレイヘッド無しの読譜モード',
+  BRAVURA: '技巧をもって — クリック音は前奏のみ。内部リズムで弾き切る',
+};
+
 function DifficultyToggle() {
   const difficulty = useAppStore((s) => s.difficulty);
   const setDifficulty = useAppStore((s) => s.setDifficulty);
@@ -827,30 +847,23 @@ function DifficultyToggle() {
         role="radiogroup"
         aria-label="難易度"
       >
-        <button
-          type="button"
-          role="radio"
-          aria-checked={difficulty === 'BEGINNER'}
-          className={`difficulty-toggle-opt${difficulty === 'BEGINNER' ? ' is-selected' : ''}`}
-          onClick={() => setDifficulty('BEGINNER')}
-        >
-          🔰 BEGINNER
-        </button>
-        <button
-          type="button"
-          role="radio"
-          aria-checked={difficulty === 'NORMAL'}
-          className={`difficulty-toggle-opt${difficulty === 'NORMAL' ? ' is-selected' : ''}`}
-          onClick={() => setDifficulty('NORMAL')}
-        >
-          ♩ NORMAL
-        </button>
+        {DIFFICULTY_OPTIONS.map((opt) => {
+          const selected = difficulty === opt.value;
+          return (
+            <button
+              key={opt.value}
+              type="button"
+              role="radio"
+              aria-checked={selected}
+              className={`difficulty-toggle-opt${selected ? ' is-selected' : ''}`}
+              onClick={() => setDifficulty(opt.value)}
+            >
+              {opt.label}
+            </button>
+          );
+        })}
       </div>
-      <p className="difficulty-toggle-hint">
-        {difficulty === 'BEGINNER'
-          ? '判定ゆるめ + 譜面上に動くプレイヘッド表示'
-          : '判定タイト・プレイヘッド無しの読譜モード'}
-      </p>
+      <p className="difficulty-toggle-hint">{DIFFICULTY_HINTS[difficulty]}</p>
     </div>
   );
 }

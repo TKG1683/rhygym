@@ -27,21 +27,35 @@ export interface JudgementWindows {
   good: number;
 }
 
-/** NORMAL: original sight-reading windows (#7). Tighter, demands precision. */
-export const NORMAL_WINDOWS: JudgementWindows = {
+/** Espressivo: original sight-reading windows (#7). Tighter, demands precision. */
+export const ESPRESSIVO_WINDOWS: JudgementWindows = {
   perfect: 0.05,
   good: 0.12,
 };
 
-/** BEGINNER: ~40% wider so first-time players still land hits while learning. */
-export const BEGINNER_WINDOWS: JudgementWindows = {
+/** Dolce: ~40% wider so first-time players still land hits while learning. */
+export const DOLCE_WINDOWS: JudgementWindows = {
   perfect: 0.07,
   good: 0.18,
 };
 
+/**
+ * Bravura: identical timing tolerance to Espressivo. The Bravura
+ * challenge isn't a tighter window — it's that the metronome falls
+ * silent once the song starts, so the player must keep an internal
+ * pulse without the audible grid. Same windows means a Bravura
+ * record is directly comparable to an Espressivo record on raw
+ * timing, but earning one is meaningfully harder.
+ */
+export const BRAVURA_WINDOWS: JudgementWindows = {
+  perfect: 0.05,
+  good: 0.12,
+};
+
 const WINDOWS_BY_DIFFICULTY: Record<Difficulty, JudgementWindows> = {
-  NORMAL: NORMAL_WINDOWS,
-  BEGINNER: BEGINNER_WINDOWS,
+  DOLCE: DOLCE_WINDOWS,
+  ESPRESSIVO: ESPRESSIVO_WINDOWS,
+  BRAVURA: BRAVURA_WINDOWS,
 };
 
 /** Lookup helper — callers (GameView) wire `appStore.difficulty` straight in. */
@@ -75,7 +89,7 @@ export interface JudgedTap {
 export function judgeTap(
   tapSec: number,
   candidates: readonly NoteCandidate[],
-  windows: JudgementWindows = NORMAL_WINDOWS,
+  windows: JudgementWindows = ESPRESSIVO_WINDOWS,
 ): JudgedTap | null {
   let best: { c: NoteCandidate; diff: number; abs: number } | null = null;
   for (const c of candidates) {
@@ -105,7 +119,7 @@ export function judgeTap(
 export function findExpiredNotes(
   audioSec: number,
   candidates: readonly NoteCandidate[],
-  windows: JudgementWindows = NORMAL_WINDOWS,
+  windows: JudgementWindows = ESPRESSIVO_WINDOWS,
 ): NoteCandidate[] {
   return candidates.filter((c) => audioSec - c.sec > windows.good);
 }

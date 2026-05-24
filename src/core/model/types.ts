@@ -5,16 +5,27 @@
 export const PPQ = 480;
 
 /**
- * Player-selectable difficulty (#20). BEGINNER widens the judgement
- * windows and draws a moving playhead cursor over the staff so first-
- * time readers can correlate the metronome with the score. NORMAL is
- * the original sight-reading-focused mode (no playhead, tighter
- * windows). Best records are stored independently per difficulty.
+ * Player-selectable difficulty (#20 → #54). Three Italian-musical
+ * tiers that escalate by removing scaffolding:
+ *
+ * - **Dolce** (やさしく): widest judgement windows AND a moving
+ *   playhead over the staff. For first-time readers who need both
+ *   audio and visual anchors.
+ * - **Espressivo** (表情豊かに): original Rhygym mode — tight
+ *   judgement windows, no playhead, metronome always on. The
+ *   standard sight-reading challenge.
+ * - **Bravura** (技巧をもって): tight judgement windows, no
+ *   playhead, AND the metronome falls silent once the song starts
+ *   (count-in still plays). Forces the player to hold their own
+ *   internal pulse — virtuoso-only territory.
+ *
+ * Best records are stored independently per difficulty, so a Dolce
+ * practice run never overwrites an Espressivo grade.
  */
-export type Difficulty = 'BEGINNER' | 'NORMAL';
+export type Difficulty = 'DOLCE' | 'ESPRESSIVO' | 'BRAVURA';
 
-export const DEFAULT_DIFFICULTY: Difficulty = 'NORMAL';
-export const ALL_DIFFICULTIES: readonly Difficulty[] = ['BEGINNER', 'NORMAL'];
+export const DEFAULT_DIFFICULTY: Difficulty = 'ESPRESSIVO';
+export const ALL_DIFFICULTIES: readonly Difficulty[] = ['DOLCE', 'ESPRESSIVO', 'BRAVURA'];
 
 export interface TempoEvent {
   /** Position (tick) where this tempo takes effect. 0 = song start. */

@@ -35,7 +35,7 @@ function best(id: string, rank: Rank): [string, BestRecord] {
     id,
     {
       etudeId: id,
-      difficulty: 'NORMAL',
+      difficulty: 'ESPRESSIVO',
       score: 1000,
       rank,
       achievedAt: '2026-01-01T00:00:00Z',

@@ -17,7 +17,21 @@ import type { Rank } from '../judgement/score';
 
 const DIFFICULTY_KEY = 'rhygym:difficulty:v1';
 
-const VALID_DIFFICULTIES: ReadonlySet<Difficulty> = new Set(['BEGINNER', 'NORMAL']);
+const VALID_DIFFICULTIES: ReadonlySet<Difficulty> = new Set([
+  'DOLCE',
+  'ESPRESSIVO',
+  'BRAVURA',
+]);
+
+/**
+ * Legacy difficulty names (pre-#54). Read into the new equivalents
+ * so existing players who saved BEGINNER / NORMAL don't lose their
+ * setting on first load.
+ */
+const LEGACY_DIFFICULTY_MIGRATION: Record<string, Difficulty> = {
+  BEGINNER: 'DOLCE',
+  NORMAL: 'ESPRESSIVO',
+};
 
 /**
  * Player's last-selected difficulty (#20). Read at app boot so the
@@ -32,6 +46,17 @@ export function getDifficulty(): Difficulty {
     const raw = localStorage.getItem(DIFFICULTY_KEY);
     if (!raw) return DEFAULT_DIFFICULTY;
     if (VALID_DIFFICULTIES.has(raw as Difficulty)) return raw as Difficulty;
+    // Legacy values (BEGINNER / NORMAL pre-#54) — translate forward
+    // and re-write so subsequent reads short-circuit.
+    const migrated = LEGACY_DIFFICULTY_MIGRATION[raw];
+    if (migrated) {
+      try {
+        localStorage.setItem(DIFFICULTY_KEY, migrated);
+      } catch {
+        /* ignore quota / private-mode errors */
+      }
+      return migrated;
+    }
     return DEFAULT_DIFFICULTY;
   } catch {
     return DEFAULT_DIFFICULTY;
@@ -49,7 +74,8 @@ export function setDifficulty(value: Difficulty): void {
 
 const STORAGE_KEY_V1 = 'rhygym:best:v1';
 const STORAGE_KEY_V2 = 'rhygym:best:v2';
-const STORAGE_KEY = 'rhygym:best:v3';
+const STORAGE_KEY_V3 = 'rhygym:best:v3';
+const STORAGE_KEY = 'rhygym:best:v4';
 const CALIB_KEY = 'rhygym:calibration:v1';
 const CALIB_SUGGEST_DISMISSED_KEY = 'rhygym:calibSuggestDismissed:v1';
 const METRONOME_ACCENTS_KEY = 'rhygym:metronomeAccents:v1';
@@ -126,10 +152,11 @@ function translateStageIdToEtudeId(stageId: string): string {
  */
 function migrateV1ToV2IfNeeded(): void {
   if (typeof localStorage === 'undefined') return;
-  // v3 OR v2 already populated — never re-touch v1. Skipping when
-  // v3 exists keeps the "v3 wins, v1 untouched" invariant the unit
-  // test verifies (otherwise a stray v1 would still get clobbered).
+  // Newer schema already populated — never re-touch v1. Skipping when
+  // any later schema exists keeps the "newest wins, older payloads
+  // untouched" invariant the unit tests verify.
   if (localStorage.getItem(STORAGE_KEY) !== null) return;
+  if (localStorage.getItem(STORAGE_KEY_V3) !== null) return;
   if (localStorage.getItem(STORAGE_KEY_V2) !== null) return;
   const rawV1 = localStorage.getItem(STORAGE_KEY_V1);
   if (rawV1 === null) return;
@@ -185,7 +212,9 @@ function migrateV1ToV2IfNeeded(): void {
  */
 function migrateV2ToV3IfNeeded(): void {
   if (typeof localStorage === 'undefined') return;
+  // Skip when any newer schema already exists.
   if (localStorage.getItem(STORAGE_KEY) !== null) return;
+  if (localStorage.getItem(STORAGE_KEY_V3) !== null) return;
   const rawV2 = localStorage.getItem(STORAGE_KEY_V2);
   if (rawV2 === null) return;
   try {
@@ -194,7 +223,11 @@ function migrateV2ToV3IfNeeded(): void {
       localStorage.removeItem(STORAGE_KEY_V2);
       return;
     }
-    const migrated: BestsByEtude = {};
+    // v3 still used the legacy BEGINNER / NORMAL difficulty literals
+    // — the v3 → v4 migrator below renames them to DOLCE / ESPRESSIVO.
+    // Writing v3-shaped data here keeps each migration step
+    // self-contained (rather than v2 leapfrogging straight to v4).
+    const migrated: Record<string, { NORMAL?: BestRecordV2 }> = {};
     for (const [etudeId, value] of Object.entries(parsed as Record<string, unknown>)) {
       if (!value || typeof value !== 'object') continue;
       const v2 = value as Partial<BestRecordV2>;
@@ -209,14 +242,13 @@ function migrateV2ToV3IfNeeded(): void {
       migrated[etudeId] = {
         NORMAL: {
           etudeId,
-          difficulty: 'NORMAL',
           score: v2.score,
           rank: v2.rank as Rank,
           achievedAt: v2.achievedAt,
         },
       };
     }
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(migrated));
+    localStorage.setItem(STORAGE_KEY_V3, JSON.stringify(migrated));
     localStorage.removeItem(STORAGE_KEY_V2);
   } catch {
     try {
@@ -228,14 +260,80 @@ function migrateV2ToV3IfNeeded(): void {
 }
 
 /**
- * Read the full v3 store. Runs v1→v2 and v2→v3 migrations on first
- * call so legacy storage transparently upgrades. Returns an empty
- * object on any read failure so callers can blindly index.
+ * v3 → v4 migrator (#54). v3 keyed per-difficulty slots by the
+ * literal strings "BEGINNER" / "NORMAL"; v4 renames those to
+ * "DOLCE" / "ESPRESSIVO" to match the new three-tier difficulty
+ * vocabulary (the BRAVURA slot stays absent since no v3 player
+ * could have produced one yet). Records inside each slot also get
+ * their `difficulty` field rewritten to the new literal so reads
+ * surface consistent values.
+ *
+ * Idempotent: if v4 exists v3 is left alone. Anything malformed is
+ * dropped so a corrupt v3 doesn't block reads forever.
+ */
+function migrateV3ToV4IfNeeded(): void {
+  if (typeof localStorage === 'undefined') return;
+  if (localStorage.getItem(STORAGE_KEY) !== null) return;
+  const rawV3 = localStorage.getItem(STORAGE_KEY_V3);
+  if (rawV3 === null) return;
+  try {
+    const parsed = JSON.parse(rawV3);
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+      localStorage.removeItem(STORAGE_KEY_V3);
+      return;
+    }
+    const renameSlot: Record<string, Difficulty> = {
+      BEGINNER: 'DOLCE',
+      NORMAL: 'ESPRESSIVO',
+    };
+    const migrated: BestsByEtude = {};
+    for (const [etudeId, slots] of Object.entries(parsed as Record<string, unknown>)) {
+      if (!slots || typeof slots !== 'object') continue;
+      const out: BestsByDifficulty = {};
+      for (const [oldKey, value] of Object.entries(slots as Record<string, unknown>)) {
+        const newKey = renameSlot[oldKey] ?? (VALID_DIFFICULTIES.has(oldKey as Difficulty) ? (oldKey as Difficulty) : null);
+        if (!newKey) continue;
+        if (!value || typeof value !== 'object') continue;
+        const rec = value as Partial<BestRecord>;
+        if (
+          typeof rec.etudeId !== 'string' ||
+          typeof rec.score !== 'number' ||
+          typeof rec.rank !== 'string' ||
+          typeof rec.achievedAt !== 'string'
+        ) {
+          continue;
+        }
+        out[newKey] = {
+          etudeId: rec.etudeId,
+          difficulty: newKey,
+          score: rec.score,
+          rank: rec.rank as Rank,
+          achievedAt: rec.achievedAt,
+        };
+      }
+      if (Object.keys(out).length > 0) migrated[etudeId] = out;
+    }
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(migrated));
+    localStorage.removeItem(STORAGE_KEY_V3);
+  } catch {
+    try {
+      localStorage.removeItem(STORAGE_KEY_V3);
+    } catch {
+      // ignore
+    }
+  }
+}
+
+/**
+ * Read the full v4 store. Runs the v1→v2→v3→v4 migrator chain on
+ * first call so legacy storage transparently upgrades. Returns an
+ * empty object on any read failure so callers can blindly index.
  */
 export function getAllBests(): BestsByEtude {
   try {
     migrateV1ToV2IfNeeded();
     migrateV2ToV3IfNeeded();
+    migrateV3ToV4IfNeeded();
     const raw = readStorage();
     if (!raw) return {};
     const parsed = JSON.parse(raw);
