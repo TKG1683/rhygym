@@ -855,6 +855,7 @@ function DifficultyToggle() {
               type="button"
               role="radio"
               aria-checked={selected}
+              data-difficulty={opt.value}
               className={`difficulty-toggle-opt${selected ? ' is-selected' : ''}`}
               onClick={() => setDifficulty(opt.value)}
             >

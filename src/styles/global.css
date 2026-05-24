@@ -2516,10 +2516,33 @@ input[type='range']:disabled {
 }
 
 .difficulty-toggle-opt.is-selected {
+  /* Common selected-state chrome — the actual hue is overridden
+   * per-difficulty below so each tier has its own recognizable
+   * accent (Dolce = sage green, Espressivo = amber, Bravura =
+   * brand orange). The default keeps brand orange so a future
+   * tier without an override still renders sensibly. */
   background: var(--brand-accent);
   color: var(--text-on-dark);
   opacity: 1;
   box-shadow: 0 1px 3px rgba(232, 97, 46, 0.32);
+}
+
+/* Per-difficulty accent colors (#54 follow-up). Data attribute is
+ * the difficulty literal verbatim — adding a 4th tier later only
+ * means appending another rule here, no JSX change required. */
+.difficulty-toggle-opt.is-selected[data-difficulty="DOLCE"] {
+  background: #4caf50;
+  box-shadow: 0 1px 3px rgba(76, 175, 80, 0.36);
+}
+
+.difficulty-toggle-opt.is-selected[data-difficulty="ESPRESSIVO"] {
+  background: #d99c1a;
+  box-shadow: 0 1px 3px rgba(217, 156, 26, 0.36);
+}
+
+.difficulty-toggle-opt.is-selected[data-difficulty="BRAVURA"] {
+  background: var(--brand-accent);
+  box-shadow: 0 1px 3px rgba(232, 97, 46, 0.36);
 }
 
 .difficulty-toggle-hint {
