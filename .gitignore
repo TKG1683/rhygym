@@ -38,3 +38,6 @@ Thumbs.db
 # Local temp files (icon working set + zipped sources) — never commit
 _icons_tmp/
 files.zip
+
+# Claude Code agent worktrees (ephemeral sub-agent workspaces)
+.claude/worktrees/
