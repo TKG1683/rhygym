@@ -1,12 +1,15 @@
 import { describe, expect, it } from 'vitest';
 import {
+  BEGINNER_WINDOWS,
   computeResult,
   computeTimingStats,
   findExpiredNotes,
   GOOD_WINDOW_SEC,
   judgeTap,
+  NORMAL_WINDOWS,
   PERFECT_WINDOW_SEC,
   rankForAccuracy,
+  windowsForDifficulty,
   type Judgement,
   type JudgementRecord,
   type NoteCandidate,
@@ -89,6 +92,48 @@ describe('findExpiredNotes', () => {
   it('does not flag a note still inside the GOOD edge', () => {
     // diff just inside the GOOD window → judgeable (not yet MISS).
     expect(findExpiredNotes(1.0 + GOOD_WINDOW_SEC - 0.001, notes)).toEqual([]);
+  });
+});
+
+describe('judgeTap — BEGINNER vs NORMAL windows (#20)', () => {
+  it('BEGINNER windows are wider than NORMAL (both axes)', () => {
+    expect(BEGINNER_WINDOWS.perfect).toBeGreaterThan(NORMAL_WINDOWS.perfect);
+    expect(BEGINNER_WINDOWS.good).toBeGreaterThan(NORMAL_WINDOWS.good);
+  });
+
+  it('windowsForDifficulty returns the correct pair', () => {
+    expect(windowsForDifficulty('NORMAL')).toEqual(NORMAL_WINDOWS);
+    expect(windowsForDifficulty('BEGINNER')).toEqual(BEGINNER_WINDOWS);
+  });
+
+  it('tap just past NORMAL PERFECT is GOOD on NORMAL, PERFECT on BEGINNER', () => {
+    const tapSec = 1.0 + NORMAL_WINDOWS.perfect + 0.005; // 5 ms past NORMAL perfect
+    expect(judgeTap(tapSec, notes, NORMAL_WINDOWS)!.judgement).toBe('GOOD');
+    expect(judgeTap(tapSec, notes, BEGINNER_WINDOWS)!.judgement).toBe('PERFECT');
+  });
+
+  it('tap past NORMAL GOOD is MISS on NORMAL, still GOOD on BEGINNER', () => {
+    const tapSec = 1.0 + NORMAL_WINDOWS.good + 0.01;
+    expect(judgeTap(tapSec, notes, NORMAL_WINDOWS)).toBeNull();
+    expect(judgeTap(tapSec, notes, BEGINNER_WINDOWS)?.judgement).toBe('GOOD');
+  });
+
+  it('findExpiredNotes uses BEGINNER GOOD window when given BEGINNER', () => {
+    // Just inside BEGINNER GOOD but past NORMAL GOOD → not yet
+    // expired on BEGINNER, expired on NORMAL.
+    const audioSec = 1.0 + (NORMAL_WINDOWS.good + BEGINNER_WINDOWS.good) / 2;
+    expect(findExpiredNotes(audioSec, notes, BEGINNER_WINDOWS)).toEqual([]);
+    expect(findExpiredNotes(audioSec, notes, NORMAL_WINDOWS).map((c) => c.id)).toEqual([
+      'n0',
+    ]);
+  });
+
+  it('omitting the windows arg defaults to NORMAL (back-compat)', () => {
+    // The pre-#20 signature was (tapSec, candidates) with NORMAL
+    // hard-coded. Verify the default still behaves that way.
+    const tapSec = 1.0 + NORMAL_WINDOWS.good - 0.001;
+    expect(judgeTap(tapSec, notes)?.judgement).toBe('GOOD');
+    expect(judgeTap(tapSec, notes, NORMAL_WINDOWS)?.judgement).toBe('GOOD');
   });
 });
 

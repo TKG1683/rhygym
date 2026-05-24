@@ -12,19 +12,76 @@
  * exception.
  */
 
+import { DEFAULT_DIFFICULTY, type Difficulty } from '../model/types';
 import type { Rank } from '../judgement/score';
 
+const DIFFICULTY_KEY = 'rhygym:difficulty:v1';
+
+const VALID_DIFFICULTIES: ReadonlySet<Difficulty> = new Set(['BEGINNER', 'NORMAL']);
+
+/**
+ * Player's last-selected difficulty (#20). Read at app boot so the
+ * setting survives reloads; missing / corrupt storage falls back to
+ * NORMAL (the original Rhygym mode) so a fresh player gets the
+ * default sight-reading-focused experience rather than the assisted
+ * BEGINNER one.
+ */
+export function getDifficulty(): Difficulty {
+  try {
+    if (typeof localStorage === 'undefined') return DEFAULT_DIFFICULTY;
+    const raw = localStorage.getItem(DIFFICULTY_KEY);
+    if (!raw) return DEFAULT_DIFFICULTY;
+    if (VALID_DIFFICULTIES.has(raw as Difficulty)) return raw as Difficulty;
+    return DEFAULT_DIFFICULTY;
+  } catch {
+    return DEFAULT_DIFFICULTY;
+  }
+}
+
+export function setDifficulty(value: Difficulty): void {
+  try {
+    if (typeof localStorage === 'undefined') return;
+    localStorage.setItem(DIFFICULTY_KEY, value);
+  } catch {
+    // storage unavailable — selection just won't persist this session
+  }
+}
+
 const STORAGE_KEY_V1 = 'rhygym:best:v1';
-const STORAGE_KEY = 'rhygym:best:v2';
+const STORAGE_KEY_V2 = 'rhygym:best:v2';
+const STORAGE_KEY = 'rhygym:best:v3';
 const CALIB_KEY = 'rhygym:calibration:v1';
 const CALIB_SUGGEST_DISMISSED_KEY = 'rhygym:calibSuggestDismissed:v1';
 const METRONOME_ACCENTS_KEY = 'rhygym:metronomeAccents:v1';
 
 export interface BestRecord {
   etudeId: string;
+  /**
+   * Which difficulty this record was earned under (#20). Stored on
+   * the record so the v3 schema can keep one BEGINNER and one NORMAL
+   * best independently for the same étude.
+   */
+  difficulty: Difficulty;
   score: number;
   rank: Rank;
   /** ISO timestamp of when this score was set. */
+  achievedAt: string;
+}
+
+/**
+ * v3 storage shape: per-étude map of per-difficulty best records.
+ * Either slot may be missing if the player hasn't played that
+ * difficulty yet. Migrated from v2 (flat, NORMAL-only) by wrapping
+ * each legacy entry as `{ NORMAL: { ...entry, difficulty: 'NORMAL' } }`.
+ */
+export type BestsByDifficulty = Partial<Record<Difficulty, BestRecord>>;
+export type BestsByEtude = Record<string, BestsByDifficulty>;
+
+/** v2 (legacy) — flat per-étude record without a difficulty field. */
+interface BestRecordV2 {
+  etudeId: string;
+  score: number;
+  rank: Rank;
   achievedAt: string;
 }
 
@@ -69,8 +126,11 @@ function translateStageIdToEtudeId(stageId: string): string {
  */
 function migrateV1ToV2IfNeeded(): void {
   if (typeof localStorage === 'undefined') return;
-  // v2 already populated — never re-touch v1.
+  // v3 OR v2 already populated — never re-touch v1. Skipping when
+  // v3 exists keeps the "v3 wins, v1 untouched" invariant the unit
+  // test verifies (otherwise a stray v1 would still get clobbered).
   if (localStorage.getItem(STORAGE_KEY) !== null) return;
+  if (localStorage.getItem(STORAGE_KEY_V2) !== null) return;
   const rawV1 = localStorage.getItem(STORAGE_KEY_V1);
   if (rawV1 === null) return;
   try {
@@ -80,7 +140,7 @@ function migrateV1ToV2IfNeeded(): void {
       localStorage.removeItem(STORAGE_KEY_V1);
       return;
     }
-    const migrated: Record<string, BestRecord> = {};
+    const migrated: Record<string, BestRecordV2> = {};
     for (const [, value] of Object.entries(parsed as Record<string, unknown>)) {
       if (!value || typeof value !== 'object') continue;
       const v1 = value as Partial<LegacyBestRecordV1>;
@@ -100,7 +160,7 @@ function migrateV1ToV2IfNeeded(): void {
         achievedAt: v1.achievedAt,
       };
     }
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(migrated));
+    localStorage.setItem(STORAGE_KEY_V2, JSON.stringify(migrated));
     localStorage.removeItem(STORAGE_KEY_V1);
   } catch {
     // v1 was garbage — clear it so we don't loop forever.
@@ -112,14 +172,75 @@ function migrateV1ToV2IfNeeded(): void {
   }
 }
 
-export function getAllBests(): Record<string, BestRecord> {
+/**
+ * One-shot v2 → v3 migrator (#20). v2 had a flat
+ * `Record<etudeId, BestRecord>` shape (no difficulty notion); v3
+ * nests by difficulty so BEGINNER and NORMAL plays each keep their
+ * own best. Every v2 entry is treated as a NORMAL record (the only
+ * mode that existed pre-#20) and wrapped under `{ NORMAL: ... }`.
+ *
+ * Idempotent: if v3 already exists v2 is left alone (the bump is
+ * one-way). Malformed v2 is dropped silently — defensive reads
+ * elsewhere already treat missing storage as "no records yet".
+ */
+function migrateV2ToV3IfNeeded(): void {
+  if (typeof localStorage === 'undefined') return;
+  if (localStorage.getItem(STORAGE_KEY) !== null) return;
+  const rawV2 = localStorage.getItem(STORAGE_KEY_V2);
+  if (rawV2 === null) return;
+  try {
+    const parsed = JSON.parse(rawV2);
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+      localStorage.removeItem(STORAGE_KEY_V2);
+      return;
+    }
+    const migrated: BestsByEtude = {};
+    for (const [etudeId, value] of Object.entries(parsed as Record<string, unknown>)) {
+      if (!value || typeof value !== 'object') continue;
+      const v2 = value as Partial<BestRecordV2>;
+      if (
+        typeof v2.etudeId !== 'string' ||
+        typeof v2.score !== 'number' ||
+        typeof v2.rank !== 'string' ||
+        typeof v2.achievedAt !== 'string'
+      ) {
+        continue;
+      }
+      migrated[etudeId] = {
+        NORMAL: {
+          etudeId,
+          difficulty: 'NORMAL',
+          score: v2.score,
+          rank: v2.rank as Rank,
+          achievedAt: v2.achievedAt,
+        },
+      };
+    }
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(migrated));
+    localStorage.removeItem(STORAGE_KEY_V2);
+  } catch {
+    try {
+      localStorage.removeItem(STORAGE_KEY_V2);
+    } catch {
+      // ignore
+    }
+  }
+}
+
+/**
+ * Read the full v3 store. Runs v1→v2 and v2→v3 migrations on first
+ * call so legacy storage transparently upgrades. Returns an empty
+ * object on any read failure so callers can blindly index.
+ */
+export function getAllBests(): BestsByEtude {
   try {
     migrateV1ToV2IfNeeded();
+    migrateV2ToV3IfNeeded();
     const raw = readStorage();
     if (!raw) return {};
     const parsed = JSON.parse(raw);
     if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
-      return parsed as Record<string, BestRecord>;
+      return parsed as BestsByEtude;
     }
     return {};
   } catch {
@@ -127,19 +248,53 @@ export function getAllBests(): Record<string, BestRecord> {
   }
 }
 
-export function getBest(etudeId: string): BestRecord | null {
-  return getAllBests()[etudeId] ?? null;
+/**
+ * Project the v3 store into the flat per-étude shape that
+ * progression and Movement-medal logic want: one record per étude,
+ * picking the BEST rank across all difficulties (and the higher
+ * score on tie). Lets a BEGINNER S clear count toward Movement
+ * unlock just like a NORMAL S — without this BEGINNER players
+ * couldn't progress without switching modes.
+ */
+export function getBestPerEtude(): Record<string, BestRecord> {
+  const nested = getAllBests();
+  const out: Record<string, BestRecord> = {};
+  for (const [etudeId, byDiff] of Object.entries(nested)) {
+    const list = Object.values(byDiff).filter((r): r is BestRecord => r != null);
+    if (list.length === 0) continue;
+    out[etudeId] = list.reduce((best, cur) =>
+      compareBest(cur, best) > 0 ? cur : best,
+    );
+  }
+  return out;
+}
+
+/** Rank order; higher = better. Matches the project-wide RANK_ORDER. */
+const RANK_RANK: Record<Rank, number> = { D: 0, C: 1, B: 2, A: 3, S: 4 };
+function compareBest(a: BestRecord, b: BestRecord): number {
+  const r = RANK_RANK[a.rank] - RANK_RANK[b.rank];
+  if (r !== 0) return r;
+  return a.score - b.score;
+}
+
+export function getBest(etudeId: string, difficulty: Difficulty): BestRecord | null {
+  return getAllBests()[etudeId]?.[difficulty] ?? null;
 }
 
 /**
- * Write `record` as the new best for its étude. Caller decides "best" —
- * this is unconditional. Failure to write (storage disabled / quota
- * exceeded) is swallowed so a play in private browsing still works.
+ * Write `record` as the new best for its étude/difficulty slot.
+ * Caller decides "best" — this is unconditional. Failure to write
+ * (storage disabled / quota exceeded) is swallowed so a play in
+ * private browsing still works. Only the slot matching
+ * `record.difficulty` is overwritten; the other difficulty's
+ * record (if any) is preserved.
  */
 export function setBest(record: BestRecord): void {
   try {
     const all = getAllBests();
-    all[record.etudeId] = record;
+    const existing = all[record.etudeId] ?? {};
+    existing[record.difficulty] = record;
+    all[record.etudeId] = existing;
     writeStorage(JSON.stringify(all));
   } catch {
     // localStorage unavailable — accept silently; in-memory result is
@@ -149,11 +304,16 @@ export function setBest(record: BestRecord): void {
 
 /**
  * Returns true if `candidate.score` would beat the existing best for
- * the étude (or there is no existing best). Lets callers decide whether
- * to write + flash a "NEW BEST!" badge.
+ * the (étude, difficulty) slot — or there is no existing best for
+ * that slot yet. Lets callers decide whether to write + flash
+ * "NEW BEST!".
  */
-export function isNewBest(candidate: { etudeId: string; score: number }): boolean {
-  const existing = getBest(candidate.etudeId);
+export function isNewBest(candidate: {
+  etudeId: string;
+  difficulty: Difficulty;
+  score: number;
+}): boolean {
+  const existing = getBest(candidate.etudeId, candidate.difficulty);
   if (!existing) return true;
   return candidate.score > existing.score;
 }

@@ -1,10 +1,12 @@
 import { create } from 'zustand';
 import type { GameResult, JudgementRecord } from '../../core/judgement';
-import type { Etude } from '../../core/model';
+import type { Difficulty, Etude } from '../../core/model';
 import type { EtudeWithMovementMeta } from '../../core/score/etudes';
 import {
   getCalibration,
+  getDifficulty,
   getMetronomeAccents,
+  setDifficulty as persistDifficulty,
   setMetronomeAccents,
   type MetronomeAccents,
 } from '../../core/storage/localStore';
@@ -135,6 +137,16 @@ interface AppState {
    */
   metronomeAccents: MetronomeAccents;
   /**
+   * Player-selected difficulty (#20). BEGINNER mode loosens the
+   * judgement windows (±70/180 ms vs ±50/120 ms) AND draws a moving
+   * playhead cursor over the staff during play, giving first-time
+   * readers a visual+timing anchor while they learn to correlate the
+   * notation with the metronome. NORMAL is the original sight-reading
+   * mode — no playhead, tight windows.
+   * Persisted to localStorage so the setting survives reloads.
+   */
+  difficulty: Difficulty;
+  /**
    * Assist mode (#55) — toggled on from the Result screen's
    * "アシストを試す" CTA after 3 consecutive sub-pass runs. While
    * active, GameView flashes each notehead at its onset and emits an
@@ -182,6 +194,7 @@ interface AppState {
   setSelectInitialMovement: (movement: number | null) => void;
   setViaSkipTest: (via: boolean) => void;
   setAutoMode: (enabled: boolean) => void;
+  setDifficulty: (value: Difficulty) => void;
   setAssistMode: (enabled: boolean) => void;
   setLastWasAssist: (was: boolean) => void;
   setMetronomeAccentForTs: (tsKey: string, pattern: boolean[]) => void;
@@ -210,6 +223,7 @@ export const useAppStore = create<AppState>((set) => ({
   viaSkipTest: false,
   autoMode: readAutoMode(),
   metronomeAccents: getMetronomeAccents(),
+  difficulty: getDifficulty(),
   assistMode: false,
   lastWasAssist: false,
   goto: (screen) => {
@@ -239,6 +253,10 @@ export const useAppStore = create<AppState>((set) => ({
   setAutoMode: (enabled) => {
     writeAutoMode(enabled);
     set({ autoMode: enabled });
+  },
+  setDifficulty: (value) => {
+    persistDifficulty(value);
+    set({ difficulty: value });
   },
   setAssistMode: (enabled) => set({ assistMode: enabled }),
   setLastWasAssist: (was) => set({ lastWasAssist: was }),

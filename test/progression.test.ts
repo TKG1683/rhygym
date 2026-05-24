@@ -31,7 +31,16 @@ function buildMovements(count = 10): MovementForProgression[] {
 }
 
 function best(id: string, rank: Rank): [string, BestRecord] {
-  return [id, { etudeId: id, score: 1000, rank, achievedAt: '2026-01-01T00:00:00Z' }];
+  return [
+    id,
+    {
+      etudeId: id,
+      difficulty: 'NORMAL',
+      score: 1000,
+      rank,
+      achievedAt: '2026-01-01T00:00:00Z',
+    },
+  ];
 }
 
 describe('evaluateMaxUnlocked — normal flow', () => {

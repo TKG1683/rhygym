@@ -2468,6 +2468,104 @@ input[type='range']:disabled {
   min-width: 100%;
 }
 
+/* In-game score wrapper needs position:relative so PlayheadLayer's
+ * absolute positioning anchors to the staff. BEGINNER mode (#20). */
+.game-score-wrapper {
+  position: relative;
+}
+
+/* BEGINNER / NORMAL toggle (#20). Pill-style segmented control with
+ * a one-line caption explaining what the current selection does so
+ * the player isn't left guessing what "BEGINNER" means. */
+.difficulty-toggle-row {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  margin: 0 0 var(--space-3);
+}
+
+.difficulty-toggle {
+  display: inline-flex;
+  align-items: stretch;
+  border-radius: 999px;
+  background: var(--surface-elevated);
+  border: 1px solid var(--border-soft);
+  padding: 3px;
+  gap: 2px;
+}
+
+.difficulty-toggle-opt {
+  appearance: none;
+  background: transparent;
+  border: none;
+  font: inherit;
+  font-size: var(--fs-sm);
+  font-weight: 700;
+  padding: 8px 18px;
+  border-radius: 999px;
+  cursor: pointer;
+  color: var(--text-strong);
+  opacity: 0.6;
+  min-height: auto;
+  transition: background 0.12s ease, color 0.12s ease, opacity 0.12s ease;
+}
+
+.difficulty-toggle-opt:hover {
+  opacity: 0.9;
+}
+
+.difficulty-toggle-opt.is-selected {
+  background: var(--brand-accent);
+  color: var(--text-on-dark);
+  opacity: 1;
+  box-shadow: 0 1px 3px rgba(232, 97, 46, 0.32);
+}
+
+.difficulty-toggle-hint {
+  margin: 0;
+  font-size: var(--fs-xs);
+  opacity: 0.7;
+  text-align: center;
+}
+
+/* Result-screen difficulty chip (#20). Sits between the accuracy
+ * line and the prev-best line so the player can see at a glance
+ * which mode produced this rank — needed because BEGINNER and
+ * NORMAL records are tracked separately. */
+.result-difficulty-chip {
+  margin: var(--space-1) 0 0;
+  font-size: var(--fs-sm);
+  font-weight: 700;
+  color: var(--text-strong);
+  text-align: center;
+}
+
+.result-difficulty-hint {
+  margin-left: 4px;
+  font-size: var(--fs-xs);
+  opacity: 0.65;
+  font-weight: 500;
+}
+
+/* BEGINNER-mode in-game playhead (#20). Same orange-glow language as
+ * the lesson preview cursor; size + position are driven from inline
+ * style by the rAF loop in PlayheadLayer.tsx which knows the
+ * responsive scale factor (= rendered SVG size / viewBox size). */
+.game-playhead-bar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 3px;
+  background: var(--brand-accent);
+  border-radius: 2px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 120ms ease-out;
+  will-change: transform, height, opacity;
+  box-shadow: 0 0 6px rgba(232, 97, 46, 0.6);
+}
+
 /* Playhead cursor — a vertical orange bar that slides horizontally
  * across the score during preview playback. Driven via setTranslate
  * inline style from the rAF loop, so opacity is the only CSS-managed

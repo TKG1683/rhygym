@@ -8,11 +8,15 @@ import {
   getSkipTestFinals,
   markLessonCompleted,
   type BestRecord,
+  type BestsByEtude,
 } from '../../core/storage/localStore';
 import type { Rank } from '../../core/judgement';
 import { useAppStore } from '../store/appStore';
 
 const CLEAR_RANKS: ReadonlySet<Rank> = new Set(['S', 'A']);
+
+/** Local rank order for "highest rank across difficulty slots". */
+const RANK_ORDER_FOR_PROGRESSION: readonly Rank[] = ['D', 'C', 'B', 'A', 'S'];
 
 type Medal = 'gold' | 'silver' | 'bronze';
 
@@ -74,7 +78,42 @@ export function StageSelectScreen() {
   // Snapshot all bests on mount. Result writes back via setBest, but
   // this screen only re-reads on navigation back, which is fine — the
   // newly-set value will show up next time the player visits.
-  const bests = useMemo<Record<string, BestRecord>>(() => getAllBests(), []);
+  // Re-projection happens lazily per-difficulty inside MedalChip /
+  // EtudeCard so the snapshot itself stays the nested v3 shape.
+  const allBests = useMemo<BestsByEtude>(() => getAllBests(), []);
+  const difficulty = useAppStore((s) => s.difficulty);
+  // The screen's medal/best displays follow the selected difficulty —
+  // a player viewing in BEGINNER sees BEGINNER bests, switching to
+  // NORMAL shows NORMAL bests. Progression / unlock logic uses the
+  // ANY-difficulty projection (see progression call below) so a
+  // BEGINNER S still unlocks the next Movement.
+  const bestsForCurrentDifficulty = useMemo<Record<string, BestRecord>>(() => {
+    const out: Record<string, BestRecord> = {};
+    for (const [etudeId, slots] of Object.entries(allBests)) {
+      const r = slots[difficulty];
+      if (r) out[etudeId] = r;
+    }
+    return out;
+  }, [allBests, difficulty]);
+  const bestsForProgression = useMemo<Record<string, BestRecord>>(() => {
+    const out: Record<string, BestRecord> = {};
+    for (const [etudeId, slots] of Object.entries(allBests)) {
+      const list = Object.values(slots).filter((r): r is BestRecord => r != null);
+      if (list.length === 0) continue;
+      out[etudeId] = list.reduce((best, cur) => {
+        const aRank = RANK_ORDER_FOR_PROGRESSION.indexOf(cur.rank);
+        const bRank = RANK_ORDER_FOR_PROGRESSION.indexOf(best.rank);
+        if (aRank > bRank) return cur;
+        if (aRank < bRank) return best;
+        return cur.score > best.score ? cur : best;
+      });
+    }
+    return out;
+  }, [allBests]);
+  // Old name retained for the medal / etude card props (their display
+  // is per-difficulty). The progression evaluation below pivots on
+  // `bestsForProgression`.
+  const bests = bestsForCurrentDifficulty;
   // Same snapshot pattern for the skip-test markers — tracks which
   // Finals have a current best earned via skip-test only (no normal
   // clear yet). evaluateProgression uses it to gate M+1 unlocks.
@@ -124,9 +163,11 @@ export function StageSelectScreen() {
   // (linear over ~60 stages) and avoids a separate persisted unlock
   // store that could drift out of sync with scores. Bundles both the
   // Movement-level cap and the per-Movement Final unlock set.
+  // Progression always uses the across-all-difficulties projection,
+  // so a BEGINNER S unlocks the next Movement just like a NORMAL S.
   const progression = useMemo(
-    () => evaluateProgression(bests, levelGroups, { skipTestFinals }),
-    [bests, levelGroups, skipTestFinals],
+    () => evaluateProgression(bestsForProgression, levelGroups, { skipTestFinals }),
+    [bestsForProgression, levelGroups, skipTestFinals],
   );
   const maxUnlocked = progression.maxMovementUnlocked;
   const finalsUnlocked = progression.finalsUnlocked;
@@ -308,6 +349,7 @@ function MovementListView({
           </button>
         )}
       </div>
+      <DifficultyToggle />
       {loadingHint && <p className="muted select-hint">{loadingHint}</p>}
       {fallbackHint && <p className="muted select-hint">{fallbackHint}</p>}
       {showUnlockHelp && <UnlockHelpModal onClose={() => setShowUnlockHelp(false)} />}
@@ -541,6 +583,7 @@ function EtudeListView({
         ← Movement 一覧へ
       </button>
       <h1 className="select-title">Movement {group.movement}</h1>
+      <DifficultyToggle />
       <ul className="etude-list">
         {group.stages.map((stage) => {
           if (stage.isLesson) {
@@ -763,4 +806,51 @@ function isCompoundEtude(stage: EtudeWithMovementMeta): boolean {
 function isAsymmetricEtude(stage: EtudeWithMovementMeta): boolean {
   const ts = stage.score.timeSigs[0];
   return ts != null && ts.denominator === 8 && (ts.numerator === 5 || ts.numerator === 7);
+}
+
+/**
+ * BEGINNER / NORMAL toggle (#20). Persists immediately via appStore.
+ * Visible at the top of MovementListView and EtudeListView so the
+ * player can flip it from either screen without diving into settings.
+ * BEGINNER widens the judgement windows and turns on the playhead;
+ * NORMAL is the original sight-reading default. The pill-style
+ * segmented control matches Rhygym's tap-target convention (≥44px
+ * height in the wrapper, large hit area per option).
+ */
+function DifficultyToggle() {
+  const difficulty = useAppStore((s) => s.difficulty);
+  const setDifficulty = useAppStore((s) => s.setDifficulty);
+  return (
+    <div className="difficulty-toggle-row">
+      <div
+        className="difficulty-toggle"
+        role="radiogroup"
+        aria-label="難易度"
+      >
+        <button
+          type="button"
+          role="radio"
+          aria-checked={difficulty === 'BEGINNER'}
+          className={`difficulty-toggle-opt${difficulty === 'BEGINNER' ? ' is-selected' : ''}`}
+          onClick={() => setDifficulty('BEGINNER')}
+        >
+          🔰 BEGINNER
+        </button>
+        <button
+          type="button"
+          role="radio"
+          aria-checked={difficulty === 'NORMAL'}
+          className={`difficulty-toggle-opt${difficulty === 'NORMAL' ? ' is-selected' : ''}`}
+          onClick={() => setDifficulty('NORMAL')}
+        >
+          ♩ NORMAL
+        </button>
+      </div>
+      <p className="difficulty-toggle-hint">
+        {difficulty === 'BEGINNER'
+          ? '判定ゆるめ + 譜面上に動くプレイヘッド表示'
+          : '判定タイト・プレイヘッド無しの読譜モード'}
+      </p>
+    </div>
+  );
 }
