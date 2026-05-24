@@ -55,4 +55,13 @@ export interface Etude {
   indexInMovement?: number;
   /** True for the "skip-test" stage in the Duolingo-style Level progression. */
   isFinal?: boolean;
+  /**
+   * True for the optional Lesson stage prepended to each Movement (#53).
+   * Lessons sit at indexInMovement = 0, run at a reduced BPM with the
+   * Movement's signature element in isolation, and are intentionally
+   * excluded from progression accounting (`countClearedEtudes`) so the
+   * "3 etudes A+ → Final unlocks" rule still counts Etudes 1-5 only.
+   * Completion is tracked separately via `getLessonsCompleted()`.
+   */
+  isLesson?: boolean;
 }

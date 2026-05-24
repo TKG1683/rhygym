@@ -1,0 +1,10 @@
+{
+  "id": "movement-2-lesson",
+  "movement": 2,
+  "indexInMovement": 0,
+  "isLesson": true,
+  "name": "Movement 2-Lesson",
+  "description": "レッスン: 4分休符の基本",
+  "bpm": 67,
+  "themeColor": "#7cc8b3"
+}

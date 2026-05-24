@@ -50,6 +50,7 @@ interface EtudeDef {
   themeColor: string;
   indexInMovement?: number;
   isFinal?: boolean;
+  isLesson?: boolean;
   score: ReturnType<typeof buildScore>;
 }
 
@@ -75,6 +76,25 @@ const ETUDE_DEFS: readonly EtudeDef[] = [
   // ============================================================
   // Level 1 — quarter / half / whole notes (4/4)
   // ============================================================
+  {
+    id: 'movement-1-lesson',
+    movement: 1,
+    indexInMovement: 0,
+    isLesson: true,
+    name: 'Movement 1-Lesson',
+    description: 'レッスン: 4分・2分・全音符の基本',
+    bpm: 60,
+    themeColor: COLOR[1],
+    // Bare-bones intro to the three core values. Each measure
+    // isolates one duration so the eye learns the shape before the
+    // graded études mix them. 60 BPM gives breathing room.
+    score: buildScore({ ts: [4, 4], bpm: 60 }, [
+      q(), q(), q(), q(),
+      h(), h(),
+      w(),
+      q(), q(), h(),
+    ]),
+  },
   {
     id: 'movement-1-etude-1',
     movement: 1,
@@ -196,6 +216,25 @@ const ETUDE_DEFS: readonly EtudeDef[] = [
   // Level 2 — + quarter rest, 3/4 waltz
   // ============================================================
   {
+    id: 'movement-2-lesson',
+    movement: 2,
+    indexInMovement: 0,
+    isLesson: true,
+    name: 'Movement 2-Lesson',
+    description: 'レッスン: 4分休符の基本',
+    bpm: 67,
+    themeColor: COLOR[2],
+    // Quarter-rest only — every measure leaves an unambiguous gap so
+    // the player practises counting through silence. Stays in 4/4;
+    // 3/4 is introduced in the graded études.
+    score: buildScore({ ts: [4, 4], bpm: 67 }, [
+      q(), qr(), q(), q(),
+      q(), q(), qr(), q(),
+      qr(), q(), q(), q(),
+      h(), q(), qr(),
+    ]),
+  },
+  {
     id: 'movement-2-etude-1',
     movement: 2,
     indexInMovement: 1,
@@ -315,6 +354,25 @@ const ETUDE_DEFS: readonly EtudeDef[] = [
   // ============================================================
   // Level 3 — + eighth note / eighth rest
   // ============================================================
+  {
+    id: 'movement-3-lesson',
+    movement: 3,
+    indexInMovement: 0,
+    isLesson: true,
+    name: 'Movement 3-Lesson',
+    description: 'レッスン: 8分音符の基本',
+    bpm: 70,
+    themeColor: COLOR[3],
+    // Pair-of-eighths only, alternated with quarters so the new
+    // double-speed feel lands obviously against a steady pulse.
+    // No eighth rests — those wait for the graded études.
+    score: buildScore({ ts: [4, 4], bpm: 70 }, [
+      eighth(), eighth(), q(), eighth(), eighth(), q(),
+      q(), eighth(), eighth(), h(),
+      eighth(), eighth(), eighth(), eighth(), eighth(), eighth(), q(),
+      h(), q(), q(),
+    ]),
+  },
   {
     id: 'movement-3-etude-1',
     movement: 3,
@@ -436,6 +494,26 @@ const ETUDE_DEFS: readonly EtudeDef[] = [
   // Level 4 — + dotted quarter / dotted eighth, 6/8 intro
   // ============================================================
   {
+    id: 'movement-4-lesson',
+    movement: 4,
+    indexInMovement: 0,
+    isLesson: true,
+    name: 'Movement 4-Lesson',
+    description: 'レッスン: 付点4分音符の基本',
+    bpm: 72,
+    themeColor: COLOR[4],
+    // Dotted-quarter + eighth pattern in 4/4 — meets the new
+    // dotted-rhythm idea without dragging 6/8 into the same lesson.
+    // Each measure is the same qd/eighth/h cadence with one small
+    // variation so the reader practises the shape repeatedly.
+    score: buildScore({ ts: [4, 4], bpm: 72 }, [
+      qd(), eighth(), h(),
+      qd(), eighth(), q(), q(),
+      h(), qd(), eighth(),
+      qd(), eighth(), h(),
+    ]),
+  },
+  {
     id: 'movement-4-etude-1',
     movement: 4,
     indexInMovement: 1,
@@ -555,6 +633,25 @@ const ETUDE_DEFS: readonly EtudeDef[] = [
   // ============================================================
   // Level 5 — + sixteenths and sixteenth rest (4/4 + 6/8)
   // ============================================================
+  {
+    id: 'movement-5-lesson',
+    movement: 5,
+    indexInMovement: 0,
+    isLesson: true,
+    name: 'Movement 5-Lesson',
+    description: 'レッスン: 16分音符の基本',
+    bpm: 78,
+    themeColor: COLOR[5],
+    // Sixteenths only appear as 4-note groups slotted between
+    // longer values — keeps the reader anchored to the quarter
+    // pulse while meeting the faster subdivision.
+    score: buildScore({ ts: [4, 4], bpm: 78 }, [
+      sixteenth(), sixteenth(), sixteenth(), sixteenth(), q(), h(),
+      h(), sixteenth(), sixteenth(), sixteenth(), sixteenth(), q(),
+      q(), sixteenth(), sixteenth(), sixteenth(), sixteenth(), h(),
+      sixteenth(), sixteenth(), sixteenth(), sixteenth(), q(), q(), q(),
+    ]),
+  },
   {
     id: 'movement-5-etude-1',
     movement: 5,
@@ -679,6 +776,25 @@ const ETUDE_DEFS: readonly EtudeDef[] = [
   // #71); the cross-rhythm feel comes purely from where the notes
   // land relative to the quarter pulse.
   // ============================================================
+  {
+    id: 'movement-6-lesson',
+    movement: 6,
+    indexInMovement: 0,
+    isLesson: true,
+    name: 'Movement 6-Lesson',
+    description: 'レッスン: ヘミオラの基本',
+    bpm: 83,
+    themeColor: COLOR[6],
+    // The qd qd q pattern is the canonical 3+3+2 hemiola — it sits
+    // here in isolation, alternated with a straight quarter bar so
+    // the reader can compare "feels normal" vs "feels off the pulse".
+    score: buildScore({ ts: [4, 4], bpm: 83 }, [
+      qd(), qd(), q(),
+      q(), q(), q(), q(),
+      qd(), qd(), q(),
+      h(), q(), q(),
+    ]),
+  },
   {
     id: 'movement-6-etude-1',
     movement: 6,
@@ -819,6 +935,25 @@ const ETUDE_DEFS: readonly EtudeDef[] = [
   // Level 7 — + triplets, sextuplets, 9/8
   // ============================================================
   {
+    id: 'movement-7-lesson',
+    movement: 7,
+    indexInMovement: 0,
+    isLesson: true,
+    name: 'Movement 7-Lesson',
+    description: 'レッスン: 3連符の基本',
+    bpm: 88,
+    themeColor: COLOR[7],
+    // Eighth-triplets only, always slotted into one beat at a time
+    // so the new 3-in-the-time-of-2 idea is unambiguous. No 9/8,
+    // no quarter-triplets, no sextuplets — those wait for graded.
+    score: buildScore({ ts: [4, 4], bpm: 88 }, [
+      eighthTriplet(), eighthTriplet(), eighthTriplet(), q(), h(),
+      q(), eighthTriplet(), eighthTriplet(), eighthTriplet(), h(),
+      eighthTriplet(), eighthTriplet(), eighthTriplet(), eighthTriplet(), eighthTriplet(), eighthTriplet(), h(),
+      h(), q(), q(),
+    ]),
+  },
+  {
     id: 'movement-7-etude-1',
     movement: 7,
     indexInMovement: 1,
@@ -939,6 +1074,26 @@ const ETUDE_DEFS: readonly EtudeDef[] = [
   // Level 8 — + quintuplets, septuplets, 5/8, 7/8
   // ============================================================
   {
+    id: 'movement-8-lesson',
+    movement: 8,
+    indexInMovement: 0,
+    isLesson: true,
+    name: 'Movement 8-Lesson',
+    description: 'レッスン: 5/8 拍子の基本',
+    bpm: 186,
+    themeColor: COLOR[8],
+    // Asymmetric 5/8 meter is the headline new idea — meet it on its
+    // own at a gentler tempo (BPM expressed in eighths, same
+    // convention as movement-8-etude-3). The 2+3 / 3+2 split is
+    // spelled out via q+qd alternation so the grouping is obvious.
+    score: buildScore({ ts: [5, 8], bpm: 186 }, [
+      q(), qd(),
+      qd(), q(),
+      eighth(), eighth(), eighth(), q(),
+      q(), q(), eighthRest(),
+    ]),
+  },
+  {
     id: 'movement-8-etude-1',
     movement: 8,
     indexInMovement: 1,
@@ -1058,6 +1213,26 @@ const ETUDE_DEFS: readonly EtudeDef[] = [
   // ============================================================
   // Level 9 — + irregular meter (5/4, 7/8), hemiola, compound regroup
   // ============================================================
+  {
+    id: 'movement-9-lesson',
+    movement: 9,
+    indexInMovement: 0,
+    isLesson: true,
+    name: 'Movement 9-Lesson',
+    description: 'レッスン: 5/4 拍子の基本',
+    bpm: 98,
+    themeColor: COLOR[9],
+    // 5/4 isolated — quarter pulse stays familiar, the only new
+    // thing is "the bar takes 5 beats". Each measure is a plain
+    // quarter walk or a 2+3 / 3+2 grouping via halves so the player
+    // hears where the bar boundary lands.
+    score: buildScore({ ts: [5, 4], bpm: 98 }, [
+      q(), q(), q(), q(), q(),
+      h(), q(), h(),
+      q(), h(), h(),
+      q(), q(), q(), h(),
+    ]),
+  },
   {
     id: 'movement-9-etude-1',
     movement: 9,
@@ -1190,6 +1365,30 @@ const ETUDE_DEFS: readonly EtudeDef[] = [
   // not a falling-notes rhythm game, so the player can't react to a
   // tempo shift mid-run. BPM is fixed once the run starts.)
   // ============================================================
+  {
+    id: 'movement-10-lesson',
+    movement: 10,
+    indexInMovement: 0,
+    isLesson: true,
+    name: 'Movement 10-Lesson',
+    description: 'レッスン: 拍子切替の基本',
+    bpm: 86,
+    themeColor: COLOR[10],
+    // The simplest meter-change pattern: 4/4 → 3/4 → 4/4. Pulse
+    // stays in quarters across the boundary so the player's job is
+    // only to count "this bar is one beat shorter". Tempo stays
+    // fixed per project policy.
+    score: buildScore({ ts: [4, 4], bpm: 86 }, [
+      q(), q(), q(), q(),
+      h(), h(),
+      tsChange(3, 4),
+      q(), q(), q(),
+      h(), q(),
+      tsChange(4, 4),
+      q(), q(), h(),
+      w(),
+    ]),
+  },
   {
     id: 'movement-10-etude-1',
     movement: 10,

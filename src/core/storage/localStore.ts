@@ -176,6 +176,8 @@ export function isNewBest(candidate: { etudeId: string; score: number }): boolea
  */
 
 const SKIPTEST_KEY = 'rhygym.skipTestFinals';
+const LESSONS_COMPLETED_KEY = 'rhygym:lessonsCompleted:v1';
+const FAIL_STREAK_KEY = 'rhygym:failStreak:v1';
 
 export function getSkipTestFinals(): Set<string> {
   try {
@@ -213,6 +215,47 @@ export function removeSkipTestFinal(etudeId: string): void {
   if (!set.has(etudeId)) return;
   set.delete(etudeId);
   writeSkipTestFinals(set);
+}
+
+/* ------------------------------------------------------------------ */
+/*  Lesson completion tracking (#53)                                  */
+/* ------------------------------------------------------------------ */
+/*
+ * Set of Etude IDs the player has either played to completion or
+ * explicitly skipped from the Etude list. Used by MovementSelect to
+ * stamp a "✓ 完了" check on lesson cards so the optional onboarding
+ * step disappears as a visible TODO once it's been acknowledged.
+ *
+ * Stored as a JSON array under LESSONS_COMPLETED_KEY. Defensive reads
+ * mirror the rest of this module — missing / corrupt / disabled
+ * localStorage returns an empty set rather than throwing.
+ */
+
+export function getLessonsCompleted(): Set<string> {
+  try {
+    if (typeof localStorage === 'undefined') return new Set();
+    const raw = localStorage.getItem(LESSONS_COMPLETED_KEY);
+    if (!raw) return new Set();
+    const parsed = JSON.parse(raw);
+    if (Array.isArray(parsed)) {
+      return new Set(parsed.filter((x): x is string => typeof x === 'string'));
+    }
+    return new Set();
+  } catch {
+    return new Set();
+  }
+}
+
+export function markLessonCompleted(etudeId: string): void {
+  try {
+    if (typeof localStorage === 'undefined') return;
+    const set = getLessonsCompleted();
+    if (set.has(etudeId)) return;
+    set.add(etudeId);
+    localStorage.setItem(LESSONS_COMPLETED_KEY, JSON.stringify(Array.from(set)));
+  } catch {
+    // storage unavailable — completion just won't persist this session
+  }
 }
 
 function readStorage(): string | null {
@@ -348,5 +391,72 @@ export function setMetronomeAccents(value: MetronomeAccents): void {
   } catch {
     // storage unavailable — settings just won't persist this session
   }
+}
+
+/* ------------------------------------------------------------------ */
+/*  Consecutive-fail streak per etude (#55 — assist mode trigger)     */
+/* ------------------------------------------------------------------ */
+
+/*
+ * Per-etude counter of "B 以下 (= 不合格)" runs in a row. ResultScreen
+ * increments this on a sub-pass-rank run and resets it on an A+ clear;
+ * once it crosses an assist-mode threshold (currently 3) the Result
+ * surfaces an "アシストを試す" CTA so the player can switch to the
+ * scaffolded mode instead of grinding the same wall. Below-pass-
+ * threshold runs (player picked a sub-stage-BPM tempo) and runs in
+ * assist mode itself are excluded by the caller — they don't represent
+ * "the player can't pass the étude" the way a real fail does.
+ *
+ * Stored as a JSON object keyed by etudeId. Reads default to {} on any
+ * error (corrupt data, private mode, etc.); writes are best-effort.
+ */
+
+function readFailStreaks(): Record<string, number> {
+  try {
+    if (typeof localStorage === 'undefined') return {};
+    const raw = localStorage.getItem(FAIL_STREAK_KEY);
+    if (!raw) return {};
+    const parsed = JSON.parse(raw);
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return {};
+    const out: Record<string, number> = {};
+    for (const [k, v] of Object.entries(parsed as Record<string, unknown>)) {
+      // Guard against stale / corrupted entries — non-integers and
+      // negatives are dropped silently rather than thrown about.
+      if (typeof v === 'number' && Number.isFinite(v) && v >= 0) {
+        out[k] = Math.floor(v);
+      }
+    }
+    return out;
+  } catch {
+    return {};
+  }
+}
+
+function writeFailStreaks(value: Record<string, number>): void {
+  try {
+    if (typeof localStorage === 'undefined') return;
+    localStorage.setItem(FAIL_STREAK_KEY, JSON.stringify(value));
+  } catch {
+    /* ignore quota / private-mode errors */
+  }
+}
+
+export function getFailStreak(etudeId: string): number {
+  return readFailStreaks()[etudeId] ?? 0;
+}
+
+export function incrementFailStreak(etudeId: string): number {
+  const all = readFailStreaks();
+  const next = (all[etudeId] ?? 0) + 1;
+  all[etudeId] = next;
+  writeFailStreaks(all);
+  return next;
+}
+
+export function resetFailStreak(etudeId: string): void {
+  const all = readFailStreaks();
+  if (!(etudeId in all)) return;
+  delete all[etudeId];
+  writeFailStreaks(all);
 }
 

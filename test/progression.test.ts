@@ -97,6 +97,61 @@ describe('evaluateMaxUnlocked — normal flow', () => {
   it('empty movements list → returns 1 (defensive)', () => {
     expect(evaluateMaxUnlocked({}, [])).toBe(1);
   });
+
+  // ============================================================
+  // #53 — Lessons are an OPTIONAL onboarding stage and must NOT
+  //       count toward the 3-of-5 Final unlock gate. A player who
+  //       only plays the lesson (or even gets S on it) shouldn't
+  //       see the Final magically appear.
+  // ============================================================
+  it('lesson S best does NOT count toward Final unlock', () => {
+    const movementsWithLesson: MovementForProgression[] = [
+      {
+        movement: 1,
+        stages: [
+          { id: 'movement-1-lesson', isLesson: true },
+          { id: 'movement-1-etude-1' },
+          { id: 'movement-1-etude-2' },
+          { id: 'movement-1-etude-3' },
+          { id: 'movement-1-etude-4' },
+          { id: 'movement-1-etude-5' },
+          { id: 'movement-1-final', isFinal: true },
+        ],
+      },
+    ];
+    const bests = Object.fromEntries([
+      best('movement-1-lesson', 'S'),
+      best('movement-1-etude-1', 'A'),
+      best('movement-1-etude-2', 'A'),
+    ]);
+    // Only 2 graded etudes A+; lesson S doesn't bump that to 3.
+    const result = evaluateProgression(bests, movementsWithLesson);
+    expect(result.finalsUnlocked.has(1)).toBe(false);
+  });
+
+  it('three graded A+ unlocks Final even with lesson present', () => {
+    const movementsWithLesson: MovementForProgression[] = [
+      {
+        movement: 1,
+        stages: [
+          { id: 'movement-1-lesson', isLesson: true },
+          { id: 'movement-1-etude-1' },
+          { id: 'movement-1-etude-2' },
+          { id: 'movement-1-etude-3' },
+          { id: 'movement-1-etude-4' },
+          { id: 'movement-1-etude-5' },
+          { id: 'movement-1-final', isFinal: true },
+        ],
+      },
+    ];
+    const bests = Object.fromEntries([
+      best('movement-1-etude-1', 'A'),
+      best('movement-1-etude-2', 'A'),
+      best('movement-1-etude-3', 'A'),
+    ]);
+    const result = evaluateProgression(bests, movementsWithLesson);
+    expect(result.finalsUnlocked.has(1)).toBe(true);
+  });
 });
 
 describe('evaluateProgression — skip-test path', () => {

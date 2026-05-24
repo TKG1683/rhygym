@@ -1,0 +1,10 @@
+{
+  "id": "movement-4-lesson",
+  "movement": 4,
+  "indexInMovement": 0,
+  "isLesson": true,
+  "name": "Movement 4-Lesson",
+  "description": "レッスン: 付点4分音符の基本",
+  "bpm": 72,
+  "themeColor": "#5ba8d9"
+}

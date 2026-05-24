@@ -1,0 +1,10 @@
+{
+  "id": "movement-10-lesson",
+  "movement": 10,
+  "indexInMovement": 0,
+  "isLesson": true,
+  "name": "Movement 10-Lesson",
+  "description": "レッスン: 拍子切替の基本",
+  "bpm": 86,
+  "themeColor": "#E8612E"
+}

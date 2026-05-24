@@ -32,7 +32,21 @@ function writeAutoMode(enabled: boolean): void {
 
 export type EtudesLoadState = 'idle' | 'loading' | 'ready' | 'error';
 
-export type Screen = 'title' | 'select' | 'game' | 'result' | 'calibration' | 'tutorial';
+export type Screen =
+  | 'title'
+  | 'select'
+  | 'game'
+  | 'result'
+  | 'calibration'
+  | 'tutorial'
+  /**
+   * Pre-play teaching screen for the optional per-Movement Lesson
+   * (#53 follow-up). Auto-opened on the first visit to a Movement
+   * whose lesson hasn't been completed; explains the new rhythmic
+   * element with a short description + a score preview before the
+   * player drops into the lesson Game.
+   */
+  | 'lesson-intro';
 
 interface AppState {
   screen: Screen;
@@ -121,6 +135,28 @@ interface AppState {
    */
   metronomeAccents: MetronomeAccents;
   /**
+   * Assist mode (#55) — toggled on from the Result screen's
+   * "アシストを試す" CTA after 3 consecutive sub-pass runs. While
+   * active, GameView flashes each notehead at its onset and emits an
+   * extra click on every note (on top of the metronome) so the player
+   * can hear AND see the target rhythm. Runs played in this mode are
+   * excluded from best-score writes and failStreak updates — assist
+   * sessions are for learning, not for ranking. Pure in-memory: a
+   * reload drops back to normal mode so a player isn't surprised by
+   * a session-long assist they forgot to disable.
+   */
+  assistMode: boolean;
+  /**
+   * Pin: was the run that produced `lastResult` played in assist mode?
+   * Set at run-completion time (alongside lastResult) so ResultScreen
+   * can decide to suppress best-score writes / failStreak updates and
+   * surface the "通常モードに戻る" CTA even after the player toggles
+   * `assistMode` off mid-Result. Without this pin, toggling assist off
+   * on the Result screen would retroactively make the just-finished
+   * assist run count towards scoring.
+   */
+  lastWasAssist: boolean;
+  /**
    * Navigate to a screen AND push that destination onto the browser
    * history. This is what UI buttons should call — it keeps the OS
    * back button in sync with in-app navigation.
@@ -146,6 +182,8 @@ interface AppState {
   setSelectInitialMovement: (movement: number | null) => void;
   setViaSkipTest: (via: boolean) => void;
   setAutoMode: (enabled: boolean) => void;
+  setAssistMode: (enabled: boolean) => void;
+  setLastWasAssist: (was: boolean) => void;
   setMetronomeAccentForTs: (tsKey: string, pattern: boolean[]) => void;
   resetMetronomeAccentForTs: (tsKey: string) => void;
 }
@@ -172,6 +210,8 @@ export const useAppStore = create<AppState>((set) => ({
   viaSkipTest: false,
   autoMode: readAutoMode(),
   metronomeAccents: getMetronomeAccents(),
+  assistMode: false,
+  lastWasAssist: false,
   goto: (screen) => {
     // Push the destination so the OS back button steps backwards
     // through the app rather than leaving it.
@@ -200,6 +240,8 @@ export const useAppStore = create<AppState>((set) => ({
     writeAutoMode(enabled);
     set({ autoMode: enabled });
   },
+  setAssistMode: (enabled) => set({ assistMode: enabled }),
+  setLastWasAssist: (was) => set({ lastWasAssist: was }),
   setMetronomeAccentForTs: (tsKey, pattern) =>
     set((state) => {
       const next = { ...state.metronomeAccents, [tsKey]: pattern };

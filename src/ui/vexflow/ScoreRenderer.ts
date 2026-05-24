@@ -15,17 +15,103 @@ const BEAMABLE_DURATIONS = new Set(['8', '16', '32']);
 
 export interface NoteCoords {
   noteId: string;
+  /**
+   * Absolute tick of this notehead's onset in the score. Lets overlays
+   * (lesson-intro playhead, future judge line) build a tick→pixel
+   * table without having to cross-reference the source score notes.
+   * Also populated for rest entries so the playhead can travel through
+   * rests instead of skipping to the next sounding note.
+   */
+  tick: number;
   /** Center x of the notehead in container SVG coordinates. */
   x: number;
-  /** Center y of the notehead. */
+  /**
+   * Center y of the notehead's bounding box. Includes stem extents
+   * (which VexFlow renders stem-up by default) so this point sits
+   * noticeably ABOVE the actual notehead glyph. Use `staffMidY` for
+   * overlays that need to align with the visible middle staff line.
+   */
   y: number;
+  /**
+   * Y coordinate of this measure's visible middle staff line — i.e.
+   * the line a notehead at `b/4` actually sits on. Useful for
+   * cursor / playhead overlays that should vertically straddle the
+   * staff rather than the bounding box of the notation.
+   */
+  staffMidY: number;
   measureIdx: number;
   /** 0-based row index after measure wrapping. */
   lineIdx: number;
 }
 
+/**
+ * Per-measure layout result. Carries the geometric bounds of every
+ * rendered measure so callers (e.g. the lesson-intro playhead) can
+ * compute a tick→pixel mapping that's linear within each measure —
+ * giving a constant-speed cursor across measures regardless of how
+ * VexFlow's Formatter packed individual notes within each bar.
+ */
+export interface MeasureBounds {
+  measureIdx: number;
+  /** 0-based row index after measure wrapping. */
+  lineIdx: number;
+  /**
+   * X of the measure's note-area LEFT edge (after the clef / time-sig
+   * — i.e. where notes actually start being laid out). The first note
+   * of the measure sits at or slightly right of this x.
+   */
+  noteStartX: number;
+  /** X of the measure's note-area RIGHT edge (= end of last note's slot). */
+  noteEndX: number;
+  /**
+   * X of the measure's right barline (= `stave.x + stave.width`).
+   * Used as the playhead's right edge for the last measure of a row;
+   * for non-last measures the next measure's `noteStartX` is a better
+   * fit (no horizontal gap = no boundary speed-up).
+   */
+  staveRightX: number;
+  /**
+   * Center x of the FIRST non-rest note rendered in this measure.
+   * VexFlow's `getNoteStartX()` returns the post-clef/time-sig
+   * boundary but in practice falls a few pixels left of where the
+   * first notehead is actually drawn — so a playhead that starts at
+   * `noteStartX` appears to clip the time-sig glyph on bar 1 and
+   * sits visibly OUTSIDE the bar on subsequent rows. Using the
+   * first notehead's actual center x dodges both issues. Undefined
+   * for empty / rest-only measures; callers should fall back to
+   * `noteStartX` in that case.
+   */
+  firstNoteX?: number;
+  /** Y coord of the visible middle staff line for this measure's row. */
+  staffMidY: number;
+  /** Time signature numerator active for this measure. */
+  numerator: number;
+  /** Time signature denominator active for this measure. */
+  denominator: number;
+  /** Total ticks this measure spans (= numerator * (PPQ*4 / denominator)). */
+  ticks: number;
+  /** Cumulative tick offset of this measure's first beat in the score. */
+  startTick: number;
+}
+
 export interface RenderResult {
   noteCoords: Map<string, NoteCoords>;
+  /**
+   * Notehead group SVG elements, keyed by the source RhythmNote.id.
+   * Lets callers add/remove CSS classes on individual notes without
+   * tearing the staff down — used by the assist-mode flash (#55) to
+   * pulse each note at its onset. Only set for non-rest notes whose
+   * source RhythmNote.id is preserved (i.e. head fragments of split
+   * notes), matching the noteCoords map's coverage.
+   */
+  noteElements: Map<string, SVGElement>;
+  /**
+   * Per-measure geometry for overlays that need to map ticks to
+   * pixels without depending on individual note positions. See
+   * `MeasureBounds`. Indexed in the same order as the score's
+   * measures (0..N).
+   */
+  measureBounds: MeasureBounds[];
   /** Total SVG height in pixels. */
   height: number;
 }
@@ -130,6 +216,9 @@ export function renderScore(score: Score, opts: RenderOptions): RenderResult {
   renderer.resize(svgWidth, height);
   const ctx = renderer.getContext();
   const noteCoords = new Map<string, NoteCoords>();
+  const noteElements = new Map<string, SVGElement>();
+  const measureBounds: MeasureBounds[] = [];
+  let runningStartTick = 0;
 
   vex.measures.forEach((m, idx) => {
     const lineIdx = Math.floor(idx / measuresPerLine);
@@ -207,19 +296,94 @@ export function renderScore(score: Score, opts: RenderOptions): RenderResult {
     beams.forEach((b) => b.setContext(ctx).draw());
     tuplets.forEach((t) => t.setContext(ctx).draw());
 
+    // Precompute each VexNote's absolute tick (= measure startTick +
+    // cumulative ticks consumed by preceding tokens in this measure).
+    // Used below to stamp the tick onto every noteCoord entry,
+    // including the rest entries so the playhead has anchor points
+    // that cover rest beats (otherwise it would skip from the last
+    // sounding note in the previous measure straight to the first
+    // sounding note here, missing rest-leading bars entirely).
+    const noteAbsTicks: number[] = new Array(m.notes.length);
+    {
+      let cum = 0;
+      for (let i = 0; i < m.notes.length; i++) {
+        noteAbsTicks[i] = runningStartTick + cum;
+        cum += m.notes[i]!.ticks;
+      }
+    }
+    let firstNoteX: number | undefined;
     staveNotes.forEach((sn, i) => {
       const vNote = m.notes[i]!;
-      if (vNote.isRest || vNote.originalNoteId === null) return;
+      const absTick = noteAbsTicks[i]!;
       const bbox = sn.getBoundingBox();
       if (!bbox) return;
+      const cx = bbox.getX() + bbox.getW() / 2;
+
+      // Rests get a synthetic noteCoord entry keyed by
+      // `rest-${absTick}` so they show up in the playhead's
+      // tick→pixel table. The assist-flash pipeline keys lookups by
+      // the source note id and won't touch these synthetic entries.
+      if (vNote.isRest || vNote.originalNoteId === null) {
+        const restId = vNote.originalNoteId ?? `rest-${absTick}`;
+        noteCoords.set(restId, {
+          noteId: restId,
+          tick: absTick,
+          x: cx,
+          y: bbox.getY() + bbox.getH() / 2,
+          staffMidY: stave.getYForLine(2),
+          measureIdx: m.index,
+          lineIdx,
+        });
+        return;
+      }
+      if (firstNoteX === undefined) firstNoteX = cx;
       noteCoords.set(vNote.originalNoteId, {
         noteId: vNote.originalNoteId,
-        x: bbox.getX() + bbox.getW() / 2,
+        tick: absTick,
+        x: cx,
         y: bbox.getY() + bbox.getH() / 2,
+        // Use VexFlow's own line-Y math instead of inferring from
+        // STAVE_TOP_OFFSET — accounts for the renderer's actual
+        // top_text_position / spacing_between_lines defaults so the
+        // value matches the visually-drawn middle line.
+        staffMidY: stave.getYForLine(2),
         measureIdx: m.index,
         lineIdx,
       });
+      // Cache the SVG group for the assist-mode flash (#55). VexFlow
+      // exposes getSVGElement() — when present, the returned <g> is
+      // the wrapper for this single notehead so callers can toggle
+      // CSS classes per-note without re-rendering. We also stamp a
+      // data attribute so devtools / e2e selectors can identify the
+      // note by its source id.
+      const el = sn.getSVGElement();
+      if (el) {
+        el.setAttribute('data-rhygym-note-id', vNote.originalNoteId);
+        noteElements.set(vNote.originalNoteId, el);
+      }
     });
+
+    // Stash per-measure geometry. The note-area X bounds come from the
+    // Stave AFTER format() / draw() so they reflect the actual notation
+    // area (= clef + time-sig consumed). Tick math uses Rhygym's
+    // PPQ=480 convention. startTick accumulates across measures so the
+    // playhead can ask "which measure contains tick T".
+    const measureTicks = (QUARTER_NOTE_TICKS * 4 * m.numerator) / m.denominator;
+    const bounds: MeasureBounds = {
+      measureIdx: m.index,
+      lineIdx,
+      noteStartX: stave.getNoteStartX(),
+      noteEndX: stave.getNoteEndX(),
+      staveRightX: x + measureWidth,
+      staffMidY: stave.getYForLine(2),
+      numerator: m.numerator,
+      denominator: m.denominator,
+      ticks: measureTicks,
+      startTick: runningStartTick,
+    };
+    if (firstNoteX !== undefined) bounds.firstNoteX = firstNoteX;
+    measureBounds.push(bounds);
+    runningStartTick += measureTicks;
   });
 
   // Always emit a viewBox so consumers can scale via CSS if they want
@@ -235,7 +399,7 @@ export function renderScore(score: Score, opts: RenderOptions): RenderResult {
     }
   }
 
-  return { noteCoords, height };
+  return { noteCoords, noteElements, measureBounds, height };
 }
 
 function computeMaxLineWidth(widths: readonly number[], measuresPerLine: number): number {
