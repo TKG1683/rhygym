@@ -23,6 +23,8 @@ import {
   removeSkipTestFinal,
   resetFailStreak,
   setBest,
+  type BestRecord,
+  type BestsByEtude,
 } from '../../core/storage/localStore';
 import { TickTimeConverter } from '../../core/timing/tickTime';
 import { TimingPlot } from '../game/TimingPlot';
@@ -31,6 +33,29 @@ import { useAppStore } from '../store/appStore';
 
 /** Rank ordering for "is this rank at least PASS_RANK_THRESHOLD?". */
 const RANK_ORDER = ['D', 'C', 'B', 'A', 'S'] as const;
+
+/**
+ * Project a v3 nested bests store down to one BestRecord per étude,
+ * picking the highest rank across difficulties (and the higher score
+ * on tie). Used both at mount snapshot time and inside the unlock
+ * simulation so progression / Movement-medal logic continues to see
+ * a flat `Record<etudeId, BestRecord>` even though the underlying
+ * store now keeps BEGINNER and NORMAL slots separately (#20).
+ */
+function projectBestPerEtude(nested: BestsByEtude): Record<string, BestRecord> {
+  const out: Record<string, BestRecord> = {};
+  for (const [etudeId, byDiff] of Object.entries(nested)) {
+    const list = Object.values(byDiff).filter((r): r is BestRecord => r != null);
+    if (list.length === 0) continue;
+    out[etudeId] = list.reduce((best, cur) => {
+      const rDiff = RANK_ORDER.indexOf(cur.rank) - RANK_ORDER.indexOf(best.rank);
+      if (rDiff > 0) return cur;
+      if (rDiff < 0) return best;
+      return cur.score > best.score ? cur : best;
+    });
+  }
+  return out;
+}
 
 /**
  * Sub-pass-rank runs in a row that trigger the "アシストを試す" banner
@@ -115,6 +140,7 @@ export function ResultScreen() {
   const viaSkipTest = useAppStore((s) => s.viaSkipTest);
   const setAssistMode = useAppStore((s) => s.setAssistMode);
   const lastWasAssist = useAppStore((s) => s.lastWasAssist);
+  const difficulty = useAppStore((s) => s.difficulty);
   const calibrated = calibrationOffsetSec !== 0;
 
   // Mark this screen as the return target so calibration can bring the
@@ -210,11 +236,13 @@ export function ResultScreen() {
   );
 
   const prevBest = useMemo(
-    () => (stage ? getBest(stage.id) : null),
+    () => (stage ? getBest(stage.id, difficulty) : null),
     // Re-snapshot every time a new result comes in so retries can
-    // compare against the not-yet-overwritten best.
+    // compare against the not-yet-overwritten best. Per-difficulty
+    // lookup so BEGINNER and NORMAL plays each see their own
+    // prior best in the prevBest line.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [stage, result],
+    [stage, result, difficulty],
   );
 
   // A run is "below threshold" when the player chose a tempo slower
@@ -235,7 +263,7 @@ export function ResultScreen() {
 
   const newBest =
     stage && result && !belowPassThreshold && !isLessonPlay && !lastWasAssist
-      ? isNewBest({ etudeId: stage.id, score: result.score })
+      ? isNewBest({ etudeId: stage.id, difficulty, score: result.score })
       : false;
 
   // Movement unlock notification (#31 follow-up). Snapshot the bests
@@ -249,7 +277,14 @@ export function ResultScreen() {
   // re-renders — the setBest useEffect below mutates localStorage,
   // but the in-React snapshot lets us reason about "before vs after"
   // without re-querying mid-render.
-  const bestsAtMount = useMemo(() => getAllBests(), []);
+  const bestsAtMount = useMemo<BestsByEtude>(() => getAllBests(), []);
+  // Project the nested-by-difficulty v3 store down to one BestRecord
+  // per étude (the highest rank across difficulties) so progression
+  // / Movement-unlock logic still works the same way — a BEGINNER S
+  // counts as a clear just like a NORMAL S.
+  const flatBestsAtMount = useMemo<Record<string, BestRecord>>(() => {
+    return projectBestPerEtude(bestsAtMount);
+  }, [bestsAtMount]);
   // Snapshot the skip-test markers at mount too so the unlock-banner
   // simulation reasons about the same data the StageSelect will see
   // when we navigate back. We mutate the underlying localStorage in
@@ -276,33 +311,36 @@ export function ResultScreen() {
     }
     return Array.from(byLevel.values()).sort((a, b) => a.movement - b.movement);
   }, [loadedEtudes]);
-  const simulatedBests = useMemo(() => {
+  const simulatedBests = useMemo<Record<string, BestRecord> | null>(() => {
     if (!stage || !result || belowPassThreshold) return null;
     // Lessons don't write bests (see setBest useEffect below), so
     // they can't affect the unlock projection either — bail early.
     if (isLessonPlay) return null;
     // Assist-mode plays don't write bests either — same projection bail.
     if (lastWasAssist) return null;
-    // Project the post-run bests state: this run becomes the new best
-    // only if there wasn't a higher-scoring previous entry. Lower-
-    // scoring runs can still unlock when the *rank* is higher than
-    // the old best (e.g., old B → new A), so compare rank too.
-    const existing = bestsAtMount[stage.id];
-    const willPromote =
-      !existing ||
-      result.score > existing.score ||
-      rankAtLeast(result.rank, 'A') && !rankAtLeast(existing.rank, 'A');
-    if (!willPromote) return null;
-    return {
-      ...bestsAtMount,
-      [stage.id]: {
-        etudeId: stage.id,
-        score: result.score,
-        rank: result.rank,
-        achievedAt: new Date().toISOString(),
-      },
+    // Apply the would-be write to a nested copy of the v3 store,
+    // then re-project to the flat per-étude shape progression needs.
+    // The unlock banner fires only if THAT flat best changes — so a
+    // NORMAL A play with an existing BEGINNER S leaves unlock state
+    // untouched (BEGINNER S is still the etude's best across modes).
+    const nested: BestsByEtude = { ...bestsAtMount };
+    const slots = { ...(nested[stage.id] ?? {}) };
+    const sameSlotExisting = slots[difficulty];
+    const promoted =
+      !sameSlotExisting ||
+      result.score > sameSlotExisting.score ||
+      (rankAtLeast(result.rank, 'A') && !rankAtLeast(sameSlotExisting.rank, 'A'));
+    if (!promoted) return null;
+    slots[difficulty] = {
+      etudeId: stage.id,
+      difficulty,
+      score: result.score,
+      rank: result.rank,
+      achievedAt: new Date().toISOString(),
     };
-  }, [stage, result, belowPassThreshold, isLessonPlay, lastWasAssist, bestsAtMount]);
+    nested[stage.id] = slots;
+    return projectBestPerEtude(nested);
+  }, [stage, result, belowPassThreshold, isLessonPlay, lastWasAssist, bestsAtMount, difficulty]);
 
   // Project the post-run skip-test marker set. This run mutates the
   // markers exactly the same way `setBest` does in the useEffect
@@ -330,7 +368,7 @@ export function ResultScreen() {
 
   const unlockChange = useMemo(() => {
     if (!simulatedBests) return null;
-    const before = evaluateMaxUnlocked(bestsAtMount, movementGroupsForUnlock, {
+    const before = evaluateMaxUnlocked(flatBestsAtMount, movementGroupsForUnlock, {
       skipTestFinals: skipTestFinalsAtMount,
     });
     const after = evaluateMaxUnlocked(simulatedBests, movementGroupsForUnlock, {
@@ -340,7 +378,7 @@ export function ResultScreen() {
     return { from: before, to: after };
   }, [
     simulatedBests,
-    bestsAtMount,
+    flatBestsAtMount,
     movementGroupsForUnlock,
     skipTestFinalsAtMount,
     simulatedSkipTestFinals,
@@ -353,7 +391,7 @@ export function ResultScreen() {
   // doesn't trigger its own "Final unlocked" banner.
   const finalUnlockChange = useMemo(() => {
     if (!simulatedBests || !stage || stage.isFinal) return null;
-    const beforeState = evaluateProgression(bestsAtMount, movementGroupsForUnlock, {
+    const beforeState = evaluateProgression(flatBestsAtMount, movementGroupsForUnlock, {
       skipTestFinals: skipTestFinalsAtMount,
     });
     const afterState = evaluateProgression(simulatedBests, movementGroupsForUnlock, {
@@ -368,7 +406,7 @@ export function ResultScreen() {
   }, [
     simulatedBests,
     stage,
-    bestsAtMount,
+    flatBestsAtMount,
     movementGroupsForUnlock,
     loadedEtudes,
     skipTestFinalsAtMount,
@@ -386,11 +424,12 @@ export function ResultScreen() {
     if (lastWasAssist) return;
     setBest({
       etudeId: stage.id,
+      difficulty,
       score: result.score,
       rank: result.rank,
       achievedAt: new Date().toISOString(),
     });
-  }, [stage, result, newBest, belowPassThreshold, isLessonPlay, lastWasAssist]);
+  }, [stage, result, newBest, belowPassThreshold, isLessonPlay, lastWasAssist, difficulty]);
 
   // Mark a lesson as completed the moment its Result loads (#53) —
   // regardless of rank. The lesson is "an exercise the player did",
@@ -656,9 +695,15 @@ export function ResultScreen() {
           </div>
           <p className="result-score">{result.score}</p>
           <p className="result-accuracy">正確率 {(result.accuracy * 100).toFixed(1)}%</p>
+          <p className="result-difficulty-chip">
+            {difficulty === 'BEGINNER' ? '🔰 BEGINNER' : '♩ NORMAL'}{' '}
+            <span className="result-difficulty-hint">
+              ({difficulty === 'BEGINNER' ? '判定ゆるめ' : '判定タイト'} ・ ベストは難易度別)
+            </span>
+          </p>
           {prevBest && !newBest && (
             <p className="muted">
-              自己ベスト: {prevBest.score} ({prevBest.rank})
+              {difficulty} 自己ベスト: {prevBest.score} ({prevBest.rank})
             </p>
           )}
           <div className="result-breakdown">

@@ -34,6 +34,7 @@ import {
   computeResult,
   findExpiredNotes,
   judgeTap,
+  windowsForDifficulty,
   type GameResult,
   type Judgement,
   type JudgementRecord,
@@ -47,10 +48,13 @@ import { TickTimeConverter } from '../../core/timing/tickTime';
 import { defaultAccentPattern, scheduleClick, tsKey } from '../../core/audio/metronome';
 import { useAppStore } from '../store/appStore';
 import { ScoreView } from '../vexflow/ScoreView';
+import type { NoteCoords } from '../vexflow/ScoreRenderer';
 import { ConductorBaton } from './ConductorBaton';
 import { TapArea } from './TapArea';
 import { GameSettingsPopover } from './GameSettingsPopover';
 import { startGameLoop } from './gameLoop';
+import { PlayheadLayer } from './PlayheadLayer';
+import { buildRowPoints, type RowPoints } from './playhead';
 
 type Phase = 'waiting' | 'playing' | 'done';
 
@@ -98,6 +102,7 @@ export function GameView({ stage, onComplete, tutorialMode = false }: Props) {
   const setLastPlayedBpm = useAppStore((s) => s.setLastPlayedBpm);
   const calibrationOffsetSec = useAppStore((s) => s.calibrationOffsetSec);
   const autoMode = useAppStore((s) => s.autoMode);
+  const difficulty = useAppStore((s) => s.difficulty);
   const assistMode = useAppStore((s) => s.assistMode);
   const setLastWasAssist = useAppStore((s) => s.setLastWasAssist);
   const goto = useAppStore((s) => s.goto);
@@ -213,10 +218,31 @@ export function GameView({ stage, onComplete, tutorialMode = false }: Props) {
     [adjustedScore, converter],
   );
 
+  // Difficulty-dependent judgement windows (#20). BEGINNER widens the
+  // ±PERFECT and ±GOOD half-widths; NORMAL keeps the original tight
+  // sight-reading windows. Memo so the window object identity is
+  // stable across renders that don't actually flip difficulty.
+  const judgementWindows = useMemo(
+    () => windowsForDifficulty(difficulty),
+    [difficulty],
+  );
+
   const schedulerRef = useRef<GameScheduler | null>(null);
   const freeMetronomeRef = useRef<FreeMetronome | null>(null);
   const judgedIdsRef = useRef<Set<string>>(new Set());
   const verdictsRef = useRef<JudgementRecord[]>([]);
+  // BEGINNER-mode playhead plumbing (#20). Cached separately so the
+  // rAF loop inside PlayheadLayer can read the latest snapshot
+  // without restarting whenever ScoreView re-renders. Empty unless
+  // the player is in BEGINNER mode AND ScoreView has emitted at
+  // least one render.
+  const scoreWrapperRef = useRef<HTMLDivElement>(null);
+  const audioContextRef = useRef<AudioContext | null>(null);
+  const lastNoteCoordsRef = useRef<ReadonlyMap<string, NoteCoords>>(new Map());
+  const rowPointsRef = useRef<readonly RowPoints[]>([]);
+  useEffect(() => {
+    audioContextRef.current = audioContext;
+  }, [audioContext]);
   /**
    * AudioContext.currentTime at the moment the song's beat 1 lands —
    * always a FreeMetronome downbeat, never the player's raw tap time.
@@ -316,7 +342,7 @@ export function GameView({ stage, onComplete, tutorialMode = false }: Props) {
    */
   const judgeAndApply = (tapSec: number) => {
     const remaining = candidates.filter((c) => !judgedIdsRef.current.has(c.id));
-    const result = judgeTap(tapSec, remaining);
+    const result = judgeTap(tapSec, remaining, judgementWindows);
     if (result) {
       judgedIdsRef.current.add(result.noteId);
       const note = candidates.find((c) => c.id === result.noteId);
@@ -350,7 +376,7 @@ export function GameView({ stage, onComplete, tutorialMode = false }: Props) {
    */
   const judgeStartTap = (tapSec: number) => {
     const remaining = candidates.filter((c) => !judgedIdsRef.current.has(c.id));
-    const result = judgeTap(tapSec, remaining);
+    const result = judgeTap(tapSec, remaining, judgementWindows);
     if (!result) return;
     judgedIdsRef.current.add(result.noteId);
     const note = candidates.find((c) => c.id === result.noteId);
@@ -487,7 +513,7 @@ export function GameView({ stage, onComplete, tutorialMode = false }: Props) {
       getAudioSec: () => ctx.currentTime - startAudioTimeRef.current,
       onFrame: (audioSec) => {
         const remaining = candidates.filter((c) => !judgedIdsRef.current.has(c.id));
-        const expired = findExpiredNotes(audioSec, remaining);
+        const expired = findExpiredNotes(audioSec, remaining, judgementWindows);
         for (const e of expired) {
           judgedIdsRef.current.add(e.id);
           verdictsRef.current.push({
@@ -715,15 +741,34 @@ export function GameView({ stage, onComplete, tutorialMode = false }: Props) {
        * etude doesn't fire a stray rhythm tap. The bottom half of the
        * screen is the dedicated tap zone — large enough on its own
        * without needing the staff to double as tap target. */}
-      <div className="score-view-wrapper game-score-wrapper">
+      <div className="score-view-wrapper game-score-wrapper" ref={scoreWrapperRef}>
         <ScoreView
           score={adjustedScore}
           measuresPerLine={2}
           maxHeightVh={48}
+          onRender={(coords) => {
+            lastNoteCoordsRef.current = coords;
+          }}
+          onMeasureBounds={(bounds) => {
+            // Rebuild on every render so a viewport-resize re-render
+            // refreshes the playhead's tick→x table without restarting
+            // the rAF loop.
+            rowPointsRef.current = buildRowPoints(bounds, lastNoteCoordsRef.current);
+          }}
           onNoteElements={(els) => {
             noteElementsRef.current = els;
           }}
         />
+        {difficulty === 'BEGINNER' && (
+          <PlayheadLayer
+            active={phase === 'playing'}
+            audioContextRef={audioContextRef}
+            startAudioTimeRef={startAudioTimeRef}
+            converter={converter}
+            rowPointsRef={rowPointsRef}
+            scoreWrapperRef={scoreWrapperRef}
+          />
+        )}
       </div>
       <TapArea ctx={audioContext} onTap={handleTap} className="game-tap-zone">
         {phase !== 'done' && (

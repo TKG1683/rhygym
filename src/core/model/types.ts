@@ -4,6 +4,18 @@
  */
 export const PPQ = 480;
 
+/**
+ * Player-selectable difficulty (#20). BEGINNER widens the judgement
+ * windows and draws a moving playhead cursor over the staff so first-
+ * time readers can correlate the metronome with the score. NORMAL is
+ * the original sight-reading-focused mode (no playhead, tighter
+ * windows). Best records are stored independently per difficulty.
+ */
+export type Difficulty = 'BEGINNER' | 'NORMAL';
+
+export const DEFAULT_DIFFICULTY: Difficulty = 'NORMAL';
+export const ALL_DIFFICULTIES: readonly Difficulty[] = ['BEGINNER', 'NORMAL'];
+
 export interface TempoEvent {
   /** Position (tick) where this tempo takes effect. 0 = song start. */
   tick: number;
