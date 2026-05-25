@@ -2745,3 +2745,32 @@ input[type='range']:disabled {
   font-size: var(--fs-sm);
   font-weight: 700;
 }
+
+/* ------------------------------------------------------------------ */
+/*  Two-hand mode (#83) — Phase A debug screen + grand-staff layout.  */
+/* ------------------------------------------------------------------ */
+
+.screen-two-hand-demo {
+  justify-content: flex-start;
+  padding-top: var(--space-5);
+  gap: var(--space-3);
+  text-align: left;
+  align-items: stretch;
+}
+
+.two-hand-demo-header {
+  text-align: center;
+}
+
+.two-hand-demo-header h1 {
+  margin: 0 0 var(--space-2);
+}
+
+/* Grand-staff container — renderGrandStaff emits one SVG with both
+ * staves joined by a system bracket on the left and cross-stave bar
+ * lines at every measure boundary, so we just need the standard
+ * cream surface panel (inherited from .score-view) plus a slight
+ * extra padding so the bracket doesn't kiss the panel edge. */
+.score-view.grand-staff {
+  padding: var(--space-3);
+}

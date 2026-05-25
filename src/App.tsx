@@ -8,6 +8,7 @@ import { ResultScreen } from './ui/screens/ResultScreen';
 import { CalibrationScreen } from './ui/screens/CalibrationScreen';
 import { TutorialScreen } from './ui/screens/TutorialScreen';
 import { LessonIntroScreen } from './ui/screens/LessonIntroScreen';
+import { TwoHandDemoScreen } from './ui/screens/TwoHandDemoScreen';
 
 const VALID_SCREENS: readonly Screen[] = [
   'title',
@@ -17,6 +18,7 @@ const VALID_SCREENS: readonly Screen[] = [
   'calibration',
   'tutorial',
   'lesson-intro',
+  'two-hand-demo',
 ];
 
 export default function App() {
@@ -51,6 +53,23 @@ export default function App() {
       cancelled = true;
     };
   }, [setLoadedEtudes, setEtudesLoadState, setEtudesLoadError]);
+
+  // Debug entry point for the two-hand demo screen (#83 Phase A). The
+  // demo isn't in normal navigation yet, so we honor `?demo=two-hand`
+  // on the URL once at startup and drop the player straight onto the
+  // grand-staff render. Cleaned URL afterwards so a reload returns to
+  // Title instead of looping back into the demo.
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('demo') === 'two-hand') {
+      useAppStore.getState().setScreen('two-hand-demo');
+      params.delete('demo');
+      const qs = params.toString();
+      const newUrl = window.location.pathname + (qs ? `?${qs}` : '') + window.location.hash;
+      window.history.replaceState({ screen: 'two-hand-demo' }, '', newUrl);
+    }
+  }, []);
 
   // Reset window scroll on every screen change (#98). Without this, a
   // player who scrolled the MovementSelect list down and tapped a
@@ -106,5 +125,7 @@ export default function App() {
       return <TutorialScreen />;
     case 'lesson-intro':
       return <LessonIntroScreen />;
+    case 'two-hand-demo':
+      return <TwoHandDemoScreen />;
   }
 }

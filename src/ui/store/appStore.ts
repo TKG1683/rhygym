@@ -48,7 +48,14 @@ export type Screen =
    * element with a short description + a score preview before the
    * player drops into the lesson Game.
    */
-  | 'lesson-intro';
+  | 'lesson-intro'
+  /**
+   * Two-hand mode (#83) Phase A debug screen — visual smoke test for
+   * the grand-staff renderer. Reachable only via `?demo=two-hand` so
+   * it never appears in normal navigation. Replaced by the real
+   * two-hand GameView in later phases.
+   */
+  | 'two-hand-demo';
 
 interface AppState {
   screen: Screen;
