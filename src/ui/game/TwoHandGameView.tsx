@@ -305,26 +305,7 @@ export function TwoHandGameView({ stage, onComplete }: Props) {
 
   return (
     <div className="two-hand-game-host">
-      <GrandStaffView score={adjustedScore} measuresPerLine={2} />
-      {/* Conductor sits BETWEEN the staff and the tap zones so the
-       *  count digit + gesture stay in the player's central focal
-       *  point. Verdict overlay is suppressed (verdict={null}) since
-       *  per-lane verdicts already flash inside their own tap zones —
-       *  doubling them centrally would be visually noisy. */}
-      {phase !== 'done' && (
-        <div className="two-hand-conductor-slot">
-          <ConductorBaton
-            audioContext={audioContext}
-            fmRef={freeMetronomeRef}
-            startTimeRef={startAudioTimeRef}
-            phase={phase}
-            score={adjustedScore}
-            converter={converter}
-            verdict={null}
-            triggerId={0}
-          />
-        </div>
-      )}
+      <GrandStaffView score={adjustedScore} measuresPerLine={2} maxHeightVh={35} />
       <div className="two-hand-status" aria-live="polite">
         {phase === 'waiting' && (
           <p className="muted">どちらかの手を「1」 のタイミングで叩いて開始</p>
@@ -333,6 +314,12 @@ export function TwoHandGameView({ stage, onComplete }: Props) {
           <TwoHandResultPanel combined={combinedResult} perLane={perLaneResult} />
         )}
       </div>
+      {/* Tap row owns the remaining vertical space. Conductor floats
+       *  centred above the gap between zones as an absolute overlay
+       *  (pointer-events:none on .conductor-wrap means taps still hit
+       *  the underlying zone). Keeps the count digit visible without
+       *  consuming its own row — critical for landscape where total
+       *  vertical budget is ~375 px on phones. */}
       <div className="two-hand-tap-row">
         <TapArea
           ctx={audioContext}
@@ -360,6 +347,20 @@ export function TwoHandGameView({ stage, onComplete }: Props) {
             />
           )}
         </TapArea>
+        {phase !== 'done' && (
+          <div className="two-hand-conductor-overlay" aria-hidden="true">
+            <ConductorBaton
+              audioContext={audioContext}
+              fmRef={freeMetronomeRef}
+              startTimeRef={startAudioTimeRef}
+              phase={phase}
+              score={adjustedScore}
+              converter={converter}
+              verdict={null}
+              triggerId={0}
+            />
+          </div>
+        )}
       </div>
     </div>
   );
