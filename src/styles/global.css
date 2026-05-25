@@ -2774,3 +2774,157 @@ input[type='range']:disabled {
 .score-view.grand-staff {
   padding: var(--space-3);
 }
+
+/* Two-hand mode (#83) Phase B — playable game layout. landscape is the
+ * intended orientation but the layout degrades gracefully in portrait
+ * (the score wraps tighter, tap zones get short). */
+.two-hand-demo-actions {
+  display: flex;
+  gap: var(--space-2);
+  justify-content: center;
+  margin-top: var(--space-2);
+}
+
+.two-hand-game-host {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  flex: 1;
+  min-height: 0;
+}
+
+.two-hand-status {
+  text-align: center;
+  min-height: 28px;
+}
+
+/* Conductor sits centred between the staff and the tap zones. The
+ * ConductorBaton component already sizes itself via .conductor-wrap
+ * (min(48vw, 190px) square); the slot just centres it horizontally
+ * and gives a touch of vertical breathing room. */
+.two-hand-conductor-slot {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+}
+
+/* Side-by-side tap zones. flex: 1 each so they split the remaining
+ * horizontal space evenly. user-select etc. mirror the single-hand
+ * .game-tap-zone so dragging doesn't trigger text selection. */
+.two-hand-tap-row {
+  display: flex;
+  width: 100%;
+  flex: 1;
+  min-height: 160px;
+  gap: var(--space-2);
+}
+
+.two-hand-tap-zone {
+  flex: 1;
+  position: relative;
+  background: var(--surface);
+  border: 2px solid var(--border-soft);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Subtle palette differentiation so the player visually associates
+ * each zone with its hand. The grand staff is the actual reading
+ * target — these zones are just "where the finger lands". */
+.two-hand-tap-l {
+  background: linear-gradient(180deg, var(--surface) 0%, var(--surface-hover) 100%);
+}
+
+.two-hand-tap-r {
+  background: linear-gradient(180deg, var(--surface) 0%, #ffeed0 100%);
+}
+
+.two-hand-tap-label {
+  font-size: var(--fs-lg);
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  opacity: 0.55;
+  pointer-events: none;
+}
+
+/* Verdict badge that flashes inside the tapped zone. Re-keyed on each
+ * verdict from the parent so duplicate verdicts re-trigger the keyframe. */
+.two-hand-verdict {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 36px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
+  pointer-events: none;
+  animation: judgement-fade 320ms ease-out forwards;
+}
+
+.two-hand-verdict.verdict-perfect { color: var(--rank-s-strong); }
+.two-hand-verdict.verdict-good { color: var(--rank-a); }
+.two-hand-verdict.verdict-miss { color: var(--brand-accent); }
+
+/* Inline result panel — appears in the .two-hand-status slot once the
+ * song finishes. Compact L / R breakdown plus the combined rank. */
+.two-hand-result {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  background: var(--surface-elevated);
+  border: 2px solid var(--brand-accent);
+  border-radius: var(--radius-md);
+}
+
+.two-hand-result-rank {
+  margin: 0;
+  font-size: var(--fs-lg);
+}
+
+.two-hand-result-grid {
+  display: flex;
+  gap: var(--space-5);
+}
+
+.two-hand-lane-result {
+  text-align: center;
+}
+
+.two-hand-lane-label {
+  margin: 0 0 var(--space-1);
+  font-weight: 700;
+}
+
+.two-hand-lane-line {
+  display: flex;
+  gap: 10px;
+  margin: 0;
+  font-weight: 700;
+}
+
+.two-hand-lane-acc {
+  margin: 2px 0 0;
+  font-size: var(--fs-sm);
+}
+
+/* Audio init gate — shown only when the demo screen is hit directly
+ * via URL (?demo=two-hand) without going through Title's はじめる. */
+.two-hand-audio-gate {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-5);
+}
