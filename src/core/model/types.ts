@@ -40,6 +40,13 @@ export interface TimeSignatureEvent {
 }
 
 /**
+ * Which hand a note belongs to in two-hand mode (#83). Undefined for
+ * single-hand etudes — the original single-tap experience treats every
+ * note as belonging to the only available tap zone.
+ */
+export type Lane = 'L' | 'R';
+
+/**
  * A single rhythmic event on the staff. Carries no pitch — the player
  * just needs to tap on time. Rests are rendered but not tappable.
  */
@@ -58,6 +65,13 @@ export interface RhythmNote {
    * single-tap note. Only meaningful for non-rest notes.
    */
   tremoloStrokes?: number;
+  /**
+   * Two-hand mode lane assignment (#83). Required on every note when
+   * the parent Etude has `twoHand: true`; ignored otherwise. The lane
+   * decides which TapArea (left/right) and which staff (upper/lower)
+   * the note belongs to.
+   */
+  lane?: Lane;
 }
 
 export interface Score {
@@ -87,4 +101,12 @@ export interface Etude {
    * Completion is tracked separately via `getLessonsCompleted()`.
    */
   isLesson?: boolean;
+  /**
+   * Two-hand mode etude (#83). When true, every note in `score.notes`
+   * must carry a `lane: 'L' | 'R'` and the player taps on a split
+   * left/right TapArea while reading a grand-staff (upper = right
+   * hand, lower = left hand). Single-hand etudes leave this unset and
+   * keep the original full-area tap behaviour.
+   */
+  twoHand?: boolean;
 }
