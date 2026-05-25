@@ -52,6 +52,21 @@ export default function App() {
     };
   }, [setLoadedEtudes, setEtudesLoadState, setEtudesLoadError]);
 
+  // Reset window scroll on every screen change (#98). Without this, a
+  // player who scrolled the MovementSelect list down and tapped a
+  // lesson would land inside LessonIntroScreen scrolled past the
+  // header. Browsers also restore scroll on bfcache restore, so flip
+  // scrollRestoration to manual so back/forward doesn't fight us.
+  useEffect(() => {
+    if (typeof history !== 'undefined' && 'scrollRestoration' in history) {
+      history.scrollRestoration = 'manual';
+    }
+  }, []);
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    window.scrollTo(0, 0);
+  }, [screen]);
+
   // Hook the in-app screen switch into the browser's history stack.
   // Without this, the OS back button always exits the site even after
   // the player has navigated Title → Select → Game → Result.

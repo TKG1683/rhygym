@@ -485,18 +485,22 @@ button.secondary:active {
 }
 
 
+/* Stacked vertically by default so narrow phones (issue #97) don't
+ * cram the Etude name + ♩=N onto a sliver of space next to the
+ * 設定 / リトライ / 中断 buttons. The buttons sit on their own row
+ * below the title, right-aligned. On wider viewports the side-by-side
+ * layout still reads fine, so we restore it at a sensible breakpoint. */
 .game-header {
   width: 100%;
   display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 12px;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
   flex-shrink: 0;
 }
 
 .game-header-title {
   min-width: 0;
-  flex: 1;
   text-align: left;
 }
 
@@ -514,9 +518,26 @@ button.secondary:active {
 }
 
 .game-header-actions {
+  display: flex;
+  align-self: flex-end;
   flex-shrink: 0;
   flex-wrap: nowrap;
   gap: 6px;
+}
+
+@media (min-width: 600px) {
+  .game-header {
+    flex-direction: row;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+  }
+  .game-header-title {
+    flex: 1;
+  }
+  .game-header-actions {
+    align-self: auto;
+  }
 }
 
 /* Metronome-icon + 設定 label. Inline-flex so the SVG and the text

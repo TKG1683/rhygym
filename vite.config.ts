@@ -7,6 +7,11 @@ import react from '@vitejs/plugin-react';
 export default defineConfig({
   plugins: [react()],
   base: '/rhygym/',
+  server: {
+    // 0.0.0.0 にバインドして LAN 上の端末 (スマホ実機) から
+    // http://<PC の LAN IP>:5173/rhygym/ で確認できるようにする。
+    host: true,
+  },
   test: {
     globals: true,
     environment: 'jsdom',
