@@ -2750,29 +2750,85 @@ input[type='range']:disabled {
 /*  Two-hand mode (#83) — Phase A debug screen + grand-staff layout.  */
 /* ------------------------------------------------------------------ */
 
+/* Pin the screen to the viewport so the inner flex chain (header /
+ * grand-staff / status / tap-row) can use flex:1 sensibly. Without
+ * this pin, landscape phones (~375 px viewport) let the document
+ * grow to content-height and you can scroll between "see staff" and
+ * "see tap zones" — the bug the user hit. */
 .screen-two-hand-demo {
   justify-content: flex-start;
-  padding-top: var(--space-5);
-  gap: var(--space-3);
+  padding: 8px var(--space-3) 12px;
+  gap: 6px;
   text-align: left;
   align-items: stretch;
+  height: 100dvh;
+  max-height: 100dvh;
+  overflow: hidden;
+  overscroll-behavior: none;
 }
 
 .two-hand-demo-header {
   text-align: center;
+  flex-shrink: 0;
 }
 
 .two-hand-demo-header h1 {
+  margin: 0 0 var(--space-1);
+  font-size: var(--fs-lg);
+}
+
+.two-hand-demo-header .muted {
   margin: 0 0 var(--space-2);
+}
+
+/* Landscape on a phone — collapse the header further so the grand
+ * staff + tap zones aren't fighting for vertical room. Description
+ * and "リトライ / タイトルへ" buttons stay; the title shrinks and
+ * the etude-picker chips wrap into a tight row. */
+@media (max-height: 480px) and (orientation: landscape) {
+  .screen-two-hand-demo {
+    padding: 4px 8px 6px;
+    gap: 4px;
+  }
+  .two-hand-demo-header h1 {
+    font-size: var(--fs-md);
+    margin: 0;
+  }
+  .two-hand-demo-header .muted {
+    display: none;
+  }
+  .two-hand-demo-actions {
+    margin-top: 2px;
+  }
+  .two-hand-etude-pick {
+    padding: 4px 10px;
+    font-size: var(--fs-xs);
+  }
 }
 
 /* Grand-staff container — renderGrandStaff emits one SVG with both
  * staves joined by a system bracket on the left and cross-stave bar
  * lines at every measure boundary, so we just need the standard
  * cream surface panel (inherited from .score-view) plus a slight
- * extra padding so the bracket doesn't kiss the panel edge. */
+ * extra padding so the bracket doesn't kiss the panel edge.
+ *
+ * flex-shrink: 0 is critical — without it, the flex column on
+ * .two-hand-game-host collapses the score-view to fit alongside the
+ * `flex: 1; min-height: 160px` tap row, leaving the SVG at 0 height
+ * in landscape. Matches the single-hand .game-score-wrapper pattern. */
 .score-view.grand-staff {
   padding: var(--space-3);
+  flex-shrink: 0;
+}
+
+/* Override the global .score-view svg { max-height: 100% } rule for
+ * the grand staff — applyMaxHeightScale already pins explicit
+ * pixel sizes via inline style, and the max-height-of-parent
+ * inheritance just adds confusion when the parent is auto-sized to
+ * content. */
+.score-view.grand-staff svg {
+  max-height: none;
+  margin: 0 auto;
 }
 
 /* Two-hand mode (#83) Phase B — playable game layout. landscape is the
@@ -2796,18 +2852,40 @@ input[type='range']:disabled {
 
 .two-hand-status {
   text-align: center;
-  min-height: 28px;
+  min-height: 22px;
+  flex-shrink: 0;
 }
 
-/* Conductor sits centred between the staff and the tap zones. The
- * ConductorBaton component already sizes itself via .conductor-wrap
- * (min(48vw, 190px) square); the slot just centres it horizontally
- * and gives a touch of vertical breathing room. */
-.two-hand-conductor-slot {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  width: 100%;
+/* Tap row owns the remaining vertical space; relative so the
+ * conductor overlay (absolute) positions against it. */
+.two-hand-tap-row {
+  position: relative;
+}
+
+/* Conductor floats centred above the gap between L / R tap zones.
+ * `.conductor-wrap` carries pointer-events:none so taps still hit
+ * the underlying zone. Sized smaller than the default (which is
+ * min(48vw, 190px)) so it doesn't dominate the visual; landscape
+ * compresses it further. */
+.two-hand-conductor-overlay {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  z-index: 2;
+}
+
+.two-hand-conductor-overlay .conductor-wrap {
+  width: min(28vw, 140px);
+  height: min(28vw, 140px);
+}
+
+@media (max-height: 480px) and (orientation: landscape) {
+  .two-hand-conductor-overlay .conductor-wrap {
+    width: min(22vh, 110px);
+    height: min(22vh, 110px);
+  }
 }
 
 /* Side-by-side tap zones. flex: 1 each so they split the remaining
@@ -2927,4 +3005,86 @@ input[type='range']:disabled {
   align-items: center;
   gap: var(--space-3);
   padding: var(--space-5);
+}
+
+/* Etude picker — small horizontal scroll list of the 5 polyrhythm
+ * etudes. Each pick toggles `is-selected` for the current stage so
+ * the player can switch mid-session without leaving the screen. */
+.two-hand-etude-picker {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--space-1);
+  margin-top: var(--space-2);
+}
+
+.two-hand-etude-pick {
+  font-size: var(--fs-sm);
+  padding: 6px 12px;
+  border: 1px solid var(--border-soft);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text-strong);
+  cursor: pointer;
+  min-height: auto;
+  transition: background 0.12s ease, border-color 0.12s ease;
+}
+
+.two-hand-etude-pick:hover {
+  background: var(--surface-hover);
+}
+
+.two-hand-etude-pick.is-selected {
+  background: var(--brand-primary);
+  color: var(--text-on-dark);
+  border-color: var(--brand-primary);
+}
+
+/* Portrait-mode "横にしてね" overlay. Dimmed backdrop blocks pointer
+ * events to the underlying game so a stray tap on a tiny portrait
+ * tap zone can't accidentally start the song while the player is
+ * still rotating the device. The dismiss button is the escape hatch
+ * for PC users / iPad split-view who don't actually need landscape. */
+.two-hand-portrait-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(20, 12, 0, 0.72);
+  backdrop-filter: blur(3px);
+  -webkit-backdrop-filter: blur(3px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-4);
+  z-index: 120;
+  animation: tutorial-modal-backdrop-in 220ms ease-out both;
+}
+
+.two-hand-portrait-card {
+  background: var(--surface);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-lg);
+  padding: var(--space-5);
+  max-width: 360px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-3);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.35);
+}
+
+.two-hand-portrait-icon {
+  font-size: 56px;
+  line-height: 1;
+  margin: 0;
+}
+
+.two-hand-portrait-card h2 {
+  margin: 0;
+  font-size: var(--fs-lg);
+}
+
+.two-hand-portrait-card p {
+  margin: 0;
+  line-height: 1.5;
 }
