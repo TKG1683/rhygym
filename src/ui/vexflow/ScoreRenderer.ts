@@ -7,9 +7,23 @@
  * hit effects) can align with each note.
  */
 
-import { Barline, Beam, Dot, Formatter, Renderer, Stave, StaveNote, Stem, Tremolo, Tuplet, Voice } from 'vexflow';
+import {
+  Barline,
+  Beam,
+  Dot,
+  Formatter,
+  Renderer,
+  Stave,
+  StaveConnector,
+  StaveNote,
+  Stem,
+  Tremolo,
+  Tuplet,
+  Voice,
+} from 'vexflow';
 import { QUARTER_NOTE_TICKS, type Score } from '../../core/model';
-import { scoreToVex, type VexNote } from './scoreToVex';
+import { filterScoreByLane } from '../../core/score/lanes';
+import { scoreToVex, type VexNote, type VexMeasure } from './scoreToVex';
 
 const BEAMABLE_DURATIONS = new Set(['8', '16', '32']);
 
@@ -400,6 +414,337 @@ export function renderScore(score: Score, opts: RenderOptions): RenderResult {
   }
 
   return { noteCoords, noteElements, measureBounds, height };
+}
+
+// ----------------------------------------------------------------
+// Grand staff (#83 two-hand mode) — renders R + L lanes as two
+// vertically-stacked staves joined by a system bracket on the left
+// edge plus cross-stave bar lines at every measure boundary, the way
+// the 洗足 reference looks. Phase A consumes this from the debug
+// screen; Phase B wires the same renderer into a two-hand GameView.
+//
+// Single-voice renderScore stays untouched — this is a parallel code
+// path so a regression in two-hand layout can't break the regular
+// single-hand etudes.
+// ----------------------------------------------------------------
+
+/**
+ * Vertical gap from upper-stave top to lower-stave top within one
+ * system. Needs to clear the upper staff's stem-down extents (lower
+ * stave's stems will be flipped DOWN to follow grand-staff convention)
+ * plus the upper staff's own line height.
+ */
+const GRAND_STAVE_GAP = 70;
+/**
+ * Per-row height in the grand-staff layout. Generous bottom padding so
+ * the lower stave's stem-down tails don't crash into the next system's
+ * upper stave.
+ */
+const GRAND_LINE_HEIGHT = GRAND_STAVE_GAP + LINE_HEIGHT + 36;
+
+export function renderGrandStaff(score: Score, opts: RenderOptions): RenderResult {
+  opts.container.innerHTML = '';
+
+  // Split by lane and convert each through the existing single-voice
+  // pipeline. Both halves see the same time-sigs / total-ticks so the
+  // resulting measure arrays line up index-for-index.
+  const upperScore = filterScoreByLane(score, 'R');
+  const lowerScore = filterScoreByLane(score, 'L');
+  const upperVex = scoreToVex(upperScore);
+  const lowerVex = scoreToVex(lowerScore);
+  // Sanity check — if the two halves disagree on measure count the
+  // join would mis-align. Bail to a single stave so the screen still
+  // shows something instead of throwing.
+  if (upperVex.measures.length !== lowerVex.measures.length) {
+    console.warn(
+      '[renderGrandStaff] upper / lower measure count mismatch — falling back to single staff',
+    );
+    return renderScore(score, opts);
+  }
+  const measureCount = upperVex.measures.length;
+
+  const fallbackWidth = opts.measuresPerLine
+    ? Math.max(MIN_MEASURE_WIDTH, Math.floor(opts.viewportWidth / opts.measuresPerLine))
+    : (opts.measureWidth ?? DEFAULT_MEASURE_WIDTH);
+  const widths: number[] = opts.measureWidths
+    ? upperVex.measures.map((_, i) => opts.measureWidths![i] ?? fallbackWidth)
+    : upperVex.measures.map(() => fallbackWidth);
+  const measuresPerLine =
+    opts.measuresPerLine ??
+    (opts.measureWidths
+      ? measureCount
+      : Math.max(1, Math.floor(opts.viewportWidth / fallbackWidth)));
+
+  const xOffsets: number[] = new Array(measureCount);
+  let lineCount = 0;
+  let runX = 0;
+  for (let i = 0; i < measureCount; i++) {
+    if (i % measuresPerLine === 0) {
+      runX = 0;
+      lineCount++;
+    }
+    xOffsets[i] = runX + FIRST_MEASURE_LEFT_PAD;
+    runX += widths[i]!;
+  }
+  if (lineCount === 0) lineCount = 1;
+  const height = lineCount * GRAND_LINE_HEIGHT + BOTTOM_PADDING;
+
+  const maxLineWidth = computeMaxLineWidth(widths, measuresPerLine);
+  const svgWidth = Math.max(opts.viewportWidth, maxLineWidth + FIRST_MEASURE_LEFT_PAD * 2);
+
+  const renderer = new Renderer(opts.container, Renderer.Backends.SVG);
+  renderer.resize(svgWidth, height);
+  const ctx = renderer.getContext();
+  const noteCoords = new Map<string, NoteCoords>();
+  const noteElements = new Map<string, SVGElement>();
+  const measureBounds: MeasureBounds[] = [];
+
+  // Track the upper/lower stave of the FIRST and LAST measure of each
+  // row so we can draw a single bracket spanning the whole row plus a
+  // cross-stave bar line on the right edge of the final measure of
+  // each row.
+  type RowStaves = { firstUpper: Stave; firstLower: Stave; lastUpper: Stave; lastLower: Stave };
+  const rowStaves: RowStaves[] = [];
+
+  let runningStartTick = 0;
+  for (let idx = 0; idx < measureCount; idx++) {
+    const upperMeasure = upperVex.measures[idx]!;
+    const lowerMeasure = lowerVex.measures[idx]!;
+    const lineIdx = Math.floor(idx / measuresPerLine);
+    const measureWidth = widths[idx]!;
+    const x = xOffsets[idx]!;
+    const yUpper = lineIdx * GRAND_LINE_HEIGHT + STAVE_TOP_OFFSET;
+    const yLower = yUpper + GRAND_STAVE_GAP;
+
+    const isFirstInRow = idx % measuresPerLine === 0;
+    const isLastInRow =
+      (idx + 1) % measuresPerLine === 0 || idx === measureCount - 1;
+
+    const upperStave = buildRhythmStave(x, yUpper, measureWidth, upperMeasure, idx, upperVex.measures);
+    const lowerStave = buildRhythmStave(x, yLower, measureWidth, lowerMeasure, idx, lowerVex.measures);
+    upperStave.setContext(ctx).draw();
+    lowerStave.setContext(ctx).draw();
+
+    // Render voice for each lane onto its own stave. noteCoords merges
+    // across lanes because note ids are unique per lane (authored that
+    // way in the etude DSL).
+    renderLaneVoice(
+      ctx,
+      upperStave,
+      upperMeasure,
+      idx,
+      lineIdx,
+      runningStartTick,
+      noteCoords,
+      noteElements,
+      Stem.UP,
+    );
+    // Lower stave follows grand-staff convention: stems DOWN so they
+    // extend AWAY from the upper stave instead of crowding the gap.
+    renderLaneVoice(
+      ctx,
+      lowerStave,
+      lowerMeasure,
+      idx,
+      lineIdx,
+      runningStartTick,
+      noteCoords,
+      noteElements,
+      Stem.DOWN,
+    );
+
+    if (isFirstInRow) {
+      rowStaves[lineIdx] = {
+        firstUpper: upperStave,
+        firstLower: lowerStave,
+        lastUpper: upperStave,
+        lastLower: lowerStave,
+      };
+    }
+    const row = rowStaves[lineIdx]!;
+    row.lastUpper = upperStave;
+    row.lastLower = lowerStave;
+
+    // Cross-stave bar line at the right edge of every measure so the
+    // grand-staff reads as one synchronized system rather than two
+    // parallel strips.
+    if (!isLastInRow) {
+      new StaveConnector(upperStave, lowerStave)
+        .setType(StaveConnector.type.SINGLE_RIGHT!)
+        .setContext(ctx)
+        .draw();
+    }
+
+    // Per-measure bounds reuse the upper stave's geometry — the upper
+    // and lower share the same X bounds so picking one is fine.
+    const measureTicks = (QUARTER_NOTE_TICKS * 4 * upperMeasure.numerator) / upperMeasure.denominator;
+    measureBounds.push({
+      measureIdx: upperMeasure.index,
+      lineIdx,
+      noteStartX: upperStave.getNoteStartX(),
+      noteEndX: upperStave.getNoteEndX(),
+      staveRightX: x + measureWidth,
+      staffMidY: upperStave.getYForLine(2),
+      numerator: upperMeasure.numerator,
+      denominator: upperMeasure.denominator,
+      ticks: measureTicks,
+      startTick: runningStartTick,
+    });
+    runningStartTick += measureTicks;
+  }
+
+  // System brackets: one per row, drawn after all staves exist so the
+  // connector resolves both endpoints. Use BRACKET (thick rule with
+  // serif corners) which is the conventional grand-staff/system mark
+  // for rhythm parts that aren't piano (which would use BRACE).
+  for (const row of rowStaves) {
+    new StaveConnector(row.firstUpper, row.firstLower)
+      .setType(StaveConnector.type.BRACKET!)
+      .setContext(ctx)
+      .draw();
+    // Right edge of the row's last measure — closes the system.
+    new StaveConnector(row.lastUpper, row.lastLower)
+      .setType(StaveConnector.type.SINGLE_RIGHT!)
+      .setContext(ctx)
+      .draw();
+  }
+
+  const svg = opts.container.querySelector('svg');
+  if (svg) {
+    svg.setAttribute('viewBox', `0 0 ${svgWidth} ${height}`);
+    if (opts.responsiveScaling) {
+      svg.removeAttribute('width');
+      svg.removeAttribute('height');
+    }
+  }
+
+  return { noteCoords, noteElements, measureBounds, height };
+}
+
+/**
+ * Build a 1-line percussion-style stave for a single lane's measure
+ * with the same line-visibility config the single-voice renderer
+ * uses, plus the time-signature emit-on-change rule. Extracted so
+ * upper and lower lanes share one source of truth instead of two
+ * subtly-divergent inline blocks.
+ */
+function buildRhythmStave(
+  x: number,
+  y: number,
+  width: number,
+  m: VexMeasure,
+  idx: number,
+  allMeasures: readonly VexMeasure[],
+): Stave {
+  const stave = new Stave(x, y, width);
+  stave.setConfigForLines([
+    { visible: false },
+    { visible: false },
+    { visible: true },
+    { visible: false },
+    { visible: false },
+  ]);
+  const prev = idx > 0 ? allMeasures[idx - 1]! : null;
+  const tsChanged =
+    prev === null || prev.numerator !== m.numerator || prev.denominator !== m.denominator;
+  if (tsChanged) {
+    stave.addTimeSignature(`${m.numerator}/${m.denominator}`);
+  }
+  stave.setEndBarType(Barline.type.SINGLE);
+  return stave;
+}
+
+/**
+ * Format + draw one lane's voice onto its prepared stave, then stash
+ * the per-note coordinates into the shared maps. Used by
+ * renderGrandStaff so each lane goes through the same beam / tuplet
+ * pipeline as the single-voice renderer.
+ */
+function renderLaneVoice(
+  ctx: ReturnType<Renderer['getContext']>,
+  stave: Stave,
+  m: VexMeasure,
+  measureIdx: number,
+  lineIdx: number,
+  measureStartTick: number,
+  noteCoords: Map<string, NoteCoords>,
+  noteElements: Map<string, SVGElement>,
+  stemDirection: number,
+): void {
+  const staveNotes = m.notes.map((vNote) => {
+    const dotted = vNote.vexBaseDuration.endsWith('d');
+    const base = dotted ? vNote.vexBaseDuration.slice(0, -1) : vNote.vexBaseDuration;
+    const sn = new StaveNote({
+      keys: ['b/4'],
+      duration: vNote.isRest ? `${base}r` : base,
+      autoStem: false,
+    });
+    sn.setStemDirection(stemDirection);
+    if (dotted) Dot.buildAndAttach([sn]);
+    if (vNote.tremoloStrokes != null && vNote.tremoloStrokes > 0) {
+      sn.addModifier(new Tremolo(vNote.tremoloStrokes));
+    }
+    return sn;
+  });
+
+  const beams = buildBeams(staveNotes, m.notes);
+  const tuplets = buildTuplets(staveNotes, m.notes);
+
+  const voice = new Voice({ numBeats: m.numerator, beatValue: m.denominator });
+  voice.setStrict(false);
+  voice.addTickables(staveNotes);
+
+  const formatWidth = Math.max(60, stave.getNoteEndX() - stave.getNoteStartX() - 10);
+  new Formatter().joinVoices([voice]).format([voice], formatWidth);
+  voice.draw(ctx, stave);
+  beams.forEach((b) => b.setContext(ctx).draw());
+  tuplets.forEach((t) => t.setContext(ctx).draw());
+
+  // Tick anchors per note — mirrors the bookkeeping in renderScore so
+  // overlays can build tick→pixel tables identically across both
+  // renderers.
+  const noteAbsTicks: number[] = new Array(m.notes.length);
+  {
+    let cum = 0;
+    for (let i = 0; i < m.notes.length; i++) {
+      noteAbsTicks[i] = measureStartTick + cum;
+      cum += m.notes[i]!.ticks;
+    }
+  }
+  staveNotes.forEach((sn, i) => {
+    const vNote = m.notes[i]!;
+    const absTick = noteAbsTicks[i]!;
+    const bbox = sn.getBoundingBox();
+    if (!bbox) return;
+    const cx = bbox.getX() + bbox.getW() / 2;
+    if (vNote.isRest || vNote.originalNoteId === null) {
+      const restId = vNote.originalNoteId ?? `rest-${absTick}-${lineIdx}-${measureIdx}-${i}`;
+      noteCoords.set(restId, {
+        noteId: restId,
+        tick: absTick,
+        x: cx,
+        y: bbox.getY() + bbox.getH() / 2,
+        staffMidY: stave.getYForLine(2),
+        measureIdx: m.index,
+        lineIdx,
+      });
+      return;
+    }
+    noteCoords.set(vNote.originalNoteId, {
+      noteId: vNote.originalNoteId,
+      tick: absTick,
+      x: cx,
+      y: bbox.getY() + bbox.getH() / 2,
+      staffMidY: stave.getYForLine(2),
+      measureIdx: m.index,
+      lineIdx,
+    });
+    const el = sn.getSVGElement();
+    if (el) {
+      el.setAttribute('data-rhygym-note-id', vNote.originalNoteId);
+      noteElements.set(vNote.originalNoteId, el);
+    }
+  });
 }
 
 function computeMaxLineWidth(widths: readonly number[], measuresPerLine: number): number {
