@@ -55,7 +55,14 @@ export type Screen =
    * it never appears in normal navigation. Replaced by the real
    * two-hand GameView in later phases.
    */
-  | 'two-hand-demo';
+  | 'two-hand-demo'
+  /**
+   * Endless mode (#77) Phase B debug screen — runs the procedural
+   * generator through the regular GameView. Reachable only via
+   * `?demo=endless`. Replaced by a real EndlessGameView (with HUD +
+   * MISS termination) in later phases.
+   */
+  | 'endless-demo';
 
 interface AppState {
   screen: Screen;

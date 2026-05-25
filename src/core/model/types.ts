@@ -27,6 +27,35 @@ export type Difficulty = 'DOLCE' | 'ESPRESSIVO' | 'BRAVURA';
 export const DEFAULT_DIFFICULTY: Difficulty = 'ESPRESSIVO';
 export const ALL_DIFFICULTIES: readonly Difficulty[] = ['DOLCE', 'ESPRESSIVO', 'BRAVURA'];
 
+/**
+ * Endless-mode (#77) difficulty selector. Each tier picks the BPM the
+ * run plays at (BPM never changes mid-run per
+ * [[feedback_no_runtime_bpm_change]]); ramp/vocabulary curves are
+ * shared across difficulties and don't shift with this choice.
+ *
+ * Names follow Italian tempo markings to match the rest of the
+ * difficulty vocabulary (Dolce / Espressivo / Bravura on the single-
+ * hand side), and BPM values sit inside the canonical ranges those
+ * markings denote — see #77 spec table.
+ */
+export type EndlessDifficulty = 'andante' | 'moderato' | 'allegro' | 'presto';
+
+export const ENDLESS_DIFFICULTY_BPM: Record<EndlessDifficulty, number> = {
+  andante: 80,
+  moderato: 108,
+  allegro: 132,
+  presto: 168,
+};
+
+export const ALL_ENDLESS_DIFFICULTIES: readonly EndlessDifficulty[] = [
+  'andante',
+  'moderato',
+  'allegro',
+  'presto',
+];
+
+export const DEFAULT_ENDLESS_DIFFICULTY: EndlessDifficulty = 'moderato';
+
 export interface TempoEvent {
   /** Position (tick) where this tempo takes effect. 0 = song start. */
   tick: number;

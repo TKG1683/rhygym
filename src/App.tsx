@@ -9,6 +9,7 @@ import { CalibrationScreen } from './ui/screens/CalibrationScreen';
 import { TutorialScreen } from './ui/screens/TutorialScreen';
 import { LessonIntroScreen } from './ui/screens/LessonIntroScreen';
 import { TwoHandDemoScreen } from './ui/screens/TwoHandDemoScreen';
+import { EndlessDemoScreen } from './ui/screens/EndlessDemoScreen';
 
 const VALID_SCREENS: readonly Screen[] = [
   'title',
@@ -19,6 +20,7 @@ const VALID_SCREENS: readonly Screen[] = [
   'tutorial',
   'lesson-intro',
   'two-hand-demo',
+  'endless-demo',
 ];
 
 export default function App() {
@@ -54,20 +56,21 @@ export default function App() {
     };
   }, [setLoadedEtudes, setEtudesLoadState, setEtudesLoadError]);
 
-  // Debug entry point for the two-hand demo screen (#83 Phase A). The
-  // demo isn't in normal navigation yet, so we honor `?demo=two-hand`
-  // on the URL once at startup and drop the player straight onto the
-  // grand-staff render. Cleaned URL afterwards so a reload returns to
-  // Title instead of looping back into the demo.
+  // Debug entry points for the in-progress extension modes. Honored
+  // once at startup so a reload returns to Title instead of looping
+  // back into the demo. ?demo=two-hand → #83, ?demo=endless → #77.
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const params = new URLSearchParams(window.location.search);
-    if (params.get('demo') === 'two-hand') {
-      useAppStore.getState().setScreen('two-hand-demo');
+    const flag = params.get('demo');
+    const target: Screen | null =
+      flag === 'two-hand' ? 'two-hand-demo' : flag === 'endless' ? 'endless-demo' : null;
+    if (target) {
+      useAppStore.getState().setScreen(target);
       params.delete('demo');
       const qs = params.toString();
       const newUrl = window.location.pathname + (qs ? `?${qs}` : '') + window.location.hash;
-      window.history.replaceState({ screen: 'two-hand-demo' }, '', newUrl);
+      window.history.replaceState({ screen: target }, '', newUrl);
     }
   }, []);
 
@@ -127,5 +130,7 @@ export default function App() {
       return <LessonIntroScreen />;
     case 'two-hand-demo':
       return <TwoHandDemoScreen />;
+    case 'endless-demo':
+      return <EndlessDemoScreen />;
   }
 }

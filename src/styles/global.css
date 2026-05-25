@@ -3088,3 +3088,97 @@ input[type='range']:disabled {
   margin: 0;
   line-height: 1.5;
 }
+
+/* ------------------------------------------------------------------ */
+/*  Endless mode (#77) — Phase B debug screen.                         */
+/* ------------------------------------------------------------------ */
+
+/* Pin the screen to the viewport so the embedded GameView's
+ * height: 100dvh works inside our parent (it sizes via dvh too,
+ * and a content-sized parent would let the inner game spill the
+ * footer off-screen on mobile). */
+.screen-endless-demo {
+  justify-content: flex-start;
+  padding: 8px var(--space-3) 12px;
+  gap: 6px;
+  text-align: left;
+  align-items: stretch;
+  height: 100dvh;
+  max-height: 100dvh;
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+
+.endless-demo-header {
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.endless-demo-header h1 {
+  margin: 0 0 var(--space-1);
+  font-size: var(--fs-lg);
+}
+
+.endless-demo-header .muted {
+  margin: 0 0 var(--space-2);
+  font-size: var(--fs-xs);
+}
+
+.endless-demo-actions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  align-items: center;
+}
+
+/* Difficulty picker — same pill pattern as the two-hand stage
+ * picker. Each pill carries the BPM as a small subtitle so the
+ * choice's actual speed is visible at a glance. */
+.endless-difficulty-picker {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--space-1);
+}
+
+.endless-difficulty-pick {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  font-size: var(--fs-sm);
+  font-weight: 700;
+  padding: 6px 12px;
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--text-strong);
+  cursor: pointer;
+  min-height: auto;
+  transition: background 0.12s ease, border-color 0.12s ease;
+}
+
+.endless-difficulty-pick:hover {
+  background: var(--surface-hover);
+}
+
+.endless-difficulty-pick.is-selected {
+  background: var(--brand-primary);
+  color: var(--text-on-dark);
+  border-color: var(--brand-primary);
+}
+
+.endless-difficulty-bpm {
+  font-size: var(--fs-xs);
+  opacity: 0.75;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+
+.endless-audio-gate {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-5);
+}
