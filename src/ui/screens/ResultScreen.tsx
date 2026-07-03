@@ -155,6 +155,7 @@ export function ResultScreen() {
   const setSelectInitialMovement = useAppStore((s) => s.setSelectInitialMovement);
   const viaSkipTest = useAppStore((s) => s.viaSkipTest);
   const setAssistMode = useAppStore((s) => s.setAssistMode);
+  const assistMode = useAppStore((s) => s.assistMode);
   const lastWasAssist = useAppStore((s) => s.lastWasAssist);
   const difficulty = useAppStore((s) => s.difficulty);
   const calibrated = calibrationOffsetSec !== 0;
@@ -535,8 +536,19 @@ export function ResultScreen() {
   // unaided or backs out of the Etude entirely. We do NOT toggle assist
   // mode off automatically on an A+ assist clear: the player should be
   // the one to decide they're ready to drop the training wheels.
+  //
+  // The banner below reads `assistMode` (not `lastWasAssist`) so it
+  // swaps to a "戻りました" confirmation the instant this fires —
+  // otherwise the button click produced no visible change and the
+  // player couldn't tell whether they'd actually left assist (#55 bug).
   const exitAssist = () => {
     setAssistMode(false);
+  };
+  // Undo for the exit above — lets a player who tapped "通常モードに戻る"
+  // by mistake flip straight back so their next リトライ is assisted
+  // again. Reversibility is what makes the toggle safe to surface.
+  const reenterAssist = () => {
+    setAssistMode(true);
   };
 
   // Drift large enough to suggest (re-)calibration. Reuses the same
@@ -747,16 +759,33 @@ export function ResultScreen() {
           )}
         </>
       )}
+      {/* Assist ("トレーニング") status banner. Gated on lastWasAssist —
+       *  "this finished run was assisted" — but the two *states* switch
+       *  on the live `assistMode` flag so tapping either button visibly
+       *  swaps the banner right away. Without that swap the exit button
+       *  looked dead (#55 UX bug). aria-live announces the swap for SR. */}
       {lastWasAssist && !isLessonPlay && (
-        <div className="assist-banner assist-banner-done" role="status">
-          <span className="assist-banner-icon" aria-hidden="true">💡</span>
-          <span className="assist-banner-text">
-            アシストプレイのため、スコアは記録されません。
-          </span>
-          <button type="button" className="primary assist-cta" onClick={exitAssist}>
-            通常モードに戻る
-          </button>
-        </div>
+        assistMode ? (
+          <div className="assist-banner assist-banner-done" role="status" aria-live="polite">
+            <span className="assist-banner-icon" aria-hidden="true">💡</span>
+            <span className="assist-banner-text">
+              アシストプレイ中のため、スコアは記録されません。「通常モードに戻る」を押すと、次のプレイから記録が残ります。
+            </span>
+            <button type="button" className="primary assist-cta" onClick={exitAssist}>
+              通常モードに戻る
+            </button>
+          </div>
+        ) : (
+          <div className="assist-banner assist-banner-exited" role="status" aria-live="polite">
+            <span className="assist-banner-icon" aria-hidden="true">✅</span>
+            <span className="assist-banner-text">
+              通常モードに戻りました。次のプレイからスコアが記録されます。
+            </span>
+            <button type="button" className="secondary assist-cta" onClick={reenterAssist}>
+              アシストに戻す
+            </button>
+          </div>
+        )
       )}
       {offerAssist && (
         <div className="assist-banner assist-banner-offer" role="status">
