@@ -607,6 +607,15 @@ export function GameView({ stage, onComplete, tutorialMode = false }: Props) {
     const FLASH_DURATION_MS = 180;
     const ASSIST_CLICK_VOLUME = 0.5;
     const timeouts: number[] = [];
+    // Assist clicks are queued straight onto the AudioContext clock, so
+    // clearTimeout can't cancel them — an oscillator keeps its scheduled
+    // start/stop even after the run is torn down. Hold every node so
+    // cleanup can disconnect it. Without this: aborting mid-run (中断)
+    // leaves the whole remaining schedule ringing out, and retrying
+    // (リトライ) stacks the previous attempt's clicks on top of the new
+    // one — they fire at their old absolute times, no longer aligned to
+    // the restarted run, so phantom clicks scatter across the grid.
+    const oscillators: OscillatorNode[] = [];
     for (const c of candidates) {
       if (judgedIdsRef.current.has(c.id)) continue;
       const targetAudioTime = startAudioTimeRef.current + c.sec;
@@ -614,7 +623,7 @@ export function GameView({ stage, onComplete, tutorialMode = false }: Props) {
       // it reads as a *guide* layered over the metronome rather than
       // a competing pulse.
       if (targetAudioTime >= ctx.currentTime) {
-        scheduleClick(ctx, targetAudioTime, false, ASSIST_CLICK_VOLUME);
+        oscillators.push(scheduleClick(ctx, targetAudioTime, false, ASSIST_CLICK_VOLUME));
       }
       // Visual flash — base id only (tremolo sub-onsets like
       // `${id}-trem-N` don't have their own SVG element, but flashing
@@ -635,6 +644,16 @@ export function GameView({ stage, onComplete, tutorialMode = false }: Props) {
     }
     return () => {
       for (const id of timeouts) window.clearTimeout(id);
+      // Silence any assist click still queued (or mid-ring) so it can't
+      // outlive the run. Each node already has its own stop() scheduled,
+      // so disconnecting is enough to mute it; the extra stop() just
+      // frees future-queued nodes early. Both are wrapped defensively —
+      // a node that already ended is safe to disconnect but may reject a
+      // second stop() on some engines.
+      for (const osc of oscillators) {
+        try { osc.stop(); } catch { /* already stopped */ }
+        try { osc.disconnect(); } catch { /* already disconnected */ }
+      }
       // Drop any lingering flash class so a retry doesn't leave a stuck
       // highlight on a note whose timeout hadn't yet fired.
       for (const el of noteElementsRef.current.values()) {
