@@ -16,6 +16,63 @@ import { DEFAULT_DIFFICULTY, type Difficulty } from '../model/types';
 import type { Rank } from '../judgement/score';
 
 const DIFFICULTY_KEY = 'rhygym:difficulty:v1';
+const BGM_ENABLED_KEY = 'rhygym:bgmEnabled:v1';
+const BGM_VOLUME_KEY = 'rhygym:bgmVolume:v1';
+
+/** Fallback menu-BGM volume (0..1) for a fresh player. */
+const DEFAULT_BGM_VOLUME = 0.8;
+
+/**
+ * Menu BGM volume, 0..1. Defaults to 0.8 so the music is present but
+ * not overbearing on first launch; the settings slider persists any
+ * change. Out-of-range / corrupt values fall back to the default.
+ */
+export function getBgmVolume(): number {
+  try {
+    if (typeof localStorage === 'undefined') return DEFAULT_BGM_VOLUME;
+    const raw = localStorage.getItem(BGM_VOLUME_KEY);
+    if (raw === null) return DEFAULT_BGM_VOLUME;
+    const v = Number(raw);
+    if (!Number.isFinite(v) || v < 0 || v > 1) return DEFAULT_BGM_VOLUME;
+    return v;
+  } catch {
+    return DEFAULT_BGM_VOLUME;
+  }
+}
+
+export function setBgmVolume(volume: number): void {
+  try {
+    if (typeof localStorage === 'undefined') return;
+    const v = Math.max(0, Math.min(1, volume));
+    localStorage.setItem(BGM_VOLUME_KEY, String(v));
+  } catch {
+    // storage unavailable — volume just won't persist this session
+  }
+}
+
+/**
+ * Whether menu BGM is on. Defaults to ON for a fresh player so the
+ * title/select music is discovered without a hunt; the 🔊 toggle writes
+ * '0' to remember an opt-out. Stored as '1'/'0' rather than JSON to
+ * match the AUTO_MODE flag's compact shape.
+ */
+export function getBgmEnabled(): boolean {
+  try {
+    if (typeof localStorage === 'undefined') return true;
+    return localStorage.getItem(BGM_ENABLED_KEY) !== '0';
+  } catch {
+    return true;
+  }
+}
+
+export function setBgmEnabled(enabled: boolean): void {
+  try {
+    if (typeof localStorage === 'undefined') return;
+    localStorage.setItem(BGM_ENABLED_KEY, enabled ? '1' : '0');
+  } catch {
+    // storage unavailable — preference just won't persist this session
+  }
+}
 
 const VALID_DIFFICULTIES: ReadonlySet<Difficulty> = new Set([
   'DOLCE',
