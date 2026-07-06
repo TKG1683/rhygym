@@ -10,6 +10,8 @@ import { TutorialScreen } from './ui/screens/TutorialScreen';
 import { LessonIntroScreen } from './ui/screens/LessonIntroScreen';
 import { TwoHandDemoScreen } from './ui/screens/TwoHandDemoScreen';
 import { EndlessDemoScreen } from './ui/screens/EndlessDemoScreen';
+import { BgmController } from './ui/audio/BgmController';
+import { BgmControl } from './ui/audio/BgmControl';
 
 const VALID_SCREENS: readonly Screen[] = [
   'title',
@@ -113,6 +115,20 @@ export default function App() {
     return () => window.removeEventListener('popstate', handlePop);
   }, [setScreen]);
 
+  // BgmController lives above the screen switch so one looping player
+  // survives navigation and cross-fades between menus; the 🔊 control
+  // only shows on the screens that actually have music.
+  const showBgmControl = screen === 'title' || screen === 'select';
+  return (
+    <>
+      {renderScreen(screen)}
+      <BgmController />
+      {showBgmControl && <BgmControl />}
+    </>
+  );
+}
+
+function renderScreen(screen: Screen) {
   switch (screen) {
     case 'title':
       return <TitleScreen />;

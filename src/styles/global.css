@@ -684,6 +684,102 @@ button.secondary:active {
   to { opacity: 1; transform: translate(-50%, 0); }
 }
 
+/* Menu BGM control: a small speaker button pinned to the top-right that
+ * opens a volume/on-off popover. Fixed to the corner so it stays put
+ * across the title and select screens; kept low-contrast so it reads as
+ * an ambient control, not a primary action. Sits above screen content
+ * but below modals/toasts (z-index 200). */
+.bgm-control {
+  position: fixed;
+  top: 12px;
+  right: 12px;
+  z-index: 90;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+}
+.bgm-toggle {
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  line-height: 1;
+  border-radius: 999px;
+  border: 1px solid var(--border-soft);
+  background: var(--surface-elevated);
+  color: var(--text-strong);
+  cursor: pointer;
+  opacity: 0.7;
+  transition: opacity 0.15s ease, transform 0.1s ease;
+}
+.bgm-toggle:hover {
+  opacity: 1;
+}
+.bgm-toggle:active {
+  transform: scale(0.92);
+}
+/* Dim the glyph when muted so the state reads at a glance. */
+.bgm-toggle[aria-pressed='false'] {
+  opacity: 0.45;
+}
+
+/* Popover panel with the on/off switch + volume slider. */
+.bgm-panel {
+  width: 200px;
+  padding: 12px 14px;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-soft);
+  background: var(--surface-elevated);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.bgm-panel-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.bgm-panel-label {
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  color: var(--text-strong);
+  min-width: 34px;
+}
+.bgm-panel-row input[type='range'] {
+  flex: 1;
+  min-width: 0;
+}
+.bgm-volume-value {
+  font-size: var(--fs-sm);
+  font-variant-numeric: tabular-nums;
+  min-width: 28px;
+  text-align: right;
+  color: var(--text-strong);
+}
+/* ON/OFF pill switch. */
+.bgm-switch {
+  margin-left: auto;
+  padding: 4px 14px;
+  border-radius: 999px;
+  border: 1px solid var(--border-soft);
+  background: transparent;
+  color: var(--text-muted, currentColor);
+  font-size: var(--fs-sm);
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+.bgm-switch.is-on {
+  background: linear-gradient(135deg, #ff5e9c, #b94bff);
+  border-color: transparent;
+  color: #fff;
+}
+
 .bpm-label {
   font-size: var(--fs-sm);
   font-weight: 600;

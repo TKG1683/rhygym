@@ -3,9 +3,13 @@ import type { GameResult, JudgementRecord } from '../../core/judgement';
 import type { Difficulty, Etude } from '../../core/model';
 import type { EtudeWithMovementMeta } from '../../core/score/etudes';
 import {
+  getBgmEnabled,
+  getBgmVolume,
   getCalibration,
   getDifficulty,
   getMetronomeAccents,
+  setBgmEnabled as persistBgmEnabled,
+  setBgmVolume as persistBgmVolume,
   setDifficulty as persistDifficulty,
   setMetronomeAccents,
   type MetronomeAccents,
@@ -125,6 +129,15 @@ interface AppState {
    */
   selectInitialMovement: number | null;
   /**
+   * Which sub-view the select screen is currently showing: the Movement
+   * grid ('movements') or a Movement's Etude list ('etudes'). Mirrored
+   * from StageSelect's local `openMovement` state purely so BgmController
+   * can pick a distinct loop per sub-view (chill browsing vs. an upbeat
+   * groove once you're picking an étude). Meaningless off the select
+   * screen.
+   */
+  selectView: 'movements' | 'etudes';
+  /**
    * True when the current run was started via the locked Movement
    * card's 飛び級試験 button (#31) rather than the normal etude list
    * entry. ResultScreen reads this to swap "Etude 一覧へ" for
@@ -183,6 +196,17 @@ interface AppState {
    */
   lastWasAssist: boolean;
   /**
+   * Whether the procedural menu BGM (#bgm) is on. Drives the
+   * title-funk / select-lofi loops via BgmController. Persisted to
+   * localStorage so an opt-out sticks across reloads; defaults ON.
+   */
+  bgmEnabled: boolean;
+  /**
+   * Menu BGM volume (0..1). Applied live to the running loop's master
+   * gain by BgmController; persisted to localStorage.
+   */
+  bgmVolume: number;
+  /**
    * Navigate to a screen AND push that destination onto the browser
    * history. This is what UI buttons should call — it keeps the OS
    * back button in sync with in-app navigation.
@@ -206,11 +230,14 @@ interface AppState {
   setEtudesLoadError: (error: string | null) => void;
   setCalibrationReturnScreen: (screen: Screen | null) => void;
   setSelectInitialMovement: (movement: number | null) => void;
+  setSelectView: (view: 'movements' | 'etudes') => void;
   setViaSkipTest: (via: boolean) => void;
   setAutoMode: (enabled: boolean) => void;
   setDifficulty: (value: Difficulty) => void;
   setAssistMode: (enabled: boolean) => void;
   setLastWasAssist: (was: boolean) => void;
+  setBgmEnabled: (enabled: boolean) => void;
+  setBgmVolume: (volume: number) => void;
   setMetronomeAccentForTs: (tsKey: string, pattern: boolean[]) => void;
   resetMetronomeAccentForTs: (tsKey: string) => void;
 }
@@ -234,12 +261,15 @@ export const useAppStore = create<AppState>((set) => ({
   etudesLoadError: null,
   calibrationReturnScreen: null,
   selectInitialMovement: null,
+  selectView: 'movements',
   viaSkipTest: false,
   autoMode: readAutoMode(),
   metronomeAccents: getMetronomeAccents(),
   difficulty: getDifficulty(),
   assistMode: false,
   lastWasAssist: false,
+  bgmEnabled: getBgmEnabled(),
+  bgmVolume: getBgmVolume(),
   goto: (screen) => {
     // Push the destination so the OS back button steps backwards
     // through the app rather than leaving it.
@@ -263,6 +293,7 @@ export const useAppStore = create<AppState>((set) => ({
   setEtudesLoadError: (error) => set({ etudesLoadError: error }),
   setCalibrationReturnScreen: (screen) => set({ calibrationReturnScreen: screen }),
   setSelectInitialMovement: (level) => set({ selectInitialMovement: level }),
+  setSelectView: (view) => set({ selectView: view }),
   setViaSkipTest: (via) => set({ viaSkipTest: via }),
   setAutoMode: (enabled) => {
     writeAutoMode(enabled);
@@ -274,6 +305,15 @@ export const useAppStore = create<AppState>((set) => ({
   },
   setAssistMode: (enabled) => set({ assistMode: enabled }),
   setLastWasAssist: (was) => set({ lastWasAssist: was }),
+  setBgmEnabled: (enabled) => {
+    persistBgmEnabled(enabled);
+    set({ bgmEnabled: enabled });
+  },
+  setBgmVolume: (volume) => {
+    const clamped = Math.max(0, Math.min(1, volume));
+    persistBgmVolume(clamped);
+    set({ bgmVolume: clamped });
+  },
   setMetronomeAccentForTs: (tsKey, pattern) =>
     set((state) => {
       const next = { ...state.metronomeAccents, [tsKey]: pattern };

@@ -69,6 +69,7 @@ export function StageSelectScreen() {
   const etudesLoadState = useAppStore((s) => s.etudesLoadState);
   const initialMovement = useAppStore((s) => s.selectInitialMovement);
   const setInitialMovement = useAppStore((s) => s.setSelectInitialMovement);
+  const setSelectView = useAppStore((s) => s.setSelectView);
 
   // Prefer the network-loaded roster once it's ready, otherwise fall
   // back to the bundled placeholder ETUDES so a missing public/stages/
@@ -159,6 +160,15 @@ export function StageSelectScreen() {
     // We only want this on mount — the snapshot above is what counts.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Mirror the sub-view into the store so BgmController can swap the
+  // menu loop (chill Movement grid → upbeat Etude list). Kept as a
+  // side-effect rather than folding into setOpenMovement so every path
+  // that changes the view (restore-on-mount, back button, lesson gate)
+  // stays in sync without threading the setter through each caller.
+  useEffect(() => {
+    setSelectView(openMovement !== null ? 'etudes' : 'movements');
+  }, [openMovement, setSelectView]);
 
   // Progression state is derived from bests on every render — cheap
   // (linear over ~60 stages) and avoids a separate persisted unlock
