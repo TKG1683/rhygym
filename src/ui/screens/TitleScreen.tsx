@@ -1,11 +1,16 @@
 import { useEffect, useRef, useState } from 'react';
 import { createAudioContext } from '../../core/audio/audioContext';
+import { playTitleStinger } from '../../core/audio/titleStinger';
 import {
   getAllBests,
   isCalibSuggestDismissed,
   setCalibSuggestDismissed,
 } from '../../core/storage/localStore';
 import { useAppStore } from '../store/appStore';
+
+// How long the logo's "lit" glow rides after the reveal sting fires.
+// Roughly the sting's own ring-out so light and sound decay together.
+const LOGO_LIT_MS = 900;
 
 // Hidden Auto-Mode toggle (debug): N rapid clicks on the muscle icon
 // within MUSCLE_TAP_WINDOW_MS toggles autoMode. Keep the count + window
@@ -21,10 +26,33 @@ export function TitleScreen() {
   const goto = useAppStore((s) => s.goto);
   const audioContext = useAppStore((s) => s.audioContext);
   const setAudioContext = useAppStore((s) => s.setAudioContext);
+  const bgmEnabled = useAppStore((s) => s.bgmEnabled);
   const calibrationOffsetSec = useAppStore((s) => s.calibrationOffsetSec);
   const autoMode = useAppStore((s) => s.autoMode);
   const setAutoMode = useAppStore((s) => s.setAutoMode);
   const calibrated = calibrationOffsetSec !== 0;
+
+  // Reveal sting — the moment menu audio becomes available (the first
+  // gesture spins up the AudioContext; navigating back from a menu it's
+  // already live) fire a short bell arpeggio and flash the logo, so the
+  // music arrives with a punch synced to the wordmark instead of fading
+  // up out of silence. Guarded to once per title visit; the ref resets
+  // naturally because this component remounts on every screen change.
+  const [logoLit, setLogoLit] = useState(false);
+  const stingFiredRef = useRef(false);
+  useEffect(() => {
+    const ctx = audioContext;
+    if (!ctx || !bgmEnabled || stingFiredRef.current) return;
+    stingFiredRef.current = true;
+    // The gesture that created ctx resumes it, but the state flip is
+    // async — resume() again defensively; scheduling on a resuming
+    // context is fine since notes are queued against its clock.
+    if (ctx.state === 'suspended') void ctx.resume();
+    playTitleStinger(ctx);
+    setLogoLit(true);
+    const id = window.setTimeout(() => setLogoLit(false), LOGO_LIT_MS);
+    return () => window.clearTimeout(id);
+  }, [audioContext, bgmEnabled]);
 
   // Rolling timestamp list — keep only taps within the rolling window
   // so a slow drum-roll over 10 s doesn't accidentally trip the
@@ -123,7 +151,7 @@ export function TitleScreen() {
 
   return (
     <main className="screen screen-title">
-      <div className="title-logo" aria-label="Rhygym">
+      <div className={`title-logo${logoLit ? ' title-logo-lit' : ''}`} aria-label="Rhygym">
         <span className="title-logo-icon title-logo-icon-left" aria-hidden="true">
           ♪♬
         </span>

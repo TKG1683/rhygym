@@ -270,6 +270,20 @@ h1, h2, h3, h4, .title-logo-name, .etude-card-name, .result-rank {
   50%      { transform: translateY(4px); }
 }
 
+/* Reveal glow — fires on the wordmark when the reveal sting lands, so
+ * the logo visibly lights up in time with the sound. Applied to the
+ * name element (not `.title-logo`, which owns the float loop) so the
+ * two animations don't collide. */
+.title-logo-lit .title-logo-name {
+  animation: title-logo-lit 0.9s ease-out both;
+}
+
+@keyframes title-logo-lit {
+  0%   { text-shadow: 0 0 0 rgba(255, 224, 138, 0); transform: scale(1); }
+  22%  { text-shadow: 0 0 22px rgba(255, 224, 138, 0.95); transform: scale(1.035); }
+  100% { text-shadow: 0 0 0 rgba(255, 224, 138, 0); transform: scale(1); }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .title-logo,
   .title-logo-icon,
@@ -277,6 +291,15 @@ h1, h2, h3, h4, .title-logo-name, .etude-card-name, .result-rank {
   .title-logo-icon-right,
   .title-logo-center {
     animation: none;
+  }
+  /* Keep a brief glow but drop the scale pop for reduced-motion. */
+  .title-logo-lit .title-logo-name {
+    animation: title-logo-lit-glow 0.9s ease-out both;
+  }
+  @keyframes title-logo-lit-glow {
+    0%   { text-shadow: 0 0 0 rgba(255, 224, 138, 0); }
+    22%  { text-shadow: 0 0 18px rgba(255, 224, 138, 0.9); }
+    100% { text-shadow: 0 0 0 rgba(255, 224, 138, 0); }
   }
 }
 
