@@ -77,6 +77,38 @@ export function scheduleClick(
   return osc;
 }
 
+// Assist-mode guide tone. Deliberately a different register *and* a
+// different waveform/envelope than the metronome click (1600 Hz
+// triangle, ~50 ms) so the two never get confused: a high sine "ding"
+// with a slower decay reads as a bell-like overlay, not another tick.
+export const ASSIST_CLICK_FREQUENCY_HZ = 2637;
+const ASSIST_CLICK_DURATION_SEC = 0.12;
+const ASSIST_CLICK_ATTACK_SEC = 0.004;
+
+export function scheduleAssistClick(
+  ctx: AudioContext,
+  audioTime: number,
+  volume: number = 0.5,
+): OscillatorNode {
+  const osc = ctx.createOscillator();
+  const gain = ctx.createGain();
+  osc.connect(gain);
+  gain.connect(ctx.destination);
+
+  osc.type = 'sine';
+  osc.frequency.value = ASSIST_CLICK_FREQUENCY_HZ;
+  gain.gain.setValueAtTime(0, audioTime);
+  gain.gain.linearRampToValueAtTime(volume, audioTime + ASSIST_CLICK_ATTACK_SEC);
+  gain.gain.exponentialRampToValueAtTime(
+    NEAR_ZERO_GAIN,
+    audioTime + ASSIST_CLICK_DURATION_SEC,
+  );
+
+  osc.start(audioTime);
+  osc.stop(audioTime + ASSIST_CLICK_DURATION_SEC);
+  return osc;
+}
+
 function ticksPerBeat(ts: TimeSignatureEvent): number {
   return (PPQ * 4) / ts.denominator;
 }

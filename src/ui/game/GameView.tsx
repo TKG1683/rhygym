@@ -45,7 +45,7 @@ import { expandToCandidates } from '../../core/score/candidates';
 import { ETUDES } from '../../core/score/etudes';
 import { markLessonCompleted } from '../../core/storage/localStore';
 import { TickTimeConverter } from '../../core/timing/tickTime';
-import { defaultAccentPattern, scheduleClick, tsKey } from '../../core/audio/metronome';
+import { defaultAccentPattern, scheduleAssistClick, tsKey } from '../../core/audio/metronome';
 import { useAppStore } from '../store/appStore';
 import { ScoreView } from '../vexflow/ScoreView';
 import type { NoteCoords } from '../vexflow/ScoreRenderer';
@@ -593,7 +593,7 @@ export function GameView({ stage, onComplete, tutorialMode = false }: Props) {
   // learning aid — judgement still runs, but ResultScreen suppresses
   // best-score / failStreak updates when `lastWasAssist` is true.
   //
-  // Audio: scheduled directly through `scheduleClick` against the
+  // Audio: scheduled directly through `scheduleAssistClick` against the
   // AudioContext clock so each extra click is sample-accurate; no
   // BPM mutation (Rhygym is read-the-score, not tap-by-feel — see
   // feedback_no_runtime_bpm_change).
@@ -619,11 +619,12 @@ export function GameView({ stage, onComplete, tutorialMode = false }: Props) {
     for (const c of candidates) {
       if (judgedIdsRef.current.has(c.id)) continue;
       const targetAudioTime = startAudioTimeRef.current + c.sec;
-      // Extra click — emitted slightly softer than the accent click so
-      // it reads as a *guide* layered over the metronome rather than
-      // a competing pulse.
+      // Distinct high sine "ding" (see scheduleAssistClick) rather than
+      // the metronome's own click tone — otherwise the guide sound was
+      // indistinguishable from a soft metronome tick, which defeated
+      // the point of a separate "this is the correct rhythm" cue.
       if (targetAudioTime >= ctx.currentTime) {
-        oscillators.push(scheduleClick(ctx, targetAudioTime, false, ASSIST_CLICK_VOLUME));
+        oscillators.push(scheduleAssistClick(ctx, targetAudioTime, ASSIST_CLICK_VOLUME));
       }
       // Visual flash — base id only (tremolo sub-onsets like
       // `${id}-trem-N` don't have their own SVG element, but flashing
