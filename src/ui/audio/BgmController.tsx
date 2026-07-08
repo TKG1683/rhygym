@@ -18,7 +18,7 @@
  * first interaction, after which the effect below starts the loop.
  */
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { createAudioContext } from '../../core/audio/audioContext';
 import { BgmPlayer } from '../../core/audio/bgm';
 import { TITLE_FUNK, SELECT_LOFI, ETUDE_GROOVE } from '../../core/audio/bgmTracks';
@@ -47,10 +47,44 @@ export function BgmController() {
   const bgmEnabled = useAppStore((s) => s.bgmEnabled);
   const bgmVolume = useAppStore((s) => s.bgmVolume);
 
-  const desiredKey = bgmEnabled ? trackKeyForScreen(screen, selectView) : null;
-
   const playerRef = useRef<BgmPlayer | null>(null);
   const currentKeyRef = useRef<TrackKey | null>(null);
+
+  // Pause the loop while the app is backgrounded. Without this the menu
+  // music keeps ringing after you switch apps / lock the phone (Web Audio
+  // notes already queued on the audio thread play out regardless of the
+  // JS timer), and the still-running output blocks other apps (Spotify)
+  // from taking the audio channel back. Treating "hidden" as "no track
+  // wanted" makes the start/stop effect below tear the loop down; on top
+  // of that we suspend the whole context so nothing lingers — but only
+  // when menu music was what's playing, so a game's own audio (which owns
+  // the context on the play screens) is left untouched.
+  const [pageVisible, setPageVisible] = useState(
+    () => (typeof document === 'undefined' ? true : !document.hidden),
+  );
+  const suspendedByHideRef = useRef(false);
+  useEffect(() => {
+    const onVisibility = () => {
+      const hidden = document.hidden;
+      setPageVisible(!hidden);
+      const ctx = useAppStore.getState().audioContext;
+      if (!ctx) return;
+      if (hidden) {
+        if (playerRef.current && ctx.state === 'running') {
+          suspendedByHideRef.current = true;
+          void ctx.suspend();
+        }
+      } else if (suspendedByHideRef.current && ctx.state === 'suspended') {
+        // Resuming an already-unlocked context needs no fresh gesture.
+        suspendedByHideRef.current = false;
+        void ctx.resume();
+      }
+    };
+    document.addEventListener('visibilitychange', onVisibility);
+    return () => document.removeEventListener('visibilitychange', onVisibility);
+  }, []);
+
+  const desiredKey = bgmEnabled && pageVisible ? trackKeyForScreen(screen, selectView) : null;
 
   // Bootstrap the AudioContext on the first user gesture if we want music
   // but nothing has created the ctx yet (fresh title, no button pressed).

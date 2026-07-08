@@ -154,17 +154,18 @@ export function TitleScreen() {
   // makes noise in a public place unasked; this button is the one place
   // a first-time player deliberately turns it on. The tap doubles as the
   // audio-unlock gesture, so music (+ the reveal sting, via the effect
-  // above) starts on this very press. Shown only while BGM is off — the
-  // corner 🔊 owns the persistent on/off + volume, and both read the same
-  // store flag so they never disagree.
-  const enableBgm = () => {
+  // above) starts on this very press. It's a toggle, not a one-way switch:
+  // turn it on by mistake and the same button flips straight back to OFF
+  // so it can be silenced instantly (no hunting for the corner 🔊). Both
+  // read the same store flag so they never disagree.
+  const toggleBgm = () => {
     let ctx = audioContext;
     if (!ctx) {
       ctx = createAudioContext();
       setAudioContext(ctx);
     }
     if (ctx.state === 'suspended') void ctx.resume();
-    setBgmEnabled(true);
+    setBgmEnabled(!bgmEnabled);
   };
 
   return (
@@ -193,12 +194,15 @@ export function TitleScreen() {
         </div>
       )}
       <p className="tagline">楽譜を読み、タップでリズムを叩け。</p>
-      {!bgmEnabled && (
-        <button type="button" className="title-bgm-cta" onClick={enableBgm}>
-          <span className="title-bgm-cta-icon" aria-hidden="true">🎵</span>
-          BGMをオンにする
-        </button>
-      )}
+      <button
+        type="button"
+        className={`title-bgm-cta${bgmEnabled ? ' is-on' : ''}`}
+        aria-pressed={bgmEnabled}
+        onClick={toggleBgm}
+      >
+        <span className="title-bgm-cta-icon" aria-hidden="true">{bgmEnabled ? '🔇' : '🎵'}</span>
+        {bgmEnabled ? 'BGMをオフにする' : 'BGMをオンにする'}
+      </button>
       <button className="primary" onClick={handleStart}>
         Start
       </button>
