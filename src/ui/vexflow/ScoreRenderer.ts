@@ -182,6 +182,64 @@ const STAVE_TOP_OFFSET = 6;
 const BOTTOM_PADDING = 32;
 const FIRST_MEASURE_LEFT_PAD = 5;
 
+// Minimum drawable width a bar needs so VexFlow's Formatter can lay its
+// notes out without overlap. `preCalculateMinTotalWidth` reports the
+// note-area minimum; we add the stave's own left inset (empirically 24 px
+// once a time signature is drawn, 5 px without) plus the ~10 px the render
+// path trims off the note area, then a small safety pad. Sizing a bar below
+// this squeezes the noteheads on top of each other — the "broken render on
+// hard scores" bug on dense mixed-tuplet bars (Movement 10). Empirically
+// verified against VexFlow 5's Stave geometry.
+const NOTE_AREA_INSET_WITH_TS = 34;
+const NOTE_AREA_INSET_PLAIN = 15;
+const NATURAL_WIDTH_SAFETY = 12;
+
+/**
+ * Build the StaveNotes for one measure's VexNotes. Shared by the real
+ * render passes and the natural-width pre-measurement so the width we
+ * reserve is computed from the exact notes we later draw.
+ */
+function buildStaveNotes(vexNotes: readonly VexNote[], stemDirection: number): StaveNote[] {
+  return vexNotes.map((vNote) => {
+    const dotted = vNote.vexBaseDuration.endsWith('d');
+    const base = dotted ? vNote.vexBaseDuration.slice(0, -1) : vNote.vexBaseDuration;
+    const sn = new StaveNote({
+      keys: ['b/4'],
+      duration: vNote.isRest ? `${base}r` : base,
+      autoStem: false,
+    });
+    sn.setStemDirection(stemDirection);
+    if (dotted) Dot.buildAndAttach([sn]);
+    if (vNote.tremoloStrokes != null && vNote.tremoloStrokes > 0) {
+      sn.addModifier(new Tremolo(vNote.tremoloStrokes));
+    }
+    return sn;
+  });
+}
+
+/**
+ * The minimum stave width this measure needs to render its notes without
+ * the Formatter overlapping them. `tsChanged` widens the estimate to cover
+ * the time-signature glyph the real stave will draw on meter changes.
+ * Returns 0's worth of extra (just the inset) if VexFlow can't measure —
+ * e.g. a non-browser test env with no canvas — so the caller's fixed width
+ * still wins rather than throwing.
+ */
+function naturalMeasureWidth(m: VexMeasure, tsChanged: boolean): number {
+  const notes = buildStaveNotes(m.notes, Stem.UP);
+  const voice = new Voice({ numBeats: m.numerator, beatValue: m.denominator });
+  voice.setStrict(false);
+  voice.addTickables(notes);
+  let minNoteWidth = 0;
+  try {
+    minNoteWidth = new Formatter().joinVoices([voice]).preCalculateMinTotalWidth([voice]);
+  } catch {
+    minNoteWidth = 0;
+  }
+  const inset = tsChanged ? NOTE_AREA_INSET_WITH_TS : NOTE_AREA_INSET_PLAIN;
+  return Math.ceil(minNoteWidth) + inset + NATURAL_WIDTH_SAFETY;
+}
+
 export function renderScore(score: Score, opts: RenderOptions): RenderResult {
   opts.container.innerHTML = '';
   const vex = scoreToVex(score);
@@ -192,38 +250,65 @@ export function renderScore(score: Score, opts: RenderOptions): RenderResult {
   const fallbackWidth = opts.measuresPerLine
     ? Math.max(MIN_MEASURE_WIDTH, Math.floor(opts.viewportWidth / opts.measuresPerLine))
     : (opts.measureWidth ?? DEFAULT_MEASURE_WIDTH);
+
+  // Density-aware widths: unless the caller pins explicit per-bar widths,
+  // every bar gets at least the width VexFlow needs for its own notes.
+  // Note-dense bars (Movement 10's mixed 5/6/7 tuplets) demand far more
+  // than an even slice of the viewport; giving them less makes the
+  // Formatter pile noteheads on top of each other — the broken render on
+  // hard scores. Sparse bars stay at the fallback so easy scores are
+  // untouched.
+  const tsChangedAt = (i: number): boolean => {
+    const m = vex.measures[i]!;
+    const prev = i > 0 ? vex.measures[i - 1]! : null;
+    return prev === null || prev.numerator !== m.numerator || prev.denominator !== m.denominator;
+  };
   const widths: number[] = opts.measureWidths
     ? vex.measures.map((_, i) => opts.measureWidths![i] ?? fallbackWidth)
-    : vex.measures.map(() => fallbackWidth);
+    : vex.measures.map((m, i) => Math.max(fallbackWidth, naturalMeasureWidth(m, tsChangedAt(i))));
 
-  // measuresPerLine: explicit caller value wins; if per-measure widths
-  // are supplied and no explicit cap is given, fit as many as the
-  // running cumulative width allows.
+  // measuresPerLine caps how many bars share a row: explicit caller value
+  // wins; with per-bar widths (Result) keep everything on one scrolling
+  // row; otherwise derive from the fallback slice.
   const measuresPerLine =
     opts.measuresPerLine ??
     (opts.measureWidths
       ? vex.measures.length // assume the caller will scroll horizontally
       : Math.max(1, Math.floor(opts.viewportWidth / fallbackWidth)));
 
-  // Pre-compute x offsets per measure, restarting at each new line.
+  // Row assignment. Break at the measuresPerLine cap, and — on the
+  // auto-width path only — also when the next bar would push the row past
+  // the viewport. That stops a single very wide dense bar from dragging the
+  // whole score's uniform scale down: it takes its own row instead of
+  // shrinking every other bar to fit beside it. The explicit-width path
+  // (Result) keeps its single horizontally-scrolling row.
+  const wrapByWidth = !opts.measureWidths;
+  const lineOf: number[] = new Array(vex.measures.length);
   const xOffsets: number[] = new Array(vex.measures.length);
-  let lineCount = 0;
+  let lineIdxCursor = 0;
+  let countInLine = 0;
   let runX = 0;
   for (let i = 0; i < vex.measures.length; i++) {
-    if (i % measuresPerLine === 0) {
+    const w = widths[i]!;
+    const capHit = countInLine >= measuresPerLine;
+    const overflow = wrapByWidth && countInLine > 0 && runX + w > opts.viewportWidth;
+    if (countInLine > 0 && (capHit || overflow)) {
+      lineIdxCursor++;
+      countInLine = 0;
       runX = 0;
-      lineCount++;
     }
+    lineOf[i] = lineIdxCursor;
     xOffsets[i] = runX + FIRST_MEASURE_LEFT_PAD;
-    runX += widths[i]!;
+    runX += w;
+    countInLine++;
   }
-  if (lineCount === 0) lineCount = 1;
+  const lineCount = lineIdxCursor + 1;
   const height = lineCount * LINE_HEIGHT + BOTTOM_PADDING;
 
   // SVG width: pin to whichever is wider, the caller-supplied viewport
   // or the widest line we just laid out. Otherwise note tails on long
   // bars get clipped.
-  const maxLineWidth = computeMaxLineWidth(widths, measuresPerLine);
+  const maxLineWidth = computeMaxLineWidth(widths, lineOf);
   const svgWidth = Math.max(opts.viewportWidth, maxLineWidth + FIRST_MEASURE_LEFT_PAD * 2);
 
   const renderer = new Renderer(opts.container, Renderer.Backends.SVG);
@@ -235,7 +320,7 @@ export function renderScore(score: Score, opts: RenderOptions): RenderResult {
   let runningStartTick = 0;
 
   vex.measures.forEach((m, idx) => {
-    const lineIdx = Math.floor(idx / measuresPerLine);
+    const lineIdx = lineOf[idx]!;
     const measureWidth = widths[idx]!;
     const x = xOffsets[idx]!;
     const y = lineIdx * LINE_HEIGHT + STAVE_TOP_OFFSET;
@@ -268,26 +353,11 @@ export function renderScore(score: Score, opts: RenderOptions): RenderResult {
     stave.setEndBarType(Barline.type.SINGLE);
     stave.setContext(ctx).draw();
 
-    const staveNotes = m.notes.map((vNote) => {
-      const dotted = vNote.vexBaseDuration.endsWith('d');
-      const base = dotted ? vNote.vexBaseDuration.slice(0, -1) : vNote.vexBaseDuration;
-      const sn = new StaveNote({
-        keys: ['b/4'],
-        duration: vNote.isRest ? `${base}r` : base,
-        autoStem: false,
-      });
-      // Force stem up so beams sit above the line consistently.
-      sn.setStemDirection(Stem.UP);
-      if (dotted) Dot.buildAndAttach([sn]);
-      // Tremolo slashes (#82) — attached only on the head segment so
-      // multi-token splits of a tremolo note get exactly one stem
-      // decoration. scoreToVex guarantees tremoloStrokes is set on
-      // the head and only the head.
-      if (vNote.tremoloStrokes != null && vNote.tremoloStrokes > 0) {
-        sn.addModifier(new Tremolo(vNote.tremoloStrokes));
-      }
-      return sn;
-    });
+    // Force stem up so beams sit above the line consistently. Tremolo
+    // slashes (#82) are attached inside buildStaveNotes only on the head
+    // segment (scoreToVex guarantees tremoloStrokes is set on the head and
+    // only the head), so multi-token splits get exactly one decoration.
+    const staveNotes = buildStaveNotes(m.notes, Stem.UP);
 
     // IMPORTANT: Build Beams BEFORE voice.draw(). `new Beam(notes)` attaches
     // itself to each note, and the per-note flag suppression flag is read
@@ -466,9 +536,23 @@ export function renderGrandStaff(score: Score, opts: RenderOptions): RenderResul
   const fallbackWidth = opts.measuresPerLine
     ? Math.max(MIN_MEASURE_WIDTH, Math.floor(opts.viewportWidth / opts.measuresPerLine))
     : (opts.measureWidth ?? DEFAULT_MEASURE_WIDTH);
+  // Density-aware widths (see renderScore): a dense bar in either hand
+  // sizes the shared column, so take the wider of the two lanes' minimums.
+  const grandTsChangedAt = (i: number): boolean => {
+    const m = upperVex.measures[i]!;
+    const prev = i > 0 ? upperVex.measures[i - 1]! : null;
+    return prev === null || prev.numerator !== m.numerator || prev.denominator !== m.denominator;
+  };
   const widths: number[] = opts.measureWidths
     ? upperVex.measures.map((_, i) => opts.measureWidths![i] ?? fallbackWidth)
-    : upperVex.measures.map(() => fallbackWidth);
+    : upperVex.measures.map((_, i) => {
+        const ts = grandTsChangedAt(i);
+        return Math.max(
+          fallbackWidth,
+          naturalMeasureWidth(upperVex.measures[i]!, ts),
+          naturalMeasureWidth(lowerVex.measures[i]!, ts),
+        );
+      });
   const measuresPerLine =
     opts.measuresPerLine ??
     (opts.measureWidths
@@ -476,6 +560,7 @@ export function renderGrandStaff(score: Score, opts: RenderOptions): RenderResul
       : Math.max(1, Math.floor(opts.viewportWidth / fallbackWidth)));
 
   const xOffsets: number[] = new Array(measureCount);
+  const lineOf: number[] = new Array(measureCount);
   let lineCount = 0;
   let runX = 0;
   for (let i = 0; i < measureCount; i++) {
@@ -483,13 +568,14 @@ export function renderGrandStaff(score: Score, opts: RenderOptions): RenderResul
       runX = 0;
       lineCount++;
     }
+    lineOf[i] = lineCount - 1;
     xOffsets[i] = runX + FIRST_MEASURE_LEFT_PAD;
     runX += widths[i]!;
   }
   if (lineCount === 0) lineCount = 1;
   const height = lineCount * GRAND_LINE_HEIGHT + BOTTOM_PADDING;
 
-  const maxLineWidth = computeMaxLineWidth(widths, measuresPerLine);
+  const maxLineWidth = computeMaxLineWidth(widths, lineOf);
   const svgWidth = Math.max(opts.viewportWidth, maxLineWidth + FIRST_MEASURE_LEFT_PAD * 2);
 
   const renderer = new Renderer(opts.container, Renderer.Backends.SVG);
@@ -671,21 +757,7 @@ function renderLaneVoice(
   noteElements: Map<string, SVGElement>,
   stemDirection: number,
 ): void {
-  const staveNotes = m.notes.map((vNote) => {
-    const dotted = vNote.vexBaseDuration.endsWith('d');
-    const base = dotted ? vNote.vexBaseDuration.slice(0, -1) : vNote.vexBaseDuration;
-    const sn = new StaveNote({
-      keys: ['b/4'],
-      duration: vNote.isRest ? `${base}r` : base,
-      autoStem: false,
-    });
-    sn.setStemDirection(stemDirection);
-    if (dotted) Dot.buildAndAttach([sn]);
-    if (vNote.tremoloStrokes != null && vNote.tremoloStrokes > 0) {
-      sn.addModifier(new Tremolo(vNote.tremoloStrokes));
-    }
-    return sn;
-  });
+  const staveNotes = buildStaveNotes(m.notes, stemDirection);
 
   const beams = buildBeams(staveNotes, m.notes);
   const tuplets = buildTuplets(staveNotes, m.notes);
@@ -747,14 +819,14 @@ function renderLaneVoice(
   });
 }
 
-function computeMaxLineWidth(widths: readonly number[], measuresPerLine: number): number {
-  let maxW = 0;
-  let lineW = 0;
+function computeMaxLineWidth(widths: readonly number[], lineOf: readonly number[]): number {
+  const perLine = new Map<number, number>();
   for (let i = 0; i < widths.length; i++) {
-    if (i % measuresPerLine === 0) lineW = 0;
-    lineW += widths[i]!;
-    if (lineW > maxW) maxW = lineW;
+    const ln = lineOf[i]!;
+    perLine.set(ln, (perLine.get(ln) ?? 0) + widths[i]!);
   }
+  let maxW = 0;
+  for (const w of perLine.values()) if (w > maxW) maxW = w;
   return maxW;
 }
 
