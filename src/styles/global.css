@@ -303,6 +303,38 @@ h1, h2, h3, h4, .title-logo-name, .etude-card-name, .result-rank {
   }
 }
 
+/* Opt-in "turn BGM on" pill. Only rendered while music is off, so it
+ * reads as an invitation, not a persistent toggle (that lives in the
+ * corner 🔊). A slow glow pulse gives it just enough presence to be
+ * discovered on an otherwise-silent title without nagging. */
+.title-bgm-cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  align-self: center;
+  padding: 8px 18px;
+  border-radius: 999px;
+  border: 1.5px solid rgba(42, 27, 6, 0.22);
+  background: var(--surface-hover);
+  color: var(--text-strong);
+  font-weight: 700;
+  font-size: var(--fs-sm);
+  cursor: pointer;
+  animation: title-bgm-cta-pulse 2.6s ease-in-out infinite;
+}
+.title-bgm-cta:hover { opacity: 0.92; }
+.title-bgm-cta:active { transform: translateY(1px); }
+.title-bgm-cta-icon { font-size: 1.05em; line-height: 1; }
+
+@keyframes title-bgm-cta-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(224, 174, 30, 0); }
+  50%      { box-shadow: 0 0 0 4px rgba(224, 174, 30, 0.18); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .title-bgm-cta { animation: none; }
+}
+
 .tagline {
   font-size: var(--fs-md);
   margin: 0 0 var(--space-5);

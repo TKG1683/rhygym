@@ -27,6 +27,7 @@ export function TitleScreen() {
   const audioContext = useAppStore((s) => s.audioContext);
   const setAudioContext = useAppStore((s) => s.setAudioContext);
   const bgmEnabled = useAppStore((s) => s.bgmEnabled);
+  const setBgmEnabled = useAppStore((s) => s.setBgmEnabled);
   const calibrationOffsetSec = useAppStore((s) => s.calibrationOffsetSec);
   const autoMode = useAppStore((s) => s.autoMode);
   const setAutoMode = useAppStore((s) => s.setAutoMode);
@@ -149,6 +150,23 @@ export function TitleScreen() {
     goto('tutorial');
   };
 
+  // Intentional opt-in for menu music. BGM ships OFF so the app never
+  // makes noise in a public place unasked; this button is the one place
+  // a first-time player deliberately turns it on. The tap doubles as the
+  // audio-unlock gesture, so music (+ the reveal sting, via the effect
+  // above) starts on this very press. Shown only while BGM is off — the
+  // corner 🔊 owns the persistent on/off + volume, and both read the same
+  // store flag so they never disagree.
+  const enableBgm = () => {
+    let ctx = audioContext;
+    if (!ctx) {
+      ctx = createAudioContext();
+      setAudioContext(ctx);
+    }
+    if (ctx.state === 'suspended') void ctx.resume();
+    setBgmEnabled(true);
+  };
+
   return (
     <main className="screen screen-title">
       <div className={`title-logo${logoLit ? ' title-logo-lit' : ''}`} aria-label="Rhygym">
@@ -175,6 +193,12 @@ export function TitleScreen() {
         </div>
       )}
       <p className="tagline">楽譜を読み、タップでリズムを叩け。</p>
+      {!bgmEnabled && (
+        <button type="button" className="title-bgm-cta" onClick={enableBgm}>
+          <span className="title-bgm-cta-icon" aria-hidden="true">🎵</span>
+          BGMをオンにする
+        </button>
+      )}
       <button className="primary" onClick={handleStart}>
         Start
       </button>

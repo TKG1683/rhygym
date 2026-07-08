@@ -51,17 +51,20 @@ export function setBgmVolume(volume: number): void {
 }
 
 /**
- * Whether menu BGM is on. Defaults to ON for a fresh player so the
- * title/select music is discovered without a hunt; the 🔊 toggle writes
- * '0' to remember an opt-out. Stored as '1'/'0' rather than JSON to
- * match the AUTO_MODE flag's compact shape.
+ * Whether menu BGM is on. Defaults to OFF for a fresh player: unexpected
+ * sound from a game in a public place is exactly the accident we want to
+ * avoid, so music is strictly opt-in — the player turns it on
+ * deliberately (title "BGMをオンにする" CTA or the 🔊 toggle), which
+ * writes '1'. Anyone who never opts in just uses the app silently.
+ * Stored as '1'/'0' rather than JSON to match the AUTO_MODE flag's
+ * compact shape.
  */
 export function getBgmEnabled(): boolean {
   try {
-    if (typeof localStorage === 'undefined') return true;
-    return localStorage.getItem(BGM_ENABLED_KEY) !== '0';
+    if (typeof localStorage === 'undefined') return false;
+    return localStorage.getItem(BGM_ENABLED_KEY) === '1';
   } catch {
-    return true;
+    return false;
   }
 }
 
