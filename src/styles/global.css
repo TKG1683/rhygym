@@ -34,6 +34,7 @@
   --border-soft: rgba(42, 27, 6, 0.15);
   --shadow-soft: rgba(42, 27, 6, 0.08);
   --shadow-hover: rgba(42, 27, 6, 0.18);
+  --danger: #b3401f;
 
   --medal-gold: #e9b834;
   --medal-silver: #c7ccd1;
@@ -399,6 +400,20 @@ button.secondary {
   background: transparent;
   color: var(--text-strong);
   border: 2px solid var(--brand-primary);
+}
+
+/* Destructive confirm action (e.g. "初期化する" on the reset-play-data
+ * card). Deliberately its own color rather than .primary — a wipe-all
+ * action shouldn't share the same visual weight as "Start". */
+button.danger {
+  background: var(--danger);
+  color: var(--text-on-dark);
+  font-weight: 700;
+  box-shadow: 0 2px 0 rgba(0, 0, 0, 0.18);
+}
+button.danger:active {
+  transform: translateY(1px);
+  box-shadow: 0 0 0 rgba(0, 0, 0, 0.18);
 }
 
 button:hover {
@@ -1941,6 +1956,31 @@ input[type='range']:disabled {
 }
 
 .calib-suggest-close:hover {
+  opacity: 1;
+}
+
+/* "プレイデータを初期化する" — deliberately the least prominent thing
+ * on the Title screen. A destructive, rarely-used action should read
+ * as a quiet escape hatch, not another call-to-action competing with
+ * Start. Plain text-link styling; only tints toward --danger on
+ * hover/focus so its intent is discoverable without shouting. */
+.title-reset-link {
+  align-self: center;
+  margin-top: var(--space-2);
+  background: none;
+  border: none;
+  padding: 8px 12px;
+  min-height: auto;
+  font-size: var(--fs-xs);
+  font-weight: 500;
+  color: var(--text-muted);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+.title-reset-link:hover,
+.title-reset-link:focus-visible {
+  color: var(--danger);
   opacity: 1;
 }
 

@@ -4,7 +4,9 @@
  * Rendered by App on the title/select screens (there's no general
  * settings screen to hang this off, so the speaker icon is its home).
  * Tapping the icon opens a small panel with an ON/OFF switch and a
- * volume slider; both persist via the store. Any interaction here also
+ * volume slider. Volume persists via the store; the ON/OFF switch is
+ * in-memory only for this session — every fresh load starts silent by
+ * design (see appStore's `bgmEnabled` doc). Any interaction here also
  * doubles as the audio-unlock gesture, so a fresh title can start (or
  * adjust) the loop on this very tap instead of waiting for the next one.
  */

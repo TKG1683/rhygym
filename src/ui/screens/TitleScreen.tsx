@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { createAudioContext } from '../../core/audio/audioContext';
 import { playTitleStinger } from '../../core/audio/titleStinger';
 import {
@@ -31,7 +32,14 @@ export function TitleScreen() {
   const calibrationOffsetSec = useAppStore((s) => s.calibrationOffsetSec);
   const autoMode = useAppStore((s) => s.autoMode);
   const setAutoMode = useAppStore((s) => s.setAutoMode);
+  const resetPlayData = useAppStore((s) => s.resetPlayData);
   const calibrated = calibrationOffsetSec !== 0;
+
+  // Destructive — confirm before wiping every best score / unlock /
+  // saved preference. Two-step (open the confirm card, then a second
+  // tap to actually commit) so a stray tap near the link can't nuke a
+  // player's progress.
+  const [resetConfirmOpen, setResetConfirmOpen] = useState(false);
 
   // Reveal sting — the moment menu audio becomes available (the first
   // gesture spins up the AudioContext; navigating back from a menu it's
@@ -234,7 +242,60 @@ export function TitleScreen() {
           </button>
         </div>
       )}
+      <button
+        type="button"
+        className="title-reset-link"
+        onClick={() => setResetConfirmOpen(true)}
+      >
+        プレイデータを初期化する
+      </button>
+      {resetConfirmOpen && (
+        <ResetConfirmModal
+          onCancel={() => setResetConfirmOpen(false)}
+          onConfirm={resetPlayData}
+        />
+      )}
     </main>
+  );
+}
+
+/**
+ * Confirmation card for the destructive "プレイデータを初期化する"
+ * action. Portal'd to document.body (mirrors TutorialHintModal) so the
+ * dim backdrop covers the full viewport rather than clipping to the
+ * screen's max-width container.
+ */
+function ResetConfirmModal({
+  onCancel,
+  onConfirm,
+}: {
+  onCancel: () => void;
+  onConfirm: () => void;
+}) {
+  if (typeof document === 'undefined') return null;
+  return createPortal(
+    <div
+      className="tutorial-modal-backdrop"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="reset-confirm-title"
+    >
+      <div className="tutorial-modal-card">
+        <h2 id="reset-confirm-title" className="tutorial-modal-title">
+          プレイデータを初期化しますか？
+        </h2>
+        <p className="tutorial-modal-body">
+          ベストスコア・解放状況・キャリブレーション・各種設定がすべて消え、元に戻せません。
+        </p>
+        <button type="button" className="secondary tutorial-modal-secondary" onClick={onCancel}>
+          キャンセル
+        </button>
+        <button type="button" className="danger tutorial-modal-next" onClick={onConfirm}>
+          初期化する
+        </button>
+      </div>
+    </div>,
+    document.body,
   );
 }
 
