@@ -240,6 +240,29 @@ function naturalMeasureWidth(m: VexMeasure, tsChanged: boolean): number {
   return Math.ceil(minNoteWidth) + inset + NATURAL_WIDTH_SAFETY;
 }
 
+// A bar only renders as an overlapping smear when it crams TWO OR MORE
+// back-to-back tuplet runs (different brackets fighting for the same
+// cramped note area — e.g. Movement 10's quintuplet-then-septuplet bar)
+// AND is dense enough overall (10+ notes) that the squeeze is severe.
+// Single-tuplet-family bars, and any bar under 10 notes, format fine at
+// the normal fixed width — VexFlow's Formatter compresses spacing a lot
+// further than `preCalculateMinTotalWidth`'s comfortable estimate before
+// notes actually collide. Gating on this (rather than "natural width >
+// fallback", which nearly every 8th/16th-note bar trips) keeps ordinary
+// études pinned to their usual measuresPerLine layout and only pulls the
+// rare, truly-unplayable-as-written bar (and its row) out for more room.
+const DENSE_MEASURE_NOTE_THRESHOLD = 10;
+
+function needsDenseSizing(m: VexMeasure): boolean {
+  let nonRestCount = 0;
+  const tupletGroupIds = new Set<number>();
+  for (const n of m.notes) {
+    if (!n.isRest) nonRestCount++;
+    if (n.tupletGroupId != null) tupletGroupIds.add(n.tupletGroupId);
+  }
+  return nonRestCount >= DENSE_MEASURE_NOTE_THRESHOLD && tupletGroupIds.size >= 2;
+}
+
 export function renderScore(score: Score, opts: RenderOptions): RenderResult {
   opts.container.innerHTML = '';
   const vex = scoreToVex(score);
@@ -252,12 +275,11 @@ export function renderScore(score: Score, opts: RenderOptions): RenderResult {
     : (opts.measureWidth ?? DEFAULT_MEASURE_WIDTH);
 
   // Density-aware widths: unless the caller pins explicit per-bar widths,
-  // every bar gets at least the width VexFlow needs for its own notes.
-  // Note-dense bars (Movement 10's mixed 5/6/7 tuplets) demand far more
-  // than an even slice of the viewport; giving them less makes the
-  // Formatter pile noteheads on top of each other — the broken render on
-  // hard scores. Sparse bars stay at the fallback so easy scores are
-  // untouched.
+  // a bar only deviates from the even per-line slice when it truly can't
+  // be squeezed into it (see needsDenseSizing) — e.g. Movement 10's
+  // mixed 5/6/7 tuplets. Every other bar keeps the plain fallback width,
+  // pixel-for-pixel identical to before density-aware sizing existed, so
+  // ordinary études keep their usual measuresPerLine layout.
   const tsChangedAt = (i: number): boolean => {
     const m = vex.measures[i]!;
     const prev = i > 0 ? vex.measures[i - 1]! : null;
@@ -265,7 +287,9 @@ export function renderScore(score: Score, opts: RenderOptions): RenderResult {
   };
   const widths: number[] = opts.measureWidths
     ? vex.measures.map((_, i) => opts.measureWidths![i] ?? fallbackWidth)
-    : vex.measures.map((m, i) => Math.max(fallbackWidth, naturalMeasureWidth(m, tsChangedAt(i))));
+    : vex.measures.map((m, i) =>
+        needsDenseSizing(m) ? Math.max(fallbackWidth, naturalMeasureWidth(m, tsChangedAt(i))) : fallbackWidth,
+      );
 
   // measuresPerLine caps how many bars share a row: explicit caller value
   // wins; with per-bar widths (Result) keep everything on one scrolling
@@ -536,8 +560,11 @@ export function renderGrandStaff(score: Score, opts: RenderOptions): RenderResul
   const fallbackWidth = opts.measuresPerLine
     ? Math.max(MIN_MEASURE_WIDTH, Math.floor(opts.viewportWidth / opts.measuresPerLine))
     : (opts.measureWidth ?? DEFAULT_MEASURE_WIDTH);
-  // Density-aware widths (see renderScore): a dense bar in either hand
-  // sizes the shared column, so take the wider of the two lanes' minimums.
+  // Density-aware widths (see renderScore / needsDenseSizing): only a
+  // truly-unsqueezable bar in either hand widens the shared column, and
+  // it then takes the wider of the two lanes' minimums. Everything else
+  // keeps the plain fallback width so ordinary two-hand études keep their
+  // usual measuresPerLine layout.
   const grandTsChangedAt = (i: number): boolean => {
     const m = upperVex.measures[i]!;
     const prev = i > 0 ? upperVex.measures[i - 1]! : null;
@@ -546,12 +573,11 @@ export function renderGrandStaff(score: Score, opts: RenderOptions): RenderResul
   const widths: number[] = opts.measureWidths
     ? upperVex.measures.map((_, i) => opts.measureWidths![i] ?? fallbackWidth)
     : upperVex.measures.map((_, i) => {
+        const upperM = upperVex.measures[i]!;
+        const lowerM = lowerVex.measures[i]!;
+        if (!needsDenseSizing(upperM) && !needsDenseSizing(lowerM)) return fallbackWidth;
         const ts = grandTsChangedAt(i);
-        return Math.max(
-          fallbackWidth,
-          naturalMeasureWidth(upperVex.measures[i]!, ts),
-          naturalMeasureWidth(lowerVex.measures[i]!, ts),
-        );
+        return Math.max(fallbackWidth, naturalMeasureWidth(upperM, ts), naturalMeasureWidth(lowerM, ts));
       });
   const measuresPerLine =
     opts.measuresPerLine ??
