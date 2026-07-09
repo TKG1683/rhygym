@@ -3,12 +3,11 @@ import type { GameResult, JudgementRecord } from '../../core/judgement';
 import type { Difficulty, Etude } from '../../core/model';
 import type { EtudeWithMovementMeta } from '../../core/score/etudes';
 import {
-  getBgmEnabled,
   getBgmVolume,
   getCalibration,
   getDifficulty,
   getMetronomeAccents,
-  setBgmEnabled as persistBgmEnabled,
+  resetAllPlayData,
   setBgmVolume as persistBgmVolume,
   setDifficulty as persistDifficulty,
   setMetronomeAccents,
@@ -197,8 +196,12 @@ interface AppState {
   lastWasAssist: boolean;
   /**
    * Whether the procedural menu BGM (#bgm) is on. Drives the
-   * title-funk / select-lofi loops via BgmController. Persisted to
-   * localStorage so an opt-out sticks across reloads; defaults ON.
+   * title-funk / select-lofi loops via BgmController. Deliberately
+   * NOT persisted — every fresh load (or resume) starts silent
+   * regardless of what the player chose last session, so cached state
+   * can never leave the app making unexpected noise. Purely an
+   * in-memory session flag; the player re-opts-in each visit via the
+   * title "BGMをオンにする" CTA or the 🔊 toggle.
    */
   bgmEnabled: boolean;
   /**
@@ -240,6 +243,14 @@ interface AppState {
   setBgmVolume: (volume: number) => void;
   setMetronomeAccentForTs: (tsKey: string, pattern: boolean[]) => void;
   resetMetronomeAccentForTs: (tsKey: string) => void;
+  /**
+   * Wipe every persisted play data (best scores, calibration, skip-
+   * test unlocks, lesson completion, fail streaks, and saved
+   * preferences) and reload the app so every piece of in-memory state
+   * re-derives from the now-empty storage. Used by the Title screen's
+   * "プレイデータを初期化する" button.
+   */
+  resetPlayData: () => void;
 }
 
 export const useAppStore = create<AppState>((set) => ({
@@ -268,7 +279,9 @@ export const useAppStore = create<AppState>((set) => ({
   difficulty: getDifficulty(),
   assistMode: false,
   lastWasAssist: false,
-  bgmEnabled: getBgmEnabled(),
+  // Always boot silent — see the field doc above for why this never
+  // reads persisted state.
+  bgmEnabled: false,
   bgmVolume: getBgmVolume(),
   goto: (screen) => {
     // Push the destination so the OS back button steps backwards
@@ -305,10 +318,8 @@ export const useAppStore = create<AppState>((set) => ({
   },
   setAssistMode: (enabled) => set({ assistMode: enabled }),
   setLastWasAssist: (was) => set({ lastWasAssist: was }),
-  setBgmEnabled: (enabled) => {
-    persistBgmEnabled(enabled);
-    set({ bgmEnabled: enabled });
-  },
+  // Intentionally in-memory only — see the bgmEnabled field doc.
+  setBgmEnabled: (enabled) => set({ bgmEnabled: enabled }),
   setBgmVolume: (volume) => {
     const clamped = Math.max(0, Math.min(1, volume));
     persistBgmVolume(clamped);
@@ -328,4 +339,14 @@ export const useAppStore = create<AppState>((set) => ({
       setMetronomeAccents(next);
       return { metronomeAccents: next };
     }),
+  resetPlayData: () => {
+    resetAllPlayData();
+    writeAutoMode(false);
+    // Reload rather than patch every field by hand — a fresh boot
+    // re-derives calibration/difficulty/metronomeAccents/autoMode from
+    // the now-empty storage exactly the way a brand-new player would
+    // see them, so there's no risk of an in-memory field drifting out
+    // of sync with what was actually cleared.
+    if (typeof window !== 'undefined') window.location.reload();
+  },
 }));

@@ -50,32 +50,6 @@ export function setBgmVolume(volume: number): void {
   }
 }
 
-/**
- * Whether menu BGM is on. Defaults to OFF for a fresh player: unexpected
- * sound from a game in a public place is exactly the accident we want to
- * avoid, so music is strictly opt-in — the player turns it on
- * deliberately (title "BGMをオンにする" CTA or the 🔊 toggle), which
- * writes '1'. Anyone who never opts in just uses the app silently.
- * Stored as '1'/'0' rather than JSON to match the AUTO_MODE flag's
- * compact shape.
- */
-export function getBgmEnabled(): boolean {
-  try {
-    if (typeof localStorage === 'undefined') return false;
-    return localStorage.getItem(BGM_ENABLED_KEY) === '1';
-  } catch {
-    return false;
-  }
-}
-
-export function setBgmEnabled(enabled: boolean): void {
-  try {
-    if (typeof localStorage === 'undefined') return;
-    localStorage.setItem(BGM_ENABLED_KEY, enabled ? '1' : '0');
-  } catch {
-    // storage unavailable — preference just won't persist this session
-  }
-}
 
 const VALID_DIFFICULTIES: ReadonlySet<Difficulty> = new Set([
   'DOLCE',
@@ -776,5 +750,51 @@ export function resetFailStreak(etudeId: string): void {
   if (!(etudeId in all)) return;
   delete all[etudeId];
   writeFailStreaks(all);
+}
+
+/* ------------------------------------------------------------------ */
+/*  Full reset ("プレイデータを初期化する" on Title)                  */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Every localStorage key this module (or its legacy predecessors) has
+ * ever written. Kept as one explicit list — rather than deriving it
+ * from the individual `*_KEY` constants — so a reset still purges old
+ * schema versions even after their migrators and constants are long
+ * gone from the source.
+ */
+const ALL_STORAGE_KEYS: readonly string[] = [
+  STORAGE_KEY_V1,
+  STORAGE_KEY_V2,
+  STORAGE_KEY_V3,
+  STORAGE_KEY,
+  CALIB_KEY,
+  CALIB_SUGGEST_DISMISSED_KEY,
+  METRONOME_ACCENTS_KEY,
+  DIFFICULTY_KEY,
+  BGM_ENABLED_KEY, // legacy — no longer read, but wipe any leftover value
+  BGM_VOLUME_KEY,
+  SKIPTEST_KEY,
+  LESSONS_COMPLETED_KEY,
+  FAIL_STREAK_KEY,
+];
+
+/**
+ * Wipe every piece of persisted play data: best scores (current +
+ * legacy schema versions), calibration, skip-test unlocks, lesson
+ * completion, fail streaks, and saved preferences (difficulty,
+ * metronome accents, BGM volume). Used by the Title screen's "プレイ
+ * データを初期化する" button. Best-effort — a disabled/unavailable
+ * localStorage just means there was nothing to clear.
+ */
+export function resetAllPlayData(): void {
+  if (typeof localStorage === 'undefined') return;
+  for (const key of ALL_STORAGE_KEYS) {
+    try {
+      localStorage.removeItem(key);
+    } catch {
+      // ignore quota / private-mode errors — best effort
+    }
+  }
 }
 
