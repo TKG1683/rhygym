@@ -14,6 +14,18 @@ import { useAppStore } from '../store/appStore';
  * standalone in a tweet, LINE message, or pasted chat link. */
 const SHARE_TEXT = 'Rhygym — 楽譜を読み、タップでリズムを叩け。';
 
+/**
+ * Shared gate for "should we bug this player about calibration right
+ * now?" — true only for someone who hasn't calibrated, hasn't already
+ * waved the suggestion off, and hasn't finished a single run yet (once
+ * they have a best score, they've clearly played fine without it).
+ * Backs both the passive Title banner and the Start-button prompt so
+ * the two surfaces agree on who counts as "hasn't tried calibration".
+ */
+function shouldSuggestCalibration(calibrated: boolean): boolean {
+  return !calibrated && !isCalibSuggestDismissed() && Object.keys(getAllBests()).length === 0;
+}
+
 // How long the logo's "lit" glow rides after the reveal sting fires.
 // Roughly the sting's own ring-out so light and sound decay together.
 const LOGO_LIT_MS = 900;
@@ -117,15 +129,22 @@ export function TitleScreen() {
   // haven't played anything yet AND haven't explicitly dismissed it.
   // Snapshotted at mount so dismissing/calibrating doesn't make the
   // banner flicker mid-screen.
-  const [suggestVisible, setSuggestVisible] = useState(
-    () => !calibrated && !isCalibSuggestDismissed() && Object.keys(getAllBests()).length === 0,
-  );
+  const [suggestVisible, setSuggestVisible] = useState(() => shouldSuggestCalibration(calibrated));
   const dismissSuggest = () => {
     setCalibSuggestDismissed(true);
     setSuggestVisible(false);
   };
 
-  const handleStart = () => {
+  // Start-button intercept: same gate as the passive banner above, but
+  // checked live at click time (not snapshotted) so calibrating and
+  // coming straight back to Title clears it immediately. Cancellable —
+  // "このまま始める" just runs the normal Start flow below.
+  const [calibPromptOpen, setCalibPromptOpen] = useState(false);
+
+  // The actual "go play" flow, split out of handleStart so both a
+  // direct Start tap (already calibrated / already dismissed) and the
+  // calibration prompt's "このまま始める" button can trigger it.
+  const proceedToStart = () => {
     // Create (or reuse) the AudioContext while we are still inside the
     // user-gesture handler — iOS Safari and Android Chrome both refuse
     // to start audio that wasn't initiated by a tap/click.
@@ -150,6 +169,14 @@ export function TitleScreen() {
     // the audio thread is still ramping up its first real output.
     warmUpAudio(ctx);
     goto('select');
+  };
+
+  const handleStart = () => {
+    if (shouldSuggestCalibration(calibrated)) {
+      setCalibPromptOpen(true);
+      return;
+    }
+    proceedToStart();
   };
 
   const goCalibrate = () => {
@@ -357,7 +384,60 @@ export function TitleScreen() {
           onConfirm={resetPlayData}
         />
       )}
+      {calibPromptOpen && (
+        <CalibrationPromptModal
+          onCalibrate={() => {
+            setCalibPromptOpen(false);
+            goCalibrate();
+          }}
+          onSkip={() => {
+            setCalibPromptOpen(false);
+            proceedToStart();
+          }}
+        />
+      )}
     </main>
+  );
+}
+
+/**
+ * Start-button intercept for an uncalibrated first-time player.
+ * Portal'd to document.body (mirrors TutorialHintModal / ResetConfirmModal)
+ * so the dim backdrop covers the full viewport. Not a hard gate — "この
+ * まま始める" runs the normal Start flow, since a player who genuinely
+ * doesn't want to calibrate shouldn't be blocked from playing at all.
+ */
+function CalibrationPromptModal({
+  onCalibrate,
+  onSkip,
+}: {
+  onCalibrate: () => void;
+  onSkip: () => void;
+}) {
+  if (typeof document === 'undefined') return null;
+  return createPortal(
+    <div
+      className="tutorial-modal-backdrop"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="calib-prompt-title"
+    >
+      <div className="tutorial-modal-card">
+        <h2 id="calib-prompt-title" className="tutorial-modal-title">
+          キャリブレーションしますか？
+        </h2>
+        <p className="tutorial-modal-body">
+          端末によりタップのタイミングがゲームでのリズムのタイミングとズレて判定されることがあります
+        </p>
+        <button type="button" className="secondary tutorial-modal-secondary" onClick={onSkip}>
+          このまま始める
+        </button>
+        <button type="button" className="primary tutorial-modal-next" onClick={onCalibrate}>
+          キャリブレーションする
+        </button>
+      </div>
+    </div>,
+    document.body,
   );
 }
 
