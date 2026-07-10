@@ -2,12 +2,17 @@ import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { createAudioContext } from '../../core/audio/audioContext';
 import { playTitleStinger } from '../../core/audio/titleStinger';
+import { SHARE_URL } from '../../core/shareUrl';
 import {
   getAllBests,
   isCalibSuggestDismissed,
   setCalibSuggestDismissed,
 } from '../../core/storage/localStore';
 import { useAppStore } from '../store/appStore';
+
+/** Copy/post text — kept to the app name + tagline so it reads fine
+ * standalone in a tweet, LINE message, or pasted chat link. */
+const SHARE_TEXT = 'Rhygym — 楽譜を読み、タップでリズムを叩け。';
 
 // How long the logo's "lit" glow rides after the reveal sting fires.
 // Roughly the sting's own ring-out so light and sound decay together.
@@ -40,6 +45,26 @@ export function TitleScreen() {
   // tap to actually commit) so a stray tap near the link can't nuke a
   // player's progress.
   const [resetConfirmOpen, setResetConfirmOpen] = useState(false);
+
+  const [sharePanelOpen, setSharePanelOpen] = useState(false);
+  const shareRootRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!sharePanelOpen) return;
+    const onPointerDown = (e: PointerEvent) => {
+      if (shareRootRef.current && !shareRootRef.current.contains(e.target as Node)) {
+        setSharePanelOpen(false);
+      }
+    };
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setSharePanelOpen(false);
+    };
+    window.addEventListener('pointerdown', onPointerDown);
+    window.addEventListener('keydown', onKeyDown);
+    return () => {
+      window.removeEventListener('pointerdown', onPointerDown);
+      window.removeEventListener('keydown', onKeyDown);
+    };
+  }, [sharePanelOpen]);
 
   // Reveal sting — the moment menu audio becomes available (the first
   // gesture spins up the AudioContext; navigating back from a menu it's
@@ -176,6 +201,59 @@ export function TitleScreen() {
     setBgmEnabled(!bgmEnabled);
   };
 
+  // "Introduce Rhygym" — on a touch device with the Web Share API
+  // available, hand off to the OS share sheet directly: it already
+  // offers copy-link + every installed SNS app, so there's nothing
+  // useful our own UI could add. Desktop (and any browser without
+  // navigator.share) falls back to a small panel with the two
+  // explicit affordances that were actually asked for: copy the
+  // link, or post to X.
+  const handleShareClick = async () => {
+    const isTouchDevice =
+      typeof window !== 'undefined' &&
+      ('ontouchstart' in window || (navigator.maxTouchPoints ?? 0) > 0);
+    if (isTouchDevice && typeof navigator.share === 'function') {
+      try {
+        await navigator.share({ title: 'Rhygym', text: SHARE_TEXT, url: SHARE_URL });
+        return;
+      } catch (err) {
+        // User cancelled the system share sheet → bail silently rather
+        // than also popping our own panel on top of it.
+        if ((err as Error)?.name === 'AbortError') return;
+        // Any other failure (unsupported data, etc.) falls through to
+        // the manual panel so sharing still works somehow.
+      }
+    }
+    setSharePanelOpen((open) => !open);
+  };
+
+  const copyShareLink = async () => {
+    try {
+      await navigator.clipboard.writeText(`${SHARE_TEXT}\n${SHARE_URL}`);
+      setToast('リンクをコピーしました');
+    } catch {
+      setToast('コピーに失敗しました');
+    }
+    setSharePanelOpen(false);
+  };
+
+  const shareToX = () => {
+    const intent = new URL('https://x.com/intent/post');
+    intent.searchParams.set('text', SHARE_TEXT);
+    intent.searchParams.set('url', SHARE_URL);
+    intent.searchParams.set('hashtags', 'Rhygym');
+    window.open(intent.toString(), '_blank', 'noopener,noreferrer');
+    setSharePanelOpen(false);
+  };
+
+  const shareToLine = () => {
+    const intent = new URL('https://social-plugins.line.me/lineit/share');
+    intent.searchParams.set('url', SHARE_URL);
+    intent.searchParams.set('text', SHARE_TEXT);
+    window.open(intent.toString(), '_blank', 'noopener,noreferrer');
+    setSharePanelOpen(false);
+  };
+
   return (
     <main className="screen screen-title">
       <div className={`title-logo${logoLit ? ' title-logo-lit' : ''}`} aria-label="Rhygym">
@@ -226,6 +304,30 @@ export function TitleScreen() {
           </span>
         )}
       </button>
+      <div className="share-control" ref={shareRootRef}>
+        <button
+          type="button"
+          className="secondary"
+          aria-haspopup="dialog"
+          aria-expanded={sharePanelOpen}
+          onClick={handleShareClick}
+        >
+          📣 Rhygymを紹介する
+        </button>
+        {sharePanelOpen && (
+          <div className="share-panel" role="dialog" aria-label="Rhygymを紹介する">
+            <button type="button" className="share-panel-btn" onClick={copyShareLink}>
+              🔗 リンクをコピー
+            </button>
+            <button type="button" className="share-panel-btn" onClick={shareToX}>
+              𝕏 でポストする
+            </button>
+            <button type="button" className="share-panel-btn" onClick={shareToLine}>
+              LINEで送る
+            </button>
+          </div>
+        )}
+      </div>
       {suggestVisible && (
         <div className="calib-suggest-banner title-calib-suggest">
           <button

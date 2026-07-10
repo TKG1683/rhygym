@@ -11,6 +11,7 @@ import {
   type MovementForProgression,
 } from '../../core/progress/progression';
 import { ETUDES, type EtudeWithMovementMeta } from '../../core/score/etudes';
+import { SHARE_URL } from '../../core/shareUrl';
 import {
   addSkipTestFinal,
   getAllBests,
@@ -82,13 +83,6 @@ function projectBestPerEtude(nested: BestsByEtude): Record<string, BestRecord> {
  */
 const ASSIST_OFFER_THRESHOLD = 3;
 
-/**
- * Production URL for the share intent. Hard-coded rather than read
- * from `location.origin` so a share from a local dev session still
- * links to the live app — sharing "http://localhost:5173/rhygym/"
- * would be useless to whoever clicks the link.
- */
-const SHARE_URL = 'https://tkg1683.github.io/rhygym/';
 function rankAtLeast(rank: string, min: string): boolean {
   return RANK_ORDER.indexOf(rank as (typeof RANK_ORDER)[number]) >=
     RANK_ORDER.indexOf(min as (typeof RANK_ORDER)[number]);
