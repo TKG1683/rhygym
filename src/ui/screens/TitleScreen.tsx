@@ -427,7 +427,7 @@ function CalibrationPromptModal({
           キャリブレーションしますか？
         </h2>
         <p className="tutorial-modal-body">
-          端末によりタップのタイミングが実際のリズムのタイミングとズレて判定されることがあります
+          端末によりタップのタイミングがゲームでのリズムのタイミングとズレて判定されることがあります
         </p>
         <button type="button" className="secondary tutorial-modal-secondary" onClick={onSkip}>
           このまま始める
