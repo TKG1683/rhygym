@@ -424,10 +424,10 @@ function CalibrationPromptModal({
     >
       <div className="tutorial-modal-card">
         <h2 id="calib-prompt-title" className="tutorial-modal-title">
-          キャリブレーションをおすすめします
+          キャリブレーションしますか？
         </h2>
         <p className="tutorial-modal-body">
-          まだキャリブレーションをしていません。お使いの端末によってはタップの反応にズレがあり、キャリブレーションなしだと判定が実際のタイミングとずれて感じることがあります（機器依存）。先にキャリブレーションしますか？
+          端末によってタップのズレ方が違い、判定が実際とずれて感じることがあります（機器依存）。
         </p>
         <button type="button" className="secondary tutorial-modal-secondary" onClick={onSkip}>
           このまま始める
