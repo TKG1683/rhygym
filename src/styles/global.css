@@ -1959,6 +1959,50 @@ input[type='range']:disabled {
   opacity: 1;
 }
 
+/* "Rhygymを紹介する" — anchors its dropdown panel (copy link / X /
+ * LINE) directly below the button rather than pinning to a screen
+ * corner like the BGM control, since this is a deliberate action in
+ * the main button stack, not an ambient toggle. */
+.share-control {
+  position: relative;
+  align-self: center;
+}
+
+.share-panel {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 90;
+  width: max-content;
+  min-width: 200px;
+  padding: 8px;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-soft);
+  background: var(--surface-elevated);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.share-panel-btn {
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
+  min-height: auto;
+  text-align: left;
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  color: var(--text-strong);
+  cursor: pointer;
+}
+.share-panel-btn:hover {
+  background: var(--surface-hover);
+  opacity: 1;
+}
+
 /* "プレイデータを初期化する" — deliberately the least prominent thing
  * on the Title screen. A destructive, rarely-used action should read
  * as a quiet escape hatch, not another call-to-action competing with
